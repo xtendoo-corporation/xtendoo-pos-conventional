@@ -4,7 +4,7 @@
         <field name="name">pos.session.closing.wizard.form</field>
         <field name="model">pos.session.closing.wizard</field>
         <field name="arch" type="xml">
-            <form string="Cerrando la caja registradora" class="o_pos_session_closing_wizard">
+            <form string="Cerrando la caja registradora">
                 <field name="state" invisible="1" />
                 <field name="currency_id" invisible="1" />
                 <field name="cash_control" invisible="1" />
@@ -18,7 +18,7 @@
                 </header>
                 <sheet>
                     <div invisible="state != 'input'">
-                        <div class="o_payment_method_section" invisible="not cash_control">
+                        <div class="mb-3" invisible="not cash_control">
                             <group string="Resumen de efectivo">
                                 <field name="cash_register_balance_start" widget="monetary" readonly="1"/>
                                 <field name="total_payments" widget="monetary" readonly="1"/>
@@ -45,7 +45,7 @@
                             <field name="closing_note" placeholder="Razón de cierre (opcional)..."/>
                         </div>
                     </div>
-                    <div invisible="state != 'confirmation'" class="o_pos_closing_confirmation">
+                    <div invisible="state != 'confirmation'" class="alert alert-warning">
                         <h4>Diferencia de pago</h4>
                         <p>
                             El efectivo contado no coincide con la cantidad esperada.<br/>
