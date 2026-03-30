@@ -18,7 +18,7 @@ class TestPosConfig(PosConventionalTestCommon):
         config = self.env["pos.config"].create(
             {
                 "name": "Config Normal",
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         self.assertFalse(config.pos_non_touch)
@@ -50,7 +50,7 @@ class TestPosConfig(PosConventionalTestCommon):
             {
                 "name": "Config NT Create",
                 "pos_non_touch": True,
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self._make_fresh_cash_pm().id])],
             }
         )
         session = config.with_context(skip_auto_open=True)._get_or_create_non_touch_session()
@@ -79,7 +79,7 @@ class TestPosConfig(PosConventionalTestCommon):
             {
                 "name": "Config Tactil",
                 "pos_non_touch": False,
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         # En modo táctil no interceptamos, super() abre la UI web normal

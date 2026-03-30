@@ -166,24 +166,29 @@ class TestPosCashCalculatorWizard(TransactionCase):
 
     # ── action_confirm con wizard padre de cierre ─────────────────────────
 
+    def _make_fresh_cash_pm(self, name="Test Cash Calc"):
+        """Crea un método de pago en efectivo único para tests de esta clase."""
+        import uuid
+        cash_journal = self.env["account.journal"].search(
+            [("type", "=", "cash"), ("company_id", "=", self.env.company.id)], limit=1
+        )
+        if not cash_journal:
+            self.skipTest("No hay diario de caja disponible")
+        return self.env["pos.payment.method"].create({
+            "name": f"{name} {uuid.uuid4().hex[:6]}",
+            "journal_id": cash_journal.id,
+            "is_cash_count": True,
+        })
+
     def test_27_action_confirm_with_closing_wizard_parent(self):
         """action_confirm actualiza el saldo del wizard de cierre padre."""
-        # Necesitamos un config POS con sesión para el wizard de cierre
+        cash_pm = self._make_fresh_cash_pm("Cash Confirm")
         config = self.env["pos.config"].create(
             {
                 "name": "Config Calc Confirm",
-                "payment_method_ids": [(6, 0, [
-                    self.env["pos.payment.method"].search(
-                        [("is_cash_count", "=", True)], limit=1
-                    ).id
-                ])],
+                "payment_method_ids": [(6, 0, [cash_pm.id])],
             }
         )
-        cash_pm = self.env["pos.payment.method"].search(
-            [("is_cash_count", "=", True)], limit=1
-        )
-        if not cash_pm:
-            self.skipTest("No hay método de efectivo disponible")
 
         from odoo import fields as odoo_fields
         session = self.env["pos.session"].with_context(skip_auto_open=True).create(
@@ -206,15 +211,11 @@ class TestPosCashCalculatorWizard(TransactionCase):
 
     def test_28_action_cancel_with_parent_returns_parent_action(self):
         """action_cancel con wizard padre devuelve la acción de vuelta al padre."""
+        cash_pm = self._make_fresh_cash_pm("Cash Cancel")
         config = self.env["pos.config"].create(
             {
                 "name": "Config Calc Cancel",
-                "payment_method_ids": [(6, 0, [
-                    self.env["pos.payment.method"].search(
-                        [("is_cash_count", "=", True)], limit=1
-                    ).id or
-                    self.env["pos.payment.method"].search([], limit=1).id
-                ])],
+                "payment_method_ids": [(6, 0, [cash_pm.id])],
             }
         )
         from odoo import fields as odoo_fields

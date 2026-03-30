@@ -204,7 +204,7 @@ class TestUsersPin(PosConventionalTestCommon):
         config = self.env["pos.config"].create(
             {
                 "name": "Config PIN Settings Default",
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         settings = self.env["res.config.settings"].create(
@@ -217,7 +217,7 @@ class TestUsersPin(PosConventionalTestCommon):
         config = self.env["pos.config"].create(
             {
                 "name": "Config PIN Settings Write",
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         settings = self.env["res.config.settings"].create(

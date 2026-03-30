@@ -29,7 +29,7 @@ class TestResConfigSettings(PosConventionalTestCommon):
             {
                 "name": "Config NT Settings Test",
                 "pos_non_touch": True,
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self._make_fresh_cash_pm().id])],
             }
         )
         settings = self._get_settings(config)
@@ -52,7 +52,7 @@ class TestResConfigSettings(PosConventionalTestCommon):
         config = self.env["pos.config"].create(
             {
                 "name": "Config Sin Sesiones",
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         settings = self._get_settings(config)
@@ -74,22 +74,19 @@ class TestResConfigSettings(PosConventionalTestCommon):
     def test_07_set_values_raises_with_open_session_on_mode_change(self):
         """set_values lanza UserError si se cambia pos_non_touch con sesión abierta."""
         from odoo import fields
-        # Creamos un config específico con pos_non_touch=True
         config = self.env["pos.config"].create(
             {
                 "name": "Config Set Values Block",
                 "pos_non_touch": True,
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self._make_fresh_cash_pm().id])],
             }
         )
-        # Creamos una sesión en estado 'opened' (no cerrada)
         session = self.env["pos.session"].with_context(skip_auto_open=True).create(
             {"config_id": config.id}
         )
         session.write({"state": "opened", "start_at": fields.Datetime.now()})
 
         settings = self._get_settings(config)
-        # Intentamos cambiar el modo no táctil con sesión abierta
         settings.pos_non_touch = False
         with self.assertRaises(UserError):
             settings.set_values()
@@ -100,12 +97,11 @@ class TestResConfigSettings(PosConventionalTestCommon):
             {
                 "name": "Config Set Values",
                 "pos_non_touch": True,
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         settings = self._get_settings(config)
         settings.pos_non_touch = True
-        # No debe lanzar error aunque el valor sea el mismo
         settings.set_values()
 
     def test_09_set_values_no_error_same_value_with_open_session(self):

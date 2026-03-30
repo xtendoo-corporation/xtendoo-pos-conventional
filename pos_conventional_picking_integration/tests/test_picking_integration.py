@@ -30,7 +30,7 @@ class TestPickingIntegration(PosConventionalTestCommon):
         config = self.env["pos.config"].create(
             {
                 "name": "Config No Albaran",
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         self.assertFalse(config.pos_enable_albaran)
@@ -59,7 +59,7 @@ class TestPickingIntegration(PosConventionalTestCommon):
             {
                 "name": "Config Sin Albaran",
                 "pos_enable_albaran": False,
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         session = self._open_session(config)
@@ -173,7 +173,7 @@ class TestPickingIntegration(PosConventionalTestCommon):
             {
                 "name": "Config Albaran Settings",
                 "pos_enable_albaran": False,
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         settings = self.env["res.config.settings"].create(

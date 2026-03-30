@@ -35,7 +35,7 @@ class TestResUsersFilter(PosConventionalTestCommon):
         config2 = self.env["pos.config"].create(
             {
                 "name": "Config Secundaria",
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         user = self.env["res.users"].create(
@@ -79,7 +79,7 @@ class TestResUsersFilter(PosConventionalTestCommon):
         config2 = self.env["pos.config"].create(
             {
                 "name": "Config Filter Extra",
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         user = self.env["res.users"].create(
@@ -95,11 +95,10 @@ class TestResUsersFilter(PosConventionalTestCommon):
         user = self.env["res.users"].create(
             {"name": "Filter M2M Check", "login": "filter_m2m@example.com"}
         )
-        # Asignar dos configs distintos
         config2 = self.env["pos.config"].create(
             {
                 "name": "Config Filter M2M",
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
         user.allowed_pos_config_ids = [(4, self.pos_config.id), (4, config2.id)]

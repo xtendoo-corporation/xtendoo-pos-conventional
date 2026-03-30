@@ -19,7 +19,7 @@ class TestSessionManagement(PosConventionalTestCommon):
                 "name": "Config Balance Herencia",
                 "pos_non_touch": True,
                 "cash_control": True,
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self._make_fresh_cash_pm().id])],
             }
         )
         # Primera sesión cerrada con saldo final conocido
@@ -44,7 +44,7 @@ class TestSessionManagement(PosConventionalTestCommon):
                 "name": "Config Balance Cero",
                 "pos_non_touch": True,
                 "cash_control": True,
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self._make_fresh_cash_pm().id])],
             }
         )
         s = self.env["pos.session"].with_context(skip_auto_open=True).create(

@@ -61,7 +61,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         config_only_cash = self.env["pos.config"].create(
             {
                 "name": "Config Solo Efectivo",
-                "payment_method_ids": [(6, 0, [self.cash_pm.id])],
+                "payment_method_ids": [(6, 0, [self._make_fresh_cash_pm().id])],
             }
         )
         session = self._open_session(config_only_cash)

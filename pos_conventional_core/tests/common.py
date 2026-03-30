@@ -116,16 +116,30 @@ class PosConventionalTestCommon(TransactionCase):
         session.write({"state": "opened", "start_at": fields.Datetime.now()})
         return session
 
+    def _make_fresh_cash_pm(self, name=None):
+        """Crea un método de pago en efectivo único (cada config POS necesita el suyo)."""
+        import uuid
+        pm_name = name or f"Efectivo Test {uuid.uuid4().hex[:8]}"
+        return self.env["pos.payment.method"].create(
+            {
+                "name": pm_name,
+                "journal_id": self.cash_journal.id,
+                "is_cash_count": True,
+            }
+        )
+
     def _make_draft_order(self, session=None, partner=None):
         """Crea un pedido POS en estado borrador."""
         if session is None:
             session = self._open_session()
+        pricelist = session.config_id.pricelist_id
         vals = {
             "session_id": session.id,
             "config_id": session.config_id.id,
-            "pricelist_id": session.config_id.pricelist_id.id,
+            "pricelist_id": pricelist.id if pricelist else False,
             "currency_id": session.currency_id.id,
             "amount_tax": 0.0,
+            "amount_total": 0.0,
             "amount_paid": 0.0,
             "amount_return": 0.0,
         }
