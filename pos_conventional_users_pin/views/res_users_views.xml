@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_users_form_inherit_pos_conventional_users_pin" model="ir.ui.view">
+        <field name="name">res.users.form.inherit.pos.conventional.users.pin</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[@name='security']" position="inside">
+                <group string="Punto de Venta no táctil">
+                    <field name="pin" password="True" />
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

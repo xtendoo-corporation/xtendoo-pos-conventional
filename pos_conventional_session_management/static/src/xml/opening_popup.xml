@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="pos_conventional.OpeningPopup">
+        <Dialog title="'Apertura de Caja'" size="'md'" contentClass="'opening-popup-dialog'">
+            <div class="opening-popup p-4">
+                <div t-if="state.loading" class="text-center py-5">
+                    <i class="fa fa-spinner fa-spin fa-2x mb-2"/>
+                    <p>Cargando sesión...</p>
+                </div>
+                <div t-else="">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Efectivo de apertura</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text"><t t-esc="state.currencySymbol"/></span>
+                            <input type="text" class="form-control text-end" t-model="state.openingCash"/>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Notas</label>
+                        <textarea class="form-control" rows="3" t-model="state.notes" placeholder="Opcional..."/>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button class="btn btn-secondary btn-lg" t-on-click="props.close">Cancelar</button>
+                        <button class="btn btn-primary btn-lg" t-on-click="confirm">Abrir caja</button>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
+    </t>
+</templates>

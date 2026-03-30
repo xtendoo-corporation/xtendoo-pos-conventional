@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_order_form_sale" model="ir.ui.view">
+        <field name="name">pos.order.form.sale</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="pos_conventional_core.view_pos_order_form_conventional" />
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="open_linked_sale_order" string="Ver Venta Vinculada" type="object" 
+                        class="btn-info" invisible="not is_linked_to_sale" />
+            </xpath>
+            <xpath expr="//field[@name='session_id']" position="after">
+                <field name="linked_sale_order_id" invisible="not is_linked_to_sale" />
+                <field name="is_linked_to_sale" invisible="1" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_pos_order_list_sale" model="ir.ui.view">
+        <field name="name">pos.order.list.sale</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="pos_conventional_core.view_pos_order_list_conventional" />
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                 <attribute name="decoration-muted">state == 'linked'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="is_linked_to_sale" optional="show" widget="boolean_toggle" readonly="1" />
+            </xpath>
+        </field>
+    </record>
+</odoo>

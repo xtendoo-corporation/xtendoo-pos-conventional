@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_make_payment_wizard_cash_form" model="ir.ui.view">
+        <field name="name">pos.make.payment.wizard.cash.form</field>
+        <field name="model">pos.make.payment</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_make_payment" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="style">font-size: 24px; font-weight: bold; color: #007bff; height: 50px;</attribute>
+            </xpath>
+            <xpath expr="//field[@name='amount']" position="after">
+                <field name="is_cash_payment" invisible="1"/>
+                <div invisible="not is_cash_payment">
+                    <group>
+                        <field name="amount_received" 
+                               style="font-size: 24px; font-weight: bold; color: #28a745; height: 50px;"/>
+                        <field name="amount_change" readonly="1"
+                               style="font-size: 24px; font-weight: bold; color: #dc3545; height: 50px;"/>
+                    </group>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

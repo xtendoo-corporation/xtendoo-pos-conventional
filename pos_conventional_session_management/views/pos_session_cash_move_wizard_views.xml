@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_session_cash_move_wizard_form" model="ir.ui.view">
+        <field name="name">pos.session.cash.move.wizard.form</field>
+        <field name="model">pos.session.cash_move.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <field name="currency_id" invisible="1"/>
+                <field name="session_id" invisible="1"/>
+                <field name="partner_id" invisible="1"/>
+                <field name="type" invisible="1"/>
+                <header>
+                    <h4 class="modal-title">Entrada / Salida de efectivo</h4>
+                </header>
+                <sheet>
+                    <div class="input-amount d-flex mb-2 gap-2">
+                        <div class="input-group w-50">
+                            <button type="object" name="set_type_in" string="Entrada" class="btn btn-lg btn-success w-50" invisible="type != 'in'"/>
+                            <button type="object" name="set_type_in" string="Entrada" class="btn btn-lg btn-secondary w-50" invisible="type == 'in'"/>
+                            <button type="object" name="set_type_out" string="Salida" class="btn btn-lg btn-danger w-50" invisible="type != 'out'"/>
+                            <button type="object" name="set_type_out" string="Salida" class="btn btn-lg btn-secondary w-50" invisible="type == 'out'"/>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amount" class="o_form_label">Importe</label>
+                        <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reason" class="o_form_label">Razón</label>
+                        <field name="reason" placeholder="Deja una razón aquí..." style="height: 100px;"/>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirm" string="Confirmar" type="object" class="btn btn-lg btn-primary" data-hotkey="q"/>
+                    <button string="Descartar" class="btn btn-lg btn-secondary" special="cancel" data-hotkey="x"/>
+                    <button name="action_open_cash_calculator" string="Calculadora" type="object" class="btn btn-lg btn-secondary" data-hotkey="c"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

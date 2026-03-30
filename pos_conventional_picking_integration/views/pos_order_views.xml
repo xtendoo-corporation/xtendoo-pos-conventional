@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_order_form_picking" model="ir.ui.view">
+        <field name="name">pos.order.form.picking</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="pos_conventional_core.view_pos_order_form_conventional" />
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="show_albaran_button" invisible="1" />
+                <button name="action_create_picking" string="Imprimir Albarán" type="object" 
+                        class="btn-secondary" invisible="not show_albaran_button or state != 'draft'" />
+            </xpath>
+        </field>
+    </record>
+</odoo>
