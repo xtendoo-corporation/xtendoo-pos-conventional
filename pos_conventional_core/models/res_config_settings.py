@@ -37,6 +37,25 @@ class ResConfigSettings(models.TransientModel):
             ])
             settings.has_open_pos_sessions = open_sessions_count > 0
 
+    def write(self, vals):
+        """Interceptar escritura para bloquear cambio de modo con sesión abierta."""
+        if 'pos_non_touch' in vals:
+            for record in self:
+                if not record.pos_config_id:
+                    continue
+                has_open = self.env["pos.session"].search_count([
+                    ("config_id", "=", record.pos_config_id.id),
+                    ("state", "!=", "closed"),
+                ]) > 0
+                if has_open:
+                    current = bool(record.pos_config_id.pos_non_touch)
+                    new_val = bool(vals['pos_non_touch'])
+                    if current != new_val:
+                        raise UserError(
+                            "No se puede cambiar el modo táctil/no táctil mientras existan sesiones POS abiertas."
+                        )
+        return super().write(vals)
+
     def set_values(self):
         for record in self:
             if not record.pos_config_id:

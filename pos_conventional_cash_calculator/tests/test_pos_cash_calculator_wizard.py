@@ -186,6 +186,8 @@ class TestPosCashCalculatorWizard(TransactionCase):
 
     def test_27_action_confirm_with_closing_wizard_parent(self):
         """action_confirm actualiza el saldo del wizard de cierre padre."""
+        if "pos.session.closing.wizard" not in self.env:
+            self.skipTest("pos.session.closing.wizard no disponible (módulo session_management no instalado)")
         cash_pm = self._make_fresh_cash_pm("Cash Confirm")
         config = self.env["pos.config"].create(
             {
@@ -215,6 +217,8 @@ class TestPosCashCalculatorWizard(TransactionCase):
 
     def test_28_action_cancel_with_parent_returns_parent_action(self):
         """action_cancel con wizard padre devuelve la acción de vuelta al padre."""
+        if "pos.session.closing.wizard" not in self.env:
+            self.skipTest("pos.session.closing.wizard no disponible (módulo session_management no instalado)")
         cash_pm = self._make_fresh_cash_pm("Cash Cancel")
         config = self.env["pos.config"].create(
             {
@@ -242,6 +246,8 @@ class TestPosCashCalculatorWizard(TransactionCase):
 
     def test_29_parent_model_field_values(self):
         """parent_model acepta los valores de selección válidos."""
+        if "pos.session.closing.wizard" not in self.env:
+            self.skipTest("pos.session.closing.wizard no disponible (módulo session_management no instalado)")
         w1 = self._make_wizard(parent_model="pos.session.closing.wizard")
         self.assertEqual(w1.parent_model, "pos.session.closing.wizard")
 

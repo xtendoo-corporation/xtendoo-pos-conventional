@@ -87,9 +87,8 @@ class TestResConfigSettings(PosConventionalTestCommon):
         session.write({"state": "opened", "start_at": fields.Datetime.now()})
 
         settings = self._get_settings(config)
-        settings.pos_non_touch = False
         with self.assertRaises(UserError):
-            settings.set_values()
+            settings.pos_non_touch = False
 
     def test_08_set_values_ok_without_open_session(self):
         """set_values no lanza error si no hay sesiones abiertas."""

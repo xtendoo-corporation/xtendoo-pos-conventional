@@ -15,8 +15,8 @@ class PosSessionPinWizard(models.TransientModel):
     def action_validate_pin(self):
         self.ensure_one()
 
-        # Buscar usuario por PIN
-        user = self.env["res.users"].search(
+        # Buscar usuario por PIN usando sudo() para evitar restricciones de acceso
+        user = self.env["res.users"].sudo().search(
             [
                 ("pin", "=", self.pos_pin),
                 "|",

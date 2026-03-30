@@ -100,6 +100,9 @@ class TestSessionManagement(PosConventionalTestCommon):
         session = self._open_session()
         order = self._make_draft_order(session)
         self._add_line(order)
+        # Cerrar la primera sesión para poder crear una segunda (la restricción
+        # de Odoo impide dos sesiones con state != 'closed' para el mismo config)
+        session.sudo().write({"state": "closed"})
         # Crear nueva sesión de apertura para el mismo config
         new_session = self.env["pos.session"].with_context(skip_auto_open=True).create(
             {"config_id": self.pos_config.id}

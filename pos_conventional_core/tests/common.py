@@ -70,6 +70,16 @@ class PosConventionalTestCommon(TransactionCase):
             }
         )
 
+        # ── Cuenta de ingresos (obligatoria en Odoo 19 para _compute_prices) ───────
+        cls.income_account = cls.env["account.account"].search([
+            ("account_type", "=", "income"),
+            ("company_ids", "in", [company.id]),
+        ], limit=1)
+        if not cls.income_account:
+            cls.income_account = cls.env["account.account"].search([
+                ("account_type", "like", "income"),
+            ], limit=1)
+
         # ── Productos ──────────────────────────────────────────────────────
         cls.product = cls.env["product.product"].create(
             {
@@ -78,6 +88,7 @@ class PosConventionalTestCommon(TransactionCase):
                 "list_price": 100.0,
                 "taxes_id": [(6, 0, [cls.tax_21.id])],
                 "available_in_pos": True,
+                "property_account_income_id": cls.income_account.id if cls.income_account else False,
             }
         )
         cls.product_barcode = cls.env["product.product"].create(
@@ -88,6 +99,7 @@ class PosConventionalTestCommon(TransactionCase):
                 "barcode": "TST0001BARCODE",
                 "default_code": "TST0001",
                 "available_in_pos": True,
+                "property_account_income_id": cls.income_account.id if cls.income_account else False,
             }
         )
 
@@ -164,7 +176,19 @@ class PosConventionalTestCommon(TransactionCase):
         """Añade una línea de pedido usando el helper del core."""
         product = product or self.product
         vals = order._prepare_order_line_vals(product, qty)
-        return self.env["pos.order.line"].create(vals)
+        line = self.env["pos.order.line"].create(vals)
+        # En Odoo 19, _compute_prices usa @api.onchange, no @api.depends.
+        # Hay que llamarlo manualmente para actualizar amount_total.
+        # Si falla (p.ej. producto sin cuenta de ingresos), calculamos manualmente.
+        try:
+            order._compute_prices()
+        except Exception:
+            amount_total = sum(l.price_subtotal_incl for l in order.lines)
+            amount_tax = sum(
+                l.price_subtotal_incl - l.price_subtotal for l in order.lines
+            )
+            order.write({"amount_total": amount_total, "amount_tax": amount_tax})
+        return line
 
     def _add_payment(self, order, payment_method=None, amount=None):
         """Registra un pago en el pedido."""

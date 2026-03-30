@@ -69,7 +69,7 @@ class PosOrder(models.Model):
                 "product_uom_qty": line.qty,
                 "price_unit": line.price_unit,
                 "discount": line.discount or 0.0,
-                "tax_id": [(6, 0, taxes.ids)] if taxes else False,
+                "tax_ids": [(6, 0, taxes.ids)] if taxes else False,
             }))
 
         sale_order_vals = {

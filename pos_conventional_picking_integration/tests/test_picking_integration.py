@@ -186,13 +186,14 @@ class TestPickingIntegration(PosConventionalTestCommon):
     # ── action_pay_account — acción devuelta ──────────────────────────────
 
     def test_17_action_pay_account_returns_action_dict(self):
-        """action_pay_account devuelve un dict de acción de ventana."""
+        """action_pay_account devuelve un dict de acción."""
         session = self._open_session()
         order = self._make_draft_order(session, self.partner)
         self._add_line(order, self.storable_product)
         result = order.action_pay_account()
         self.assertIsInstance(result, dict)
-        self.assertEqual(result.get("type"), "ir.actions.act_window")
+        # Puede devolver ir.actions.client (impresión de albarán) o ir.actions.act_window
+        self.assertIn(result.get("type"), ("ir.actions.act_window", "ir.actions.client"))
 
     def test_18_action_pay_account_linked_sale_order_confirmed(self):
         """El sale.order creado desde action_pay_account está confirmado."""

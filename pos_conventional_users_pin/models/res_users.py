@@ -18,7 +18,7 @@ class ResUsers(models.Model):
     def _check_pin_unique(self):
         for record in self:
             if record.pin:
-                duplicate = self.search(
+                duplicate = self.sudo().search(
                     [("pin", "=", record.pin), ("id", "!=", record.id)], limit=1
                 )
                 if duplicate:

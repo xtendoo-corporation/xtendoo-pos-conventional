@@ -14,7 +14,7 @@ class TestResUsersFilter(PosConventionalTestCommon):
             {
                 "name": "Test Filter User",
                 "login": "test_filter_user@example.com",
-                "groups_id": [(4, self.env.ref("point_of_sale.group_pos_user").id)],
+                "group_ids": [(4, self.env.ref("point_of_sale.group_pos_user").id)],
             }
         )
         self.assertFalse(user.allowed_pos_config_ids)
