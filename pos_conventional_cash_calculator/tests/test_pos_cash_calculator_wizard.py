@@ -167,15 +167,19 @@ class TestPosCashCalculatorWizard(TransactionCase):
     # ── action_confirm con wizard padre de cierre ─────────────────────────
 
     def _make_fresh_cash_pm(self, name="Test Cash Calc"):
-        """Crea un método de pago en efectivo único para tests de esta clase."""
+        """Crea PM de caja con diario exclusivo (cada config POS necesita el suyo)."""
         import uuid
-        cash_journal = self.env["account.journal"].search(
-            [("type", "=", "cash"), ("company_id", "=", self.env.company.id)], limit=1
+        suffix = uuid.uuid4().hex[:3].upper()
+        cash_journal = self.env["account.journal"].create(
+            {
+                "name": f"Caja {name[:8]} {suffix}",
+                "type": "cash",
+                "code": f"CC{suffix}",   # 5 chars: CC + 3
+                "company_id": self.env.company.id,
+            }
         )
-        if not cash_journal:
-            self.skipTest("No hay diario de caja disponible")
         return self.env["pos.payment.method"].create({
-            "name": f"{name} {uuid.uuid4().hex[:6]}",
+            "name": f"{name} {suffix}",
             "journal_id": cash_journal.id,
             "is_cash_count": True,
         })

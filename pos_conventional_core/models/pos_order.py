@@ -66,7 +66,7 @@ class PosOrder(models.Model):
                 if "partner_id" in fields_list and not res.get("partner_id"):
                     if session.config_id.default_partner_id:
                         res["partner_id"] = session.config_id.default_partner_id.id
-        
+
         if not res.get("session_id"):
              active_session = self.env["pos.session"].search([
                  ("state", "=", "opened"),
@@ -98,6 +98,10 @@ class PosOrder(models.Model):
                         vals["currency_id"] = session.currency_id.id
             if "amount_paid" not in vals:
                 vals["amount_paid"] = 0.0
+            # Evitar violación NOT NULL en campos de importe
+            for _f in ("amount_tax", "amount_total", "amount_return"):
+                if _f not in vals:
+                    vals[_f] = 0.0
         return super().create(vals_list)
 
     def write(self, vals):
@@ -190,7 +194,7 @@ class PosOrder(models.Model):
         Calcula la acción que debe realizarse después de validar un pedido.
         """
         self.ensure_one()
-        
+
         # Configurar acción base de Nuevo Pedido
         next_action = {
             "type": "ir.actions.client",
@@ -202,7 +206,7 @@ class PosOrder(models.Model):
         }
 
         # Si está activada la opción de forzar login tras pedido, añadir flag
-        if self.config_id.pos_force_employee_login_after_order:
+        if getattr(self.config_id, 'pos_force_employee_login_after_order', False):
             next_action["params"]["force_login_after_order"] = True
 
         # Si el POS tiene activada la impresión automática, usar la acción de impresión

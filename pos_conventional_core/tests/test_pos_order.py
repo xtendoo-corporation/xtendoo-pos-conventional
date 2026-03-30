@@ -176,8 +176,8 @@ class TestPosOrder(PosConventionalTestCommon):
         session = self._open_session()
         order = self._make_draft_order(session)
         self._add_line(order)
-        order.write({"note": "Test note"})
-        self.assertEqual(order.note, "Test note")
+        order.write({"nb_print": 1})
+        self.assertEqual(order.nb_print, 1)
 
     def test_20_write_syncs_tax_ids_from_fiscal_position(self):
         """write() sincroniza tax_ids si la línea tiene taxes en after_fp pero no en tax_ids."""
@@ -237,6 +237,8 @@ class TestPosOrder(PosConventionalTestCommon):
 
     def test_25_get_post_validation_action_with_force_login(self):
         """Con pos_force_employee_login_after_order activo, la acción incluye force_login_after_order."""
+        if not hasattr(self.pos_config, 'pos_force_employee_login_after_order'):
+            self.skipTest("pos_force_employee_login_after_order no disponible (módulo PIN no instalado)")
         self.pos_config.pos_force_employee_login_after_order = True
         session = self._open_session()
         order = self._make_draft_order(session)

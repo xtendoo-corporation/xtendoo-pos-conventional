@@ -117,13 +117,26 @@ class PosConventionalTestCommon(TransactionCase):
         return session
 
     def _make_fresh_cash_pm(self, name=None):
-        """Crea un método de pago en efectivo único (cada config POS necesita el suyo)."""
+        """Crea un método de pago en efectivo con su propio diario único.
+
+        Cada pos.config necesita su propio PM de caja, y cada PM de caja
+        debe tener un diario exclusivo (restricción de Odoo).
+        """
         import uuid
-        pm_name = name or f"Efectivo Test {uuid.uuid4().hex[:8]}"
+        suffix = uuid.uuid4().hex[:3].upper()
+        pm_name = name or f"Efectivo {suffix}"
+        journal = self.env["account.journal"].create(
+            {
+                "name": f"Caja {suffix}",
+                "type": "cash",
+                "code": f"CT{suffix}",   # 5 chars max: CT + 3
+                "company_id": self.env.company.id,
+            }
+        )
         return self.env["pos.payment.method"].create(
             {
                 "name": pm_name,
-                "journal_id": self.cash_journal.id,
+                "journal_id": journal.id,
                 "is_cash_count": True,
             }
         )
@@ -157,7 +170,11 @@ class PosConventionalTestCommon(TransactionCase):
         """Registra un pago en el pedido."""
         payment_method = payment_method or self.cash_pm
         if amount is None:
-            amount = order.amount_total
+            # Calcular desde líneas para evitar el compute diferido de amount_total
+            if order.lines:
+                amount = sum(line.price_subtotal_incl for line in order.lines)
+            else:
+                amount = order.amount_total or 0.0
         order.add_payment(
             {
                 "pos_order_id": order.id,
