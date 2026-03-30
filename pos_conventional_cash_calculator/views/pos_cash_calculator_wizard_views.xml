@@ -99,8 +99,8 @@
                                 <field name="total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                             </div>
                             <field name="currency_id" invisible="1"/>
-                            <field name="closing_wizard_id" invisible="1"/>
-                            <field name="cash_move_wizard_id" invisible="1"/>
+                            <field name="parent_model" invisible="1"/>
+                            <field name="parent_res_id" invisible="1"/>
                         </div>
                     </div>
                     <footer>

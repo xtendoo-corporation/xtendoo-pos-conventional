@@ -12,38 +12,75 @@ export class PosPaymentButtons extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = useState({ methods: [] });
+        this.state = useState({
+            methods: [],
+        });
 
-        onWillStart(async () => await this.updateMethods(this.props));
-        onWillUpdateProps(async (nextProps) => await this.updateMethods(nextProps));
+        onWillStart(async () => {
+            await this.updateMethods(this.props);
+        });
+
+        onWillUpdateProps(async (nextProps) => {
+            await this.updateMethods(nextProps);
+        });
     }
 
     async updateMethods(props) {
         const fieldData = props.record.data[props.name];
-        if (!fieldData?.currentIds?.length) {
+        if (!fieldData || !fieldData.currentIds || fieldData.currentIds.length === 0) {
             this.state.methods = [];
             return;
         }
 
+        const ids = fieldData.currentIds;
+
+        // Siempre leemos del servidor para asegurar que tenemos los nombres de TODOS los IDs
         try {
-            const methods = await this.orm.read("pos.payment.method", fieldData.currentIds, ["name"]);
-            this.state.methods = methods.map(m => ({ id: m.id, name: m.name }));
+            const methods = await this.orm.read("pos.payment.method", ids, ["name"]);
+            // Ordenar por el orden original de IDs si es necesario,
+            // aunque read suele devolver en orden de IDs pasados.
+            this.state.methods = methods.map((m) => ({
+                id: m.id,
+                name: m.name,
+            }));
         } catch (error) {
-            console.error("Error reading payment methods:", error);
+            console.error("Error al leer nombres de métodos de pago:", error);
+            this.state.methods = ids.map((id) => ({ id: id, name: "Metodo " + id }));
         }
     }
 
+    get paymentMethods() {
+        return this.state.methods;
+    }
+
     async onPaymentMethodClick(methodId) {
+        // Asegurar que el pedido está guardado antes de pagar
         const saved = await this.props.record.save();
-        if (!saved && !this.props.record.resId) return;
+        if (!saved && !this.props.record.resId) {
+            return;
+        }
 
         const orderId = this.props.record.resId;
+        if (!orderId) {
+            console.error("No se pudo obtener el ID del pedido.");
+            return;
+        }
+
         try {
-            const action = await this.orm.call("pos.order", "action_pos_convention_pay_with_method", [orderId, methodId]);
-            if (action) await this.action.doAction(action);
-            else await this.props.record.load();
+            const action = await this.orm.call(
+                "pos.order",
+                "action_pos_convention_pay_with_method",
+                [orderId, methodId]
+            );
+
+            if (action) {
+                await this.action.doAction(action);
+            } else {
+                // Si no hay acción, refrescar el registro por si acaso
+                await this.props.record.load();
+            }
         } catch (error) {
-            console.error("Error processing payment:", error);
+            console.error("Error al procesar pago:", error);
         }
     }
 }

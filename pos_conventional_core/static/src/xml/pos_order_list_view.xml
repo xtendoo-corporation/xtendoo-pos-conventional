@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="pos_conventional_core.ListView" t-inherit="web.ListView" t-inherit-mode="extension">
+        <xpath expr="//t[@t-set-slot='control-panel-create-button']/button[@class='btn btn-primary o_list_button_add']" position="attributes">
+            <attribute name="t-if">(props.resModel !== 'pos.order') or (state and state.showCloseButton)</attribute>
+        </xpath>
+        <xpath expr="//t[@t-set-slot='control-panel-additional-actions']/CogMenu" position="attributes">
+            <attribute name="t-props">props.resModel === 'pos.order' ? actionMenuProps : undefined</attribute>
+        </xpath>
+    </t>
+</templates>
+

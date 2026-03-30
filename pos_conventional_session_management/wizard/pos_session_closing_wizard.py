@@ -169,7 +169,8 @@ class PosSessionClosingWizard(models.TransientModel):
     def action_open_cash_calculator(self):
         self.ensure_one()
         calculator_wizard = self.env["pos.cash.calculator.wizard"].create({
-            "closing_wizard_id": self.id,
+            "parent_model": self._name,
+            "parent_res_id": self.id,
             "currency_id": self.currency_id.id,
         })
         return {

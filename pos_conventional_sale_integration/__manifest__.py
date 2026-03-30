@@ -6,9 +6,10 @@
     "description": "Allows linking POS orders to traditional sale orders.",
     "author": "Xtendoo",
     "website": "https://xtendoo.es",
-    "depends": ["pos_conventional_core", "sale"],
+    "depends": ["pos_conventional_core", "pos_conventional_picking_integration", "sale"],
     "data": [
         "views/pos_order_views.xml",
+        "views/report_sale_details_customer_account.xml",
     ],
     "installable": True,
 }

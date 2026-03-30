@@ -17,6 +17,27 @@ class PosConfig(models.Model):
         domain="[('customer_rank', '>', 0)]",
     )
 
+    def _get_or_create_non_touch_session(self):
+        self.ensure_one()
+
+        if self.current_session_id:
+            return self.current_session_id
+
+        res = self._check_before_creating_new_session()
+        if res:
+            return res
+
+        return self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {
+                "user_id": self.env.uid,
+                "config_id": self.id,
+            }
+        )
+
+    def _get_non_touch_opening_action(self, session):
+        self.ensure_one()
+        return False
+
     def open_ui(self):
         """
         Override del método open_ui para interceptar la apertura
@@ -25,21 +46,17 @@ class PosConfig(models.Model):
         self.ensure_one()
 
         if self.pos_non_touch:
-            if not self.current_session_id:
-                res = self._check_before_creating_new_session()
-                if res:
-                    return res
-                self.env["pos.session"].with_context(skip_auto_open=True).create({
-                    "user_id": self.env.uid,
-                    "config_id": self.id
-                })
-            
-            session = self.current_session_id
+            session = self._get_or_create_non_touch_session()
+            if isinstance(session, dict):
+                return session
+
+            if session.state == "opening_control":
+                action = self._get_non_touch_opening_action(session)
+                if action:
+                    return action
+
             if session.state in ["opened", "closing_control"]:
                 return self._redirect_to_pos_orders(session)
-            
-            # Cases for other states (opening_control) will be handled by other modules
-            # such as pos_conventional_session_management or pos_conventional_users_pin
 
         return super(PosConfig, self).open_ui()
 

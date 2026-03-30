@@ -44,12 +44,17 @@ class PosMakePaymentConventional(models.TransientModel):
 
     @api.onchange("payment_method_id")
     def _onchange_payment_method_id(self):
+        """Resetear el importe recibido cuando cambia el método de pago"""
         if not self.is_cash_payment:
             self.amount_received = 0.0
         else:
+            # Para efectivo, por defecto poner el importe exacto
             self.amount_received = self.amount
 
     def check(self, payment_method_id=None):
+        """
+        Permite forzar el método de pago si se pasa como argumento.
+        """
         self.ensure_one()
         order = self.env["pos.order"].browse(self.env.context.get("active_id", False))
 
@@ -81,7 +86,29 @@ class PosMakePaymentConventional(models.TransientModel):
                 order._send_order()
                 order.config_id.notify_synchronisation(order.config_id.current_session_id.id, 0)
 
-            if is_conventional and order.state in {"paid", "done"}:
+            if is_conventional and order.state in {"paid", "done"} and not order.account_move:
+                try:
+                    result = order.action_validate_and_invoice()
+                    if result and isinstance(result, dict) and result.get("type"):
+                        if result.get("type") == "ir.actions.client":
+                            params = result.get("params", {})
+                            if not params.get("next_action"):
+                                result.setdefault("params", {})["next_action"] = {
+                                    "type": "ir.actions.client",
+                                    "tag": "pos_conventional_new_order",
+                                    "params": {
+                                        "config_id": order.config_id.id,
+                                        "session_id": order.config_id.current_session_id.id,
+                                    },
+                                }
+                        return result
+                except Exception as exc:
+                    _logger.exception(
+                        "Error al facturar automáticamente el pedido %s: %s",
+                        order.name,
+                        str(exc),
+                    )
+            elif is_conventional and order.state in {"paid", "done"}:
                 return {
                     "type": "ir.actions.client",
                     "tag": "pos_conventional_new_order",
@@ -92,4 +119,28 @@ class PosMakePaymentConventional(models.TransientModel):
                 }
             return {"type": "ir.actions.act_window_close"}
 
-        return super().check()
+        return self.launch_payment()
+
+    def action_pay_cash(self):
+        cash_method = self.env["pos.payment.method"].search(
+            [("is_cash_count", "=", True)], limit=1
+        )
+        if not cash_method:
+            raise UserError(_("No se encontró método de pago en efectivo."))
+        return self.check(payment_method_id=cash_method.id)
+
+    def action_pay_card(self):
+        card_method = self.env["pos.payment.method"].search(
+            [("name", "ilike", "tarjeta")], limit=1
+        )
+        if not card_method:
+            raise UserError(_("No se encontró método de pago con tarjeta."))
+        return self.check(payment_method_id=card_method.id)
+
+    def action_pay_account(self):
+        account_method = self.env["pos.payment.method"].search(
+            [("name", "ilike", "cuenta")], limit=1
+        )
+        if not account_method:
+            raise UserError(_("No se encontró un método de pago tipo Cuenta."))
+        return self.check(payment_method_id=account_method.id)

@@ -1,1 +1,2 @@
-# No models in this module
+from . import models
+

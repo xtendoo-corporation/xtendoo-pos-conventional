@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="view_pos_order_tree_inherit_pos_conventional_core" model="ir.ui.view">
+        <field name="name">pos.order.list.inherit.pos.conventional.core</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="js_class">button_in_tree</attribute>
+                <attribute name="create">true</attribute>
+            </xpath>
+            <xpath expr="//field[@name='state'][@widget='badge']" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </xpath>
+        </field>
+    </record>
+
     <record id="view_pos_pos_form_inherit_pos_conventional_core" model="ir.ui.view">
         <field name="name">pos.order.form.inherit.pos.conventional.core</field>
         <field name="model">pos.order</field>

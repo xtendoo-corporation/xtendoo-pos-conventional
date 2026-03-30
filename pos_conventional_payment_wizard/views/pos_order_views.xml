@@ -5,23 +5,50 @@
         <field name="model">pos.order</field>
         <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//header" position="inside">
-                <button name="%(pos_conventional_payment_wizard.action_pos_conventional_payment_popup)d" 
-                        string="Pagar (Avanzado)" 
-                        type="action" 
-                        class="oe_highlight" 
+            <xpath expr="//header/button[1]" position="attributes">
+                <attribute name="invisible">1</attribute>
+                <attribute name="class">me-2</attribute>
+            </xpath>
+            <xpath expr="//header/button[1]" position="after">
+                <field name="available_payment_method_ids" invisible="1"/>
+                <button name="action_open_payment_popup"
+                        string="Pago"
+                        type="object"
+                        class="btn-primary"
                         invisible="state != 'draft'"/>
-                
-                <!-- Widget para botones de pago rápido -->
-                <field name="available_payment_method_ids" widget="pos_payment_buttons" invisible="state != 'draft'"/>
+
+                <field name="available_payment_method_ids"
+                       widget="pos_payment_buttons"
+                       nolabel="1"
+                       invisible="state != 'draft'"
+                       class="oe_inline"/>
             </xpath>
         </field>
     </record>
 
-    <!-- Acción de cliente para el popup de pago -->
-    <record id="action_pos_conventional_payment_popup" model="ir.actions.client">
-        <field name="name">Pago Avanzado</field>
-        <field name="tag">pos_conventional_payment_popup</field>
-        <field name="target">new</field>
+    <record id="view_pos_pos_form_payment_ribbon" model="ir.ui.view">
+        <field name="name">pos.order.form.payment.ribbon</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="pos_conventional_core.view_pos_pos_form_inherit_pos_conventional_core"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('oe_link_ribbon')]" position="replace">
+                <widget name="web_ribbon" title="EFECTIVO" bg_color="text-bg-success"
+                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'EFECTIVO'"/>
+                <widget name="web_ribbon" title="TARJETA" bg_color="text-bg-success"
+                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'TARJETA'"/>
+                <widget name="web_ribbon" title="CARD" bg_color="text-bg-success"
+                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'CARD'"/>
+                <widget name="web_ribbon" title="BANCO" bg_color="text-bg-success"
+                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'BANCO'"/>
+                <widget name="web_ribbon" title="TRANSFERENCIA" bg_color="text-bg-success"
+                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'TRANSFERENCIA'"/>
+                <widget name="web_ribbon" title="VALE" bg_color="text-bg-success"
+                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'VALE'"/>
+                <widget name="web_ribbon" title="PAGO MÚLTIPLE" bg_color="text-bg-success"
+                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'PAGO MÚLTIPLE'"/>
+                <widget name="web_ribbon" title="PAGADO" bg_color="text-bg-success"
+                        invisible="state not in ('paid', 'done') or not payment_method_ribbon or payment_method_ribbon in ('EFECTIVO', 'TARJETA', 'CARD', 'BANCO', 'TRANSFERENCIA', 'VALE', 'PAGO MÚLTIPLE')"/>
+            </xpath>
+        </field>
     </record>
 </odoo>

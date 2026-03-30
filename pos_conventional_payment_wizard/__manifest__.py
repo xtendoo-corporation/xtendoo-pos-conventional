@@ -7,12 +7,12 @@
     "website": "https://xtendoo.es",
     "depends": ["pos_conventional_core"],
     "data": [
+        "security/ir.model.access.csv",
+        "views/pos_make_payment_views.xml",
         "views/pos_order_views.xml",
     ],
     "assets": {
         "web.assets_backend": [
-            "pos_conventional_payment_wizard/static/src/js/payment_popup.js",
-            "pos_conventional_payment_wizard/static/src/xml/payment_popup.xml",
             "pos_conventional_payment_wizard/static/src/js/pos_payment_buttons.js",
             "pos_conventional_payment_wizard/static/src/xml/pos_payment_buttons.xml",
         ],

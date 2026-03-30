@@ -5,11 +5,17 @@
         <field name="model">res.config.settings</field>
         <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form" />
         <field name="arch" type="xml">
-            <xpath expr="//setting[@id='is_restaurant']" position="after">
+            <xpath expr="//setting[@id='payment_methods_new']" position="after">
                 <setting id="pos_non_touch_setting" string="POS no táctil"
                     help="Activa un modo de punto de venta optimizado para equipos sin pantalla táctil.">
                     <field name="pos_non_touch" readonly="has_open_pos_sessions" />
                     <field name="has_open_pos_sessions" invisible="1" />
+                </setting>
+                <setting string="Cliente por Defecto"
+                    help="Cliente que se asignará automáticamente a los nuevos pedidos POS creados desde el backend">
+                    <field name="pos_default_partner_id"
+                        placeholder="Seleccionar cliente por defecto..."
+                        options="{'no_create': True}" />
                 </setting>
                 <div invisible="not has_open_pos_sessions" class="alert alert-warning mt-2" role="alert">
                     No se puede cambiar el modo táctil/no táctil mientras existan sesiones POS

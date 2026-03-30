@@ -9,6 +9,7 @@
     "depends": ["pos_conventional_core", "stock", "sale"],
     "data": [
         "views/pos_order_views.xml",
+        "views/res_config_settings_views.xml",
         "report/albaran_receipt.xml",
     ],
     "installable": True,

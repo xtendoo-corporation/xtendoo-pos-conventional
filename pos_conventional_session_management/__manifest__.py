@@ -9,14 +9,14 @@
     "data": [
         "security/ir.model.access.csv",
         "data/pos_session_sequence.xml",
-        "wizard/pos_session_opening_wizard_views.xml",
-        "wizard/pos_session_closing_wizard_views.xml",
-        "wizard/pos_session_cash_move_wizard_views.xml",
-        "views/pos_session_views.xml",
-        "views/pos_config_views.xml",
+        "views/pos_session_opening_wizard_views.xml",
+        "views/pos_session_closing_wizard_views.xml",
+        "views/pos_session_cash_move_wizard_views.xml",
     ],
     "assets": {
         "web.assets_backend": [
+            "pos_conventional_session_management/static/src/css/pos_conventional_wizards.css",
+            "pos_conventional_session_management/static/src/css/pos_session_closing.css",
             "pos_conventional_session_management/static/src/js/opening_popup.js",
             "pos_conventional_session_management/static/src/xml/opening_popup.xml",
             "pos_conventional_session_management/static/src/js/closing_popup.js",

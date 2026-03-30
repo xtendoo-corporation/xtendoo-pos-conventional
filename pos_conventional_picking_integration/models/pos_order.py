@@ -7,11 +7,35 @@ _logger = logging.getLogger(__name__)
 class PosOrder(models.Model):
     _inherit = "pos.order"
 
+    state = fields.Selection(
+        selection_add=[("linked", "Vinculado a Venta")],
+        ondelete={"linked": "set default"},
+    )
+
+    linked_sale_order_id = fields.Many2one(
+        "sale.order",
+        string="Pedido de venta vinculado",
+        readonly=True,
+        copy=False,
+        help="Pedido de venta tradicional creado desde este pedido POS",
+    )
+
+    is_linked_to_sale = fields.Boolean(
+        string="Vinculado a venta",
+        compute="_compute_is_linked_to_sale",
+        store=True,
+    )
+
     show_albaran_button = fields.Boolean(
         string="Mostrar botón albarán",
         compute="_compute_show_albaran_button",
         store=False,
     )
+
+    @api.depends("linked_sale_order_id")
+    def _compute_is_linked_to_sale(self):
+        for order in self:
+            order.is_linked_to_sale = bool(order.linked_sale_order_id)
 
     @api.depends("session_id", "session_id.config_id", "session_id.config_id.pos_enable_albaran")
     def _compute_show_albaran_button(self):
@@ -22,25 +46,30 @@ class PosOrder(models.Model):
                 and order.session_id.config_id.pos_enable_albaran
             )
 
-    def action_create_picking(self):
+    def action_pay_account(self):
         """
-        Crea un sale.order y su picking correspondiente desde el pedido POS.
+        Intercambia el pedido POS por un pedido de venta tradicional (Albarán).
         """
         self.ensure_one()
-        if not self.partner_id:
-             raise UserError(_("Debe seleccionar un cliente para crear el albarán."))
+        if self.state != "draft":
+            raise UserError(_("Solo se pueden convertir a albarán pedidos en estado borrador."))
+
         if not self.lines:
-             raise UserError(_("No hay líneas en el pedido."))
+            raise UserError(_("No se puede crear un albarán de un pedido sin líneas."))
+
+        if not self.partner_id:
+            raise UserError(_("Debe seleccionar un cliente para crear el albarán."))
 
         sale_order_lines = []
         for line in self.lines:
+            taxes = line.tax_ids_after_fiscal_position or line.tax_ids
             sale_order_lines.append((0, 0, {
                 "product_id": line.product_id.id,
+                "name": line.full_product_name or line.product_id.display_name,
                 "product_uom_qty": line.qty,
                 "price_unit": line.price_unit,
-                "discount": line.discount,
-                "tax_id": [(6, 0, line.tax_ids_after_fiscal_position.ids or line.tax_ids.ids)],
-                "name": line.full_product_name or line.product_id.display_name,
+                "discount": line.discount or 0.0,
+                "tax_id": [(6, 0, taxes.ids)] if taxes else False,
             }))
 
         sale_order_vals = {
@@ -48,14 +77,21 @@ class PosOrder(models.Model):
             "order_line": sale_order_lines,
             "origin": self.name,
             "note": _("Creado desde pedido POS: %s") % self.name,
-            "company_id": self.company_id.id,
         }
+
+        if self.company_id:
+            sale_order_vals["company_id"] = self.company_id.id
 
         created_picking = False
         try:
             sale_order = self.env["sale.order"].create(sale_order_vals)
-            # Link the POS order to the sale order if we have a field for it (we should add it in sale_integration)
-            # In this module, we just create it and validate.
+            _logger.info("POS Order %s: Creado sale.order %s", self.name, sale_order.name)
+
+            self.write({
+                "linked_sale_order_id": sale_order.id,
+                "name": sale_order.name,
+                "state": "linked",
+            })
 
             sale_order.action_confirm()
 
@@ -70,7 +106,7 @@ class PosOrder(models.Model):
                     picking.button_validate()
 
         except Exception as e:
-            _logger.exception("Error al crear albarán: %s", str(e))
+            _logger.exception("Error al crear sale.order desde POS: %s", str(e))
             raise UserError(_("Error al crear el albarán: %s") % str(e))
 
         if created_picking:
@@ -80,13 +116,8 @@ class PosOrder(models.Model):
                 "tag": "pos_conventional_print_iframe",
                 "params": {
                     "url": report_url,
-                    "next_action": {
-                        "type": "ir.actions.act_window",
-                        "res_model": "pos.order",
-                        "res_id": self.id,
-                        "view_mode": "form",
-                        "target": "current",
-                    },
+                    "next_action": self._get_post_validation_action(),
                 },
             }
-        return True
+
+        return self._get_post_validation_action()

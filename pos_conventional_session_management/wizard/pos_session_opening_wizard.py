@@ -68,6 +68,36 @@ class PosSessionOpeningWizard(models.TransientModel):
             },
         }
 
+    def _validate_user_pin(self, vals=None):
+        if vals:
+            session_id = vals["session_id"]
+            user_id = vals["user_id"]
+            pos_pin = vals["pos_pin"]
+        else:
+            self.ensure_one()
+            session_id = self.session_id
+            user_id = self.user_id
+            pos_pin = getattr(self, "pos_pin", None)
+
+        if not self.env.user.has_group("point_of_sale.group_pos_user"):
+            raise UserError(_("No tiene permisos para abrir una sesión de Punto de Venta."))
+
+        user = self.env["res.users"].search(
+            [("pin", "=", pos_pin), ("id", "=", user_id.id)], limit=1
+        )
+        if not user:
+            raise ValidationError(
+                _(
+                    "PIN incorrecto para el usuario %s. Por favor, verifique su PIN e intente nuevamente."
+                )
+                % user_id.name
+            )
+
+        if session_id and session_id.user_id != user:
+            session_id.sudo().write({"user_id": user.id})
+
+        return user
+
     def _open_session_backend(self):
         self.ensure_one()
         session = self.session_id

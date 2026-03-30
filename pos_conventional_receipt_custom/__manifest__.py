@@ -9,7 +9,7 @@
     "depends": ["pos_conventional_core"],
     "data": [
         "report/pos_order_report.xml",
-        "models/pos_order.py", # This should be in data too if it adds views, but here it is for models
+        "data/mail_template_pos_receipt.xml",
     ],
     "installable": True,
 }
