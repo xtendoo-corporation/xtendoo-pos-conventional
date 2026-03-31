@@ -3,6 +3,9 @@
     "version": "19.0.1.0.0",
     "category": "Point of Sale",
     "summary": "User PIN management for POS",
+    "author": "Xtendoo",
+    "website": "https://xtendoo.es",
+    "license": "LGPL-3",
     "depends": ["pos_conventional_core", "pos_conventional_session_management"],
     "data": [
         "security/ir.model.access.csv",

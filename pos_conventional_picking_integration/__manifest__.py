@@ -1,11 +1,12 @@
 {
     "name": "POS Conventional Picking Integration",
-    "version": "1.0",
+    "version": "19.0.1.0.0",
     "category": "Point of Sale",
     "summary": "Integration with stock pickings (albaranes)",
     "description": "Allows creating stock pickings (albaranes) directly from the POS backend.",
     "author": "Xtendoo",
     "website": "https://xtendoo.es",
+    "license": "LGPL-3",
     "depends": ["pos_conventional_core", "stock", "sale"],
     "data": [
         "views/pos_order_views.xml",

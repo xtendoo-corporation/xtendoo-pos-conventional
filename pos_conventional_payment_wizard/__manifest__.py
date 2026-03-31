@@ -1,10 +1,11 @@
 {
     "name": "POS Conventional Payment Wizard",
-    "version": "1.0",
+    "version": "19.0.1.0.0",
     "category": "Point of Sale",
     "summary": "Advanced and quick payment interface for POS Conventional",
     "author": "Xtendoo",
     "website": "https://xtendoo.es",
+    "license": "LGPL-3",
     "depends": ["pos_conventional_core"],
     "data": [
         "security/ir.model.access.csv",

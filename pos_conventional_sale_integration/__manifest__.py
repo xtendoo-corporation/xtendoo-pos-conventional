@@ -1,11 +1,12 @@
 {
     "name": "POS Conventional Sale Integration",
-    "version": "1.0",
+    "version": "19.0.1.0.0",
     "category": "Point of Sale",
     "summary": "Integration with sale orders",
     "description": "Allows linking POS orders to traditional sale orders.",
     "author": "Xtendoo",
     "website": "https://xtendoo.es",
+    "license": "LGPL-3",
     "depends": ["pos_conventional_core", "pos_conventional_picking_integration", "sale"],
     "data": [
         "views/pos_order_views.xml",
