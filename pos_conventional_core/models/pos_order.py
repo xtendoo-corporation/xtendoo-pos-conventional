@@ -196,24 +196,31 @@ class PosOrder(models.Model):
         Lógica completa para validar y facturar desde el backend.
         """
         self.ensure_one()
+        print("=" * 60)
+        print(f"[CORE] action_validate_and_invoice called: order={self.id} state={self.state}")
         if self.state not in ("draft"):
+            print(f"[CORE]   state={self.state} is not 'draft' -> returning False")
             return False
 
         # 1. Marcar para facturar
         self.write({"to_invoice": True})
+        print(f"[CORE]   to_invoice=True, calling action_pos_order_paid()")
 
         # 2. Validar pedido (esto crea la factura)
-        # Note: In Odoo 19, action_pos_order_paid handles the workflow
         self.action_pos_order_paid()
+        print(f"[CORE]   after action_pos_order_paid: state={self.state}")
 
         # 3. Devolver acción según configuración (redirección o impresión)
-        return self._get_post_validation_action()
+        result = self._get_post_validation_action()
+        print(f"[CORE]   _get_post_validation_action returned: {result.get('type')} tag={result.get('tag','')}")
+        return result
 
     def _get_post_validation_action(self):
         """
         Calcula la acción que debe realizarse después de validar un pedido.
         """
         self.ensure_one()
+        print(f"[CORE] _get_post_validation_action called: order={self.id}")
 
         # Configurar acción base de Nuevo Pedido
         next_action = {
@@ -231,6 +238,7 @@ class PosOrder(models.Model):
 
         # Si el POS tiene activada la impresión automática, usar la acción de impresión
         if self.config_id.iface_print_auto:
+            print(f"[CORE]   iface_print_auto=True -> pos_conventional_print_receipt_client")
             return {
                 "type": "ir.actions.client",
                 "tag": "pos_conventional_print_receipt_client",
@@ -240,6 +248,7 @@ class PosOrder(models.Model):
                 },
             }
 
+        print(f"[CORE]   iface_print_auto=False -> pos_conventional_new_order")
         return next_action
 
     @api.model

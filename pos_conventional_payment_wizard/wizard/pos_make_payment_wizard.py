@@ -177,58 +177,70 @@ class PosMakePaymentWizard(models.TransientModel):
 
     def _execute_validation(self, print_invoice=False):
         self.ensure_one()
+        print("=" * 60)
+        print("[WIZARD] _execute_validation called")
+        print(f"[WIZARD]   order={self.order_id.id} state={self.order_id.state} print_invoice={print_invoice}")
+        print(f"[WIZARD]   amount_tendered={self.amount_tendered} amount_paid={self.amount_paid} amount_total={self.amount_total} amount_change={self.amount_change}")
+
         total_covered = self.amount_paid + self.amount_tendered
         if total_covered < self.amount_total - 0.01:
+            print(f"[WIZARD]   ERROR: falta importe total_covered={total_covered} amount_total={self.amount_total}")
             raise UserError(_("Falta importe por pagar."))
 
         order = self.order_id
         is_conventional = order.config_id and order.config_id.pos_non_touch
+        print(f"[WIZARD]   is_conventional={is_conventional}")
 
         if order.state == "draft":
             cash_method = self.payment_method_id
+            print(f"[WIZARD]   payment_method={cash_method.name} is_cash_count={cash_method.is_cash_count} journal.type={cash_method.journal_id.type}")
             if not cash_method.is_cash_count and cash_method.journal_id.type != "cash":
                 cash_method = order.config_id.payment_method_ids.filtered("is_cash_count")[:1]
                 if not cash_method:
                     cash_method = order.config_id.payment_method_ids.filtered(
                         lambda payment_method: payment_method.journal_id.type == "cash"
                     )[:1]
+                print(f"[WIZARD]   cash_method resolved to: {cash_method.name if cash_method else None}")
 
+            print(f"[WIZARD]   is_cash_payment={self.is_cash_payment} amount_change={self.amount_change}")
             if self.is_cash_payment and self.amount_change > 0.01:
-                order.add_payment(
-                    {
-                        "pos_order_id": order.id,
-                        "amount": self.amount_tendered,
-                        "payment_method_id": self.payment_method_id.id,
-                    }
-                )
+                print(f"[WIZARD]   -> cash with change: adding tendered={self.amount_tendered} change=-{self.amount_change}")
+                order.add_payment({
+                    "pos_order_id": order.id,
+                    "amount": self.amount_tendered,
+                    "payment_method_id": self.payment_method_id.id,
+                })
                 if cash_method:
-                    order.add_payment(
-                        {
-                            "pos_order_id": order.id,
-                            "amount": -self.amount_change,
-                            "payment_method_id": cash_method.id,
-                        }
-                    )
+                    order.add_payment({
+                        "pos_order_id": order.id,
+                        "amount": -self.amount_change,
+                        "payment_method_id": cash_method.id,
+                    })
             else:
                 due = order.amount_total - order.amount_paid
+                print(f"[WIZARD]   -> exact payment: due={due}")
                 if due > 0.01:
-                    order.add_payment(
-                        {
-                            "pos_order_id": order.id,
-                            "amount": due,
-                            "payment_method_id": self.payment_method_id.id,
-                        }
-                    )
+                    order.add_payment({
+                        "pos_order_id": order.id,
+                        "amount": due,
+                        "payment_method_id": self.payment_method_id.id,
+                    })
 
             order._process_saved_order(False)
+            print(f"[WIZARD]   after _process_saved_order: state={order.state}")
+
             if order.state in {"paid", "done"}:
                 order._send_order()
                 order.config_id.notify_synchronisation(order.config_id.current_session_id.id, 0)
 
             should_print = print_invoice or order.config_id.iface_print_auto
+            print(f"[WIZARD]   should_print={should_print} (print_invoice={print_invoice} iface_print_auto={order.config_id.iface_print_auto})")
+
             if should_print and is_conventional and order.state in {"paid", "done"} and not order.account_move:
+                print("[WIZARD]   -> calling action_validate_and_invoice() (should_print=True)")
                 try:
                     result = order.action_validate_and_invoice()
+                    print(f"[WIZARD]   action_validate_and_invoice returned: type={type(result)} value={result}")
                     if result and isinstance(result, dict) and result.get("type") == "ir.actions.client":
                         params = result.get("params", {})
                         if not params.get("next_action"):
@@ -237,24 +249,41 @@ class PosMakePaymentWizard(models.TransientModel):
                                 "tag": "pos_conventional_new_order",
                                 "params": {
                                     "config_id": order.config_id.id,
-                                    "session_id": order.config_id.current_session_id.id,
+                                    "default_session_id": order.config_id.current_session_id.id,
                                 },
                             }
+                        print(f"[WIZARD]   returning print result: {result.get('type')} tag={result.get('tag','')}")
                         return result
                 except Exception as exc:
                     _logger.exception("Error en factura automática: %s", str(exc))
-            elif is_conventional and order.state in {"paid", "done"}:
+                    print(f"[WIZARD]   ERROR in action_validate_and_invoice: {exc}")
+
+                # FALLBACK: action_validate_and_invoice devolvió False o falló
+                print("[WIZARD]   FALLBACK (should_print) -> pos_conventional_new_order")
                 return {
                     "type": "ir.actions.client",
                     "tag": "pos_conventional_new_order",
                     "params": {
                         "config_id": order.config_id.id,
-                        "session_id": order.config_id.current_session_id.id,
+                        "default_session_id": order.config_id.current_session_id.id,
                     },
                 }
 
+            elif is_conventional and order.state in {"paid", "done"}:
+                print("[WIZARD]   -> pos_conventional_new_order (no print)")
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "pos_conventional_new_order",
+                    "params": {
+                        "config_id": order.config_id.id,
+                        "default_session_id": order.config_id.current_session_id.id,
+                    },
+                }
+
+            print("[WIZARD]   -> act_window_close (not conventional or not paid)")
             return {"type": "ir.actions.act_window_close"}
 
+        print(f"[WIZARD]   -> act_window_close (order not in draft, state={order.state})")
         return {"type": "ir.actions.act_window_close"}
 
     def action_validate(self):

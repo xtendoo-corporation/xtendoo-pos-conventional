@@ -14,26 +14,25 @@
                     <separator string="Registrar Pago" />
 
                     <group>
-                        <group>
-                            <field name="is_cash_payment" invisible="1" />
-                            <field name="payment_method_id"
-                                options="{'no_create': True, 'no_open': True}"
-                                required="1" />
-                            <field name="amount_tendered" />
-                            <field name="amount_change"
-                                invisible="not is_cash_payment"
-                                readonly="1" />
-                            <button name="action_add_payment" type="object" string="Añadir" />
-                        </group>
-                        <group string="Resumen">
-                            <field name="amount_due" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                string="Total a pagar"
-                                readonly="1" />
-                            <field name="amount_paid" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                string="Pagado" />
-                        </group>
+                        <field name="is_cash_payment" invisible="1" />
+                        <field name="payment_method_id"
+                            options="{'no_create': True, 'no_open': True}"
+                            required="1" />
+                        <field name="amount_tendered" />
+                        <field name="amount_change"
+                            invisible="not is_cash_payment"
+                            readonly="1" />
+                        <button name="action_add_payment" type="object" string="Añadir" />
+                    </group>
+
+                    <group string="Resumen">
+                        <field name="amount_due" widget="monetary"
+                            options="{'currency_field': 'currency_id'}"
+                            string="Total a pagar"
+                            readonly="1" />
+                        <field name="amount_paid" widget="monetary"
+                            options="{'currency_field': 'currency_id'}"
+                            string="Pagado" />
                     </group>
 
                     <separator string="Pagos registrados" />
@@ -50,7 +49,7 @@
                 </sheet>
                 <footer>
                     <button name="action_validate" type="object"
-                        string="VALIDAR"
+                        string="Confirmar Pago"
                         icon="fa-check"
                         invisible="amount_due &gt; 0.01" />
                     <button string="Descartar" special="cancel" />
