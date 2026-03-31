@@ -36,7 +36,7 @@ class MockOrderLine {
         this.combo_line_ids = [];
         this.taxGroupLabels = false;
         this.packLotLines = [];
-        
+
         this.currencyDisplayPrice = formatCurrency(data.price_subtotal_incl, order.currency.id);
         this.currencyDisplayPriceUnit = formatCurrency(data.price_unit, order.currency.id);
         this.displayPriceNoDiscount = data.price_unit * data.qty;
@@ -44,7 +44,7 @@ class MockOrderLine {
         this.displayPriceUnitNoDiscount = data.price_unit;
         this.priceIncl = data.price_subtotal_incl;
         this.priceExcl = data.price_subtotal;
-        
+
         this.orderDisplayProductName = {
              name: data.product_id[1],
              attributeString: ""
@@ -91,7 +91,7 @@ class MockOrder {
             displayTrackingNumber: false,
             displayBigTrackingNumber: false,
         };
-        this.currency = { 
+        this.currency = {
             id: data.currency_id[0],
             symbol: data.currency_id[1],
             position: data.currency_id[2],
@@ -109,14 +109,14 @@ class MockOrder {
         this.date_order = data.date_order;
         this.finalized = true;
         this.isSynced = true;
-        
+
         this.lines = data.lines.map(l => new MockOrderLine(l, this));
         this.orderlines = this.lines; // Alias for xtendoo_pos_receipt
-        
+
         this.prices = {
             taxDetails: data.tax_details
         };
-        
+
         this.priceExcl = data.tax_details.base_amount;
         this.priceIncl = data.amount_total;
         this.currencyDisplayPriceIncl = formatCurrency(data.amount_total, this.currency.id);
@@ -132,17 +132,17 @@ class MockOrder {
             getAmount: () => p.amount,
             isDone: () => true,
         }));
-        
+
         if (this.amount_return > 0) {
-            this.payment_ids.push({ 
-                is_change: true, 
-                amount: -this.amount_return, 
+            this.payment_ids.push({
+                is_change: true,
+                amount: -this.amount_return,
                 payment_method_id: { name: _t("Change"), is_cash_count: true },
                 getAmount: () => -this.amount_return,
                 isDone: () => true,
             });
         }
-        
+
         this.partner_id = data.partner ? {
             ...data.partner,
             pos_contact_address: data.partner.address || "",
@@ -153,11 +153,11 @@ class MockOrder {
     getCashierName() {
         return this.data.user_id ? this.data.user_id[1].split(" ")[0] : "";
     }
-    
+
     getTotalDiscount() {
         return this.lines.reduce((acc, line) => acc + (line.displayPriceNoDiscount - line.price_subtotal_incl), 0);
     }
-    
+
     formatDateOrTime(fieldName, type = 'datetime') {
         const val = this[fieldName] || this.data[fieldName];
         if (!val) return "";
@@ -176,14 +176,14 @@ export class PosReceiptClientAction extends Component {
                     <t t-esc="state.message"/>
                 </div>
             </div>
-            
+
             <!-- Contenedor para renderizado (oculto en pantalla) -->
             <div t-if="state.order" t-ref="receipt" class="pos-receipt-container" style="position: absolute; left: -9999px; width: 300px; padding: 10px;">
                 <div class="render-container" style="display: block !important;">
                     <OrderReceipt order="state.order" />
                 </div>
             </div>
-            
+
             <div t-if="!state.loading" class="text-center p-5 rounded shadow-sm bg-surface">
                 <i class="fa fa-check-circle fa-5x text-success mb-4"/>
                 <h2 class="fw-bold mb-3">Impresión del documento realizada</h2>
@@ -206,17 +206,17 @@ export class PosReceiptClientAction extends Component {
              const params = this.props.action.params;
              const orderId = params.order_id;
              console.log("PosReceiptClientAction (Custom Overrides) for order:", orderId);
-             
+
              try {
                  if (orderId) {
                      this.state.message = "Cargando datos del pedido...";
                      const orderData = await this.orm.call("pos.order", "get_order_receipt_data", [orderId]);
-                     
+
                      this.state.message = "Aplicando plantillas personalizadas...";
                      this.state.order = new MockOrder(orderData);
-                     
+
                      await new Promise(resolve => setTimeout(resolve, 1000));
-                     
+
                      if (this.receiptRef.el) {
                          const content = this.receiptRef.el.querySelector('.pos-receipt');
                          if (content && content.innerHTML.trim().length > 0) {
@@ -252,17 +252,17 @@ export class PosReceiptClientAction extends Component {
         if (!this.receiptRef.el) return;
         const receiptEl = this.receiptRef.el.querySelector('.pos-receipt');
         if (!receiptEl) return;
-        
+
         const receiptHtml = receiptEl.outerHTML;
-        
+
         const iframe = document.createElement('iframe');
         iframe.style.position = 'fixed';
         iframe.style.left = '-2000px';
-        iframe.style.width = '300px'; 
+        iframe.style.width = '300px';
         document.body.appendChild(iframe);
-        
+
         const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        
+
         // Copiar todos los estilos del backend
         const links = document.querySelectorAll('link[rel="stylesheet"], style');
         links.forEach(link => {
@@ -272,26 +272,26 @@ export class PosReceiptClientAction extends Component {
         const style = iframeDoc.createElement('style');
         style.textContent = `
             @page { margin: 0; size: auto; }
-            
+
             @media print {
-                body, html { 
-                    display: block !important; 
-                    visibility: visible !important; 
+                body, html {
+                    display: block !important;
+                    visibility: visible !important;
                     background: white !important;
                     margin: 0 !important;
                     padding: 0 !important;
                 }
-                body > * { 
-                    display: none !important; 
+                body > * {
+                    display: none !important;
                 }
-                body > .pos-receipt-print-wrapper { 
-                    display: block !important; 
-                    visibility: visible !important; 
+                body > .pos-receipt-print-wrapper {
+                    display: block !important;
+                    visibility: visible !important;
                 }
             }
-            
-            body { 
-                background: white !important; 
+
+            body {
+                background: white !important;
                 color: black !important;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif !important;
                 font-size: 14px !important;
@@ -324,18 +324,18 @@ export class PosReceiptClientAction extends Component {
             .pos-receipt-right-align {
                 float: right !important;
             }
-            
+
             .pos-receipt * {
                 visibility: visible !important;
             }
 
-            .pos-receipt img { 
-                max-width: 50% !important; 
-                height: auto; 
-                display: block; 
-                margin: 0 auto 10px; 
+            .pos-receipt img {
+                max-width: 50% !important;
+                height: auto;
+                display: block;
+                margin: 0 auto 10px;
             }
-            
+
             .pos-receipt-qrcode {
                 width: 100px !important;
                 height: 100px !important;
@@ -343,7 +343,7 @@ export class PosReceiptClientAction extends Component {
             }
 
             .d-none, .d-print-none { display: none !important; }
-            
+
             /* Estilos específicos de Lucida Console para el diseño de Xtendoo */
             .custom-header, .pos-receipt-container {
                 font-family: 'Lucida Console', 'DejaVu Sans Mono', monospace !important;
@@ -358,7 +358,7 @@ export class PosReceiptClientAction extends Component {
                 </div>
             </div>
         `;
-        
+
         // Esperar imágenes
         const images = iframeDoc.querySelectorAll('img');
         const imagePromises = Array.from(images).map(img => {
@@ -369,11 +369,11 @@ export class PosReceiptClientAction extends Component {
             });
         });
         await Promise.all(imagePromises);
-        
+
         setTimeout(() => {
             iframe.contentWindow.focus();
             iframe.contentWindow.print();
-            
+
             setTimeout(() => {
                 iframe.remove();
             }, 6000);
@@ -381,4 +381,4 @@ export class PosReceiptClientAction extends Component {
     }
 }
 
-registry.category("actions").add("pos_conventional.print_receipt_client", PosReceiptClientAction);
+registry.category("actions").add("pos_conventional_print_receipt_client", PosReceiptClientAction);

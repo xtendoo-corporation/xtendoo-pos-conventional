@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional", "-standard")
+@tagged("pos_conventional_core", "-standard")
 class TestPickingIntegration(PosConventionalTestCommon):
     """Tests para pos_conventional_picking_integration."""
 

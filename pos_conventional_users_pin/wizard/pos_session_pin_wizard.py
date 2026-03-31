@@ -15,9 +15,14 @@ class PosSessionPinWizard(models.TransientModel):
     def action_validate_pin(self):
         self.ensure_one()
 
-        # Buscar usuario por pos_pin usando sudo() para evitar restricciones de acceso
+        # Buscar usuario por PIN usando sudo() para evitar restricciones de acceso
         user = self.env["res.users"].sudo().search(
-            [("pos_pin", "=", self.pos_pin)],
+            [
+                ("pos_pin", "=", self.pos_pin),
+                "|",
+                ("company_id", "=", self.session_id.company_id.id),
+                ("company_id", "=", False),
+            ],
             limit=1,
         )
 
@@ -57,7 +62,15 @@ class PosSessionPinWizard(models.TransientModel):
                 },
             }
 
-        # Flujo 3 (apertura de sesion): PIN ya validado, abrir popup de apertura
+        # Flujo 3: validacion en apertura de sesion
+        self.env["pos.session.opening.wizard"]._validate_user_pin(
+            {
+                "session_id": self.session_id,
+                "user_id": user,
+                "pos_pin": self.pos_pin,
+            }
+        )
+
         return {
             "type": "ir.actions.client",
             "tag": "pos_conventional_opening_popup",

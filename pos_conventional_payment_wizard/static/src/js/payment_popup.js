@@ -8,7 +8,7 @@ import { Dialog } from "@web/core/dialog/dialog";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 export class PaymentPopup extends Component {
-    static template = "pos_conventional.PaymentPopup";
+    static template = "pos_conventional_payment_wizard.PaymentPopup";
     static components = { Dialog };
     static props = { close: { type: Function }, orderId: { type: Number }, onSuccess: { type: Function, optional: true } };
 

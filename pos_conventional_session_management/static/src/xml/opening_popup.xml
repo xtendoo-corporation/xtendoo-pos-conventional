@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
-    <t t-name="pos_conventional.OpeningPopup">
+    <t t-name="pos_conventional_session_management.OpeningPopup">
         <Dialog title="'Apertura de Caja'" size="'md'" contentClass="'opening-popup-dialog'">
             <div class="opening-popup p-4">
                 <div t-if="state.loading" class="text-center py-5">

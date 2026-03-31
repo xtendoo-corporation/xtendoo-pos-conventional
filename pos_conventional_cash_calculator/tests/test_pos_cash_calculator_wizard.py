@@ -3,7 +3,7 @@
 from odoo.tests.common import TransactionCase, tagged
 
 
-@tagged("pos_conventional", "-standard")
+@tagged("pos_conventional_core", "-standard")
 class TestPosCashCalculatorWizard(TransactionCase):
     """Tests para pos.cash.calculator.wizard."""
 

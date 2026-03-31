@@ -3,7 +3,7 @@
 from odoo.tests.common import TransactionCase, tagged
 
 
-@tagged("pos_conventional", "-standard")
+@tagged("pos_conventional_core", "-standard")
 class TestCashboxCalculatorMixin(TransactionCase):
     """Tests para el mixin cashbox.calculator.mixin."""
 

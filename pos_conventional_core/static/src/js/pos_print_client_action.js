@@ -28,4 +28,4 @@ async function printIframeAction(env, action) {
     }
 }
 
-registry.category('actions').add('pos_conventional.print_iframe', printIframeAction, { force: true });
+registry.category('actions').add('pos_conventional_print_iframe', printIframeAction, { force: true });

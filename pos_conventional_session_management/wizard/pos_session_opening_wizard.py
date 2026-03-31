@@ -83,7 +83,7 @@ class PosSessionOpeningWizard(models.TransientModel):
             raise UserError(_("No tiene permisos para abrir una sesión de Punto de Venta."))
 
         user = self.env["res.users"].search(
-            [("pin", "=", pos_pin), ("id", "=", user_id.id)], limit=1
+            [("pos_pin", "=", pos_pin), ("id", "=", user_id.id)], limit=1
         )
         if not user:
             raise ValidationError(

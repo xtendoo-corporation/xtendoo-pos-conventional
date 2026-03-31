@@ -7,7 +7,7 @@ from odoo.exceptions import UserError
 from .common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional", "-standard")
+@tagged("pos_conventional_core", "-standard")
 class TestPosConfig(PosConventionalTestCommon):
     """Tests para pos.config (pos_conventional_core)."""
 

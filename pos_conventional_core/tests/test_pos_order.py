@@ -5,7 +5,7 @@ from odoo.tests.common import tagged
 from .common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional", "-standard")
+@tagged("pos_conventional_core", "-standard")
 class TestPosOrder(PosConventionalTestCommon):
     """Tests para pos.order (pos_conventional_core)."""
 
@@ -258,7 +258,7 @@ class TestPosOrder(PosConventionalTestCommon):
         self._add_payment(order)
         order.action_pos_order_paid()
         result = order._get_post_validation_action()
-        self.assertEqual(result.get("tag"), "pos_conventional.print_receipt_client")
+        self.assertEqual(result.get("tag"), "pos_conventional_print_receipt_client")
         self.pos_config.iface_print_auto = False
 
     # ── get_order_receipt_data — campos adicionales ───────────────────────

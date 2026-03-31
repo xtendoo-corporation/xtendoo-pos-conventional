@@ -7,7 +7,7 @@ import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 
 export class OpeningPopup extends Component {
-    static template = "pos_conventional.OpeningPopup";
+    static template = "pos_conventional_session_management.OpeningPopup";
     static components = { Dialog };
     static props = {
         close: { type: Function, optional: true },
@@ -61,7 +61,7 @@ export class OpeningPopup extends Component {
             this.notification.add(_t("Caja abierta"), { type: "success" });
             if (this.props.onOpened) this.props.onOpened();
             if (this.props.close) this.props.close();
-            
+
             await this.action.doAction("point_of_sale.action_pos_pos_form", {
                 viewType: 'list',
                 additionalContext: { default_session_id: this.sessionId, default_config_id: this.configId }

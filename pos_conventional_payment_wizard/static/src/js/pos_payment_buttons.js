@@ -6,7 +6,7 @@ import { useService } from "@web/core/utils/hooks";
 import { Component, useState, onWillStart, onWillUpdateProps } from "@odoo/owl";
 
 export class PosPaymentButtons extends Component {
-    static template = "pos_conventional.PosPaymentButtons";
+    static template = "pos_conventional_payment_wizard.PosPaymentButtons";
     static props = { ...standardFieldProps };
 
     setup() {

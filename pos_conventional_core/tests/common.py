@@ -4,7 +4,7 @@ from odoo import fields
 from odoo.tests.common import TransactionCase, tagged
 
 
-@tagged("pos_conventional", "-standard")
+@tagged("pos_conventional_core", "-standard")
 class PosConventionalTestCommon(TransactionCase):
     """
     Clase base para todos los tests de pos_conventional_*.
@@ -45,17 +45,31 @@ class PosConventionalTestCommon(TransactionCase):
                 }
             )
 
-        # ── Métodos de pago ────────────────────────────────────────────────
+        # ── Diario de caja exclusivo para los tests ────────────────────────
+        # Se crea uno nuevo para evitar el error "same journal on multiples
+        # cash payment methods" si ya existe un PM de caja en la BD.
+        import uuid
+        _suffix = uuid.uuid4().hex[:4].upper()
+        cls.cash_journal_test = cls.env["account.journal"].create(
+            {
+                "name": f"Caja Test POS {_suffix}",
+                "type": "cash",
+                "code": f"CP{_suffix}",
+                "company_id": company.id,
+            }
+        )
+
+        # ── Mtodos de pago ────────────────────────────────────────────────
         cls.cash_pm = cls.env["pos.payment.method"].create(
             {
-                "name": "Efectivo Test",
-                "journal_id": cls.cash_journal.id,
+                "name": f"Efectivo Test {_suffix}",
+                "journal_id": cls.cash_journal_test.id,
                 "is_cash_count": True,
             }
         )
         cls.card_pm = cls.env["pos.payment.method"].create(
             {
-                "name": "Tarjeta Test",
+                "name": f"Tarjeta Test {_suffix}",
                 "journal_id": cls.bank_journal.id,
             }
         )

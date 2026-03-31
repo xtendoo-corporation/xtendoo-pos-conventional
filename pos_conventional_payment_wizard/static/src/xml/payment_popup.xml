@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
 
-    <t t-name="pos_conventional.PaymentPopup">
+    <t t-name="pos_conventional_payment_wizard.PaymentPopup">
         <Dialog title="'Realizar Pago'" size="'xl'" contentClass="'payment-popup-dialog'">
             <style>
                 .payment-popup-container { display: flex; flex-direction: column; min-height: 500px; background-color: #f8f9fa; }
@@ -39,7 +39,7 @@
                         </div>
                     </div>
                     <div class="payment-list-column">
-                        <div t-foreach="state.payments" t-as="p" t-key="p.id" 
+                        <div t-foreach="state.payments" t-as="p" t-key="p.id"
                              t-attf-class="payment-line {{state.selectedPaymentId === p.id ? 'selected' : ''}}"
                              t-on-click="() => this.selectPayment(p)">
                              <span><t t-esc="p.payment_method_name"/></span>

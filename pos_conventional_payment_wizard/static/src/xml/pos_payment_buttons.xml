@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <t t-name="pos_conventional.PosPaymentButtons">
+    <t t-name="pos_conventional_payment_wizard.PosPaymentButtons">
         <div class="d-flex flex-wrap gap-2">
             <t t-foreach="paymentMethods" t-as="method" t-key="method.id">
                 <button type="button"

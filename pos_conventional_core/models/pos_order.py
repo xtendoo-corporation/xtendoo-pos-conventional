@@ -14,12 +14,23 @@ class PosOrder(models.Model):
         store=False,
     )
 
+    has_order_lines = fields.Boolean(
+        string="Tiene líneas de pedido",
+        compute="_compute_has_order_lines",
+        store=False,
+    )
+
     amount_untaxed = fields.Monetary(
         string="Importe base",
         compute="_compute_amount_untaxed",
         store=False,
         help="Subtotal sin impuestos calculado desde las líneas del pedido",
     )
+
+    @api.depends("lines")
+    def _compute_has_order_lines(self):
+        for order in self:
+            order.has_order_lines = bool(order.lines)
 
     @api.depends("payment_ids", "state")
     def _compute_payment_method_ribbon(self):
@@ -35,16 +46,11 @@ class PosOrder(models.Model):
             else:
                 order.payment_method_ribbon = methods[0].name.upper()
 
-    @api.depends("lines.price_subtotal", "is_refund")
+    @api.depends("lines.price_subtotal")
     def _compute_amount_untaxed(self):
         for order in self:
-            sign = -1 if order.is_refund else 1
-            amount_untaxed = sum(line.price_subtotal for line in order.lines)
-            if order.currency_id:
-                amount_untaxed = order.currency_id.round(amount_untaxed)
-            order.amount_untaxed = amount_untaxed * sign
+            order.amount_untaxed = sum(line.price_subtotal for line in order.lines)
 
-    @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
         if "company_id" not in res or not res.get("company_id"):
@@ -213,7 +219,7 @@ class PosOrder(models.Model):
         if self.config_id.iface_print_auto:
             return {
                 "type": "ir.actions.client",
-                "tag": "pos_conventional.print_receipt_client",
+                "tag": "pos_conventional_print_receipt_client",
                 "params": {
                     "order_id": self.id,
                     "next_action": next_action,

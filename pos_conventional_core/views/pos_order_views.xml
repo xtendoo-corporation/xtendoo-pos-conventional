@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Vista lista: añadir js_class y ocultar estado por defecto -->
     <record id="view_pos_order_tree_inherit_pos_conventional_core" model="ir.ui.view">
         <field name="name">pos.order.list.inherit.pos.conventional.core</field>
         <field name="model">pos.order</field>
@@ -8,6 +9,7 @@
             <xpath expr="//list" position="attributes">
                 <attribute name="js_class">button_in_tree</attribute>
                 <attribute name="create">true</attribute>
+                <attribute name="decoration-info">state == 'draft'</attribute>
             </xpath>
             <xpath expr="//field[@name='state'][@widget='badge']" position="attributes">
                 <attribute name="optional">hide</attribute>
@@ -15,14 +17,20 @@
         </field>
     </record>
 
+    <!-- Vista formulario: layout completo con totales, ribbon de pago y campos técnicos -->
     <record id="view_pos_pos_form_inherit_pos_conventional_core" model="ir.ui.view">
         <field name="name">pos.order.form.inherit.pos.conventional.core</field>
         <field name="model">pos.order</field>
         <field name="inherit_id" ref="point_of_sale.view_pos_pos_form" />
         <field name="arch" type="xml">
+
+            <!-- Añadir campos técnicos al header (ocultos) -->
             <xpath expr="//header" position="inside">
                 <field name="payment_method_ribbon" invisible="1"/>
+                <field name="has_order_lines" invisible="1"/>
             </xpath>
+
+            <!-- Cinta de método de pago (visible solo cuando está pagado) -->
             <xpath expr="//sheet" position="before">
                 <div class="oe_link_ribbon bg-success"
                      invisible="not payment_method_ribbon or state not in ('paid', 'done')"
@@ -30,9 +38,75 @@
                     <field name="payment_method_ribbon"/>
                 </div>
             </xpath>
-            <xpath expr="//field[@name='amount_total']" position="after">
-                <field name="amount_untaxed" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+
+            <!-- Reemplazar el grupo de campos del pedido con layout de dos columnas -->
+            <xpath expr="//group[@name='order_fields']" position="replace">
+
+                <!-- Título principal -->
+                <div class="oe_title">
+                    <h1>
+                        <field name="name" readonly="1" invisible="name == '/'" />
+                        <span invisible="name != '/'">Nuevo</span>
+                    </h1>
+                </div>
+
+                <!-- Cintas de Pago (Ribbons) -->
+                <field name="payment_method_ribbon" invisible="1"/>
+                <widget name="web_ribbon" title="EFECTIVO" bg_color="text-bg-success"
+                        invisible="payment_method_ribbon != 'EFECTIVO'"/>
+                <widget name="web_ribbon" title="TARJETA" bg_color="text-bg-success"
+                        invisible="payment_method_ribbon != 'TARJETA'"/>
+                <widget name="web_ribbon" title="CARD" bg_color="text-bg-success"
+                        invisible="payment_method_ribbon != 'CARD'"/>
+                <widget name="web_ribbon" title="BANCO" bg_color="text-bg-success"
+                        invisible="payment_method_ribbon != 'BANCO'"/>
+                <widget name="web_ribbon" title="TRANSFERENCIA" bg_color="text-bg-success"
+                        invisible="payment_method_ribbon != 'TRANSFERENCIA'"/>
+                <widget name="web_ribbon" title="VALE" bg_color="text-bg-success"
+                        invisible="payment_method_ribbon != 'VALE'"/>
+                <widget name="web_ribbon" title="PAGO MÚLTIPLE" bg_color="text-bg-success"
+                        invisible="payment_method_ribbon != 'PAGO MÚLTIPLE'"/>
+                <widget name="web_ribbon" title="PAGADO" bg_color="text-bg-success"
+                        invisible="not payment_method_ribbon or payment_method_ribbon in ('EFECTIVO', 'TARJETA', 'CARD', 'BANCO', 'TRANSFERENCIA', 'VALE', 'PAGO MÚLTIPLE')"/>
+
+                <!-- Estructura: Campos a la izquierda, Totales a la derecha -->
+                <group>
+                    <group>
+                        <field name="partner_id"
+                            widget="res_partner_many2one"
+                            context="{'res_partner_search_mode': 'customer', 'show_address': 1, 'show_vat': True}"
+                            placeholder="Escriba para buscar un cliente..."
+                            readonly="state != 'draft'" />
+                        <field name="date_order" string="Fecha" readonly="state != 'draft'" />
+                        <field string="Usuario" name="user_id" readonly="1" force_save="1" />
+                        <field name="session_id" readonly="1" force_save="1" />
+                        <field name="pricelist_id" invisible="1"/>
+                    </group>
+                    <group class="oe_subtotal_footer">
+                        <field name="amount_untaxed" widget="monetary" string="Importe base"/>
+                        <field name="amount_tax" force_save="1" widget="monetary" string="Impuestos"/>
+                        <div class="oe_inline o_td_label">
+                            <label for="amount_total" class="fw-bold fs-2"/>
+                        </div>
+                        <field name="amount_total" force_save="1" widget="monetary" nolabel="1"
+                               class="oe_subtotal_footer_separator fw-bold fs-2"/>
+                    </group>
+                </group>
+
+                <!-- Campos técnicos ocultos -->
+                <field name="fiscal_position_id" options="{'no_create': True}"
+                    readonly="state != 'draft'"
+                    invisible="1" />
+                <field name="has_order_lines" invisible="1" />
+                <field name="currency_id" invisible="1" />
             </xpath>
+
+            <!-- Eliminar totales originales de la pestaña Products -->
+            <xpath expr="//page[@name='products']/group[@name='order_total']" position="replace" />
+
+            <!-- Eliminar totales originales de la pestaña Payments -->
+            <xpath expr="//page[@name='payments']/group[@name='order_total']" position="replace" />
+
         </field>
     </record>
 </odoo>
