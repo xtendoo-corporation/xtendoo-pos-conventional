@@ -107,6 +107,7 @@ export class PosOrderBarcodeFormController extends FormController {
             });
 
             if (!result.success) {
+                this._playErrorBeep();
                 this.notification.add(result.message, { type: "warning", title: "Producto no encontrado" });
                 return;
             }
@@ -116,6 +117,25 @@ export class PosOrderBarcodeFormController extends FormController {
             console.error("Error al procesar código de barras:", error);
         } finally {
             this.isProcessing = false;
+        }
+    }
+
+    _playErrorBeep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            oscillator.type = "square";
+            oscillator.frequency.setValueAtTime(380, ctx.currentTime);
+            oscillator.frequency.setValueAtTime(280, ctx.currentTime + 0.15);
+            gainNode.gain.setValueAtTime(0.25, ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+            oscillator.start(ctx.currentTime);
+            oscillator.stop(ctx.currentTime + 0.35);
+        } catch (e) {
+            // Fallback silencioso si Web Audio API no está disponible
         }
     }
 
