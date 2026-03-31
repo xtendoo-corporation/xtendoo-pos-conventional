@@ -350,8 +350,11 @@ class TestPaymentFlow(PosConventionalTestCommon):
     # ══════════════════════════════════════════════════════════════════════
 
     def test_24_card_no_ask_new_order_cash_opens_wizard(self):
-        """Contraste: CARD devuelve new_order sin ask_new_order; CASH abre wizard."""
+        """Contraste: CARD devuelve new_order sin ask_new_order; CASH abre wizard.
+        Ambos pedidos usan la misma sesión (no se puede abrir dos sesiones del mismo config).
+        """
         session = self._open_session()
+
         order_card = self._order_with_line(session)
         action_card = order_card.action_pos_convention_pay_with_method(self.card_pm)
         self.assertFalse(
@@ -363,8 +366,8 @@ class TestPaymentFlow(PosConventionalTestCommon):
             "CARD debe devolver tag=pos_conventional_new_order",
         )
 
-        session2 = self._open_session()
-        order_cash = self._order_with_line(session2)
+        # Reutilizamos la misma sesión para el pedido CASH
+        order_cash = self._order_with_line(session)
         action_cash = order_cash.action_pos_convention_pay_with_method(self.cash_pm)
         self.assertEqual(
             action_cash.get("res_model"), "pos.make.payment.wizard",
@@ -376,15 +379,19 @@ class TestPaymentFlow(PosConventionalTestCommon):
         )
 
     def test_25_both_card_and_cash_navigate_directly(self):
-        """Contraste: ambos CARD y CASH devuelven new_order sin ask_new_order."""
+        """Contraste: ambos CARD y CASH devuelven new_order sin ask_new_order.
+        Ambos pedidos usan la misma sesión abierta.
+        """
+        session = self._open_session()
+
         # CARD
-        order_card = self._order_with_line()
+        order_card = self._order_with_line(session)
         action_card = self._pay_card_check(order_card)
         self.assertFalse(action_card.get("params", {}).get("ask_new_order"),
                          "CARD NO debe tener ask_new_order (flujo directo)")
 
-        # CASH
-        order_cash = self._order_with_line()
+        # CASH — mismo session, ya que no se pueden tener dos sesiones del mismo config
+        order_cash = self._order_with_line(session)
         _wizard, action_cash = self._pay_cash_wizard_validate(order_cash)
         self.assertFalse(action_cash.get("params", {}).get("ask_new_order"),
                          "CASH NO debe tener ask_new_order")

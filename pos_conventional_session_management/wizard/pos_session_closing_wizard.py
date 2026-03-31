@@ -115,22 +115,22 @@ class PosSessionClosingWizard(models.TransientModel):
 
     def action_close_session(self):
         self.ensure_one()
-        if self.session_id.state not in ["opened", "closing_control"]:
+        session = self.session_id
+
+        if session.state == "closed":
+            raise UserError(_("Esta sesión ya está cerrada."))
+        if session.state not in ["opened", "closing_control"]:
             raise UserError(_("Solo puedes cerrar sesiones en estado abierto o en proceso de cierre."))
 
-        if self.session_id.cash_control:
-            result = self.session_id.post_closing_cash_details(self.cash_register_balance_end_real)
+        # 1. Registrar efectivo contado (solo si hay control de caja)
+        if session.cash_control:
+            result = session.post_closing_cash_details(self.cash_register_balance_end_real)
             if not result.get("successful"):
                 raise UserError(result.get("message", _("Error al registrar el efectivo.")))
 
-        if not self.session_id.stop_at:
-            self.session_id.write({"stop_at": fields.Datetime.now()})
-
-        difference = self.cash_register_balance_end_real - self.session_id.cash_register_balance_end
-        currency = self.currency_id
-
-        if not float_is_zero(difference, precision_rounding=currency.rounding):
-            if self.state == "input":
+            # Confirmar diferencia si la hay y aún no se ha confirmado
+            diff = self.cash_register_balance_end_real - session.cash_register_balance_end
+            if self.state == "input" and not float_is_zero(diff, precision_rounding=self.currency_id.rounding):
                 self.write({"state": "confirmation"})
                 return {
                     "type": "ir.actions.act_window",
@@ -140,20 +140,29 @@ class PosSessionClosingWizard(models.TransientModel):
                     "target": "new",
                 }
 
-        try:
-            result = self.session_id.action_pos_session_closing_control()
-            if isinstance(result, dict):
-                return result
-        except UserError as e:
-            raise UserError(_("Error al cerrar la sesión: %s") % str(e))
+        # 2. Mover sesión a estado de cierre y guardar nota
+        if session.state == "opened":
+            session.update_closing_control_state_session(self.closing_note or "")
 
+        # 3. Construir diferencias de métodos de pago bancarios
+        bank_diffs = [
+            [line.payment_method_id.id, line.difference]
+            for line in self.payment_method_line_ids
+            if not line.is_cash and not float_is_zero(line.difference, precision_rounding=self.currency_id.rounding)
+        ]
+
+        # 4. Cerrar la sesión usando el mismo método que el popup OWL
+        close_result = session.close_session_from_ui(bank_diffs)
+        if not close_result.get("successful"):
+            raise UserError(close_result.get("message", _("Error al cerrar la sesión.")))
+
+        # 5. Navegar al kanban de POS
         return {
             "type": "ir.actions.act_window",
             "name": _("Punto de Venta"),
             "res_model": "pos.config",
-            "view_mode": "kanban,form",
+            "view_mode": "kanban,list",
             "target": "main",
-            "context": {"search_default_group_by_company": True},
         }
 
     def action_print_daily_report(self):
