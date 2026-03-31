@@ -5,11 +5,12 @@ Tests de cobertura para el flujo completo de cobro en POS Convencional.
 
 Comportamiento esperado:
   - CARD: pos.make.payment.check() debe cerrar el pedido y devolver
-    ir.actions.client tag=pos_conventional_new_order con ask_new_order=True
-    para que el JS muestre un diálogo de confirmación.
+    ir.actions.client tag=pos_conventional_new_order SIN ask_new_order;
+    el JS navega directamente al nuevo pedido sin mostrar ningún diálogo.
   - CASH: pos.make.payment.wizard._execute_validation() debe cerrar el pedido,
     gestionar el cambio y devolver ir.actions.client
     tag=pos_conventional_new_order SIN ask_new_order (navegación directa).
+  - Ambos flujos (CARD y CASH) navegan directamente al nuevo pedido.
   - POS no convencional: devuelve act_window_close (sin navegar a nuevo pedido).
 """
 from odoo.tests.common import tagged
@@ -75,14 +76,14 @@ class TestPaymentFlow(PosConventionalTestCommon):
             f"Tag esperado 'pos_conventional_new_order', obtenido: {action.get('tag')}",
         )
 
-    def test_03_card_check_ask_new_order_is_true(self):
-        """check() CARD incluye ask_new_order=True para mostrar el diálogo JS."""
+    def test_03_card_check_no_ask_new_order(self):
+        """check() CARD NO incluye ask_new_order: el flujo navega directo al nuevo pedido."""
         order = self._order_with_line()
         action = self._pay_card_check(order)
         params = action.get("params", {})
-        self.assertTrue(
+        self.assertFalse(
             params.get("ask_new_order"),
-            f"CARD debe incluir ask_new_order=True en params. params={params}",
+            f"CARD NO debe incluir ask_new_order (flujo directo sin diálogo). params={params}",
         )
 
     def test_04_card_check_order_becomes_paid(self):
@@ -303,13 +304,13 @@ class TestPaymentFlow(PosConventionalTestCommon):
             f"CARD debe devolver new_order. tag={action.get('tag')}",
         )
 
-    def test_20_pay_with_card_ask_new_order_true(self):
-        """action_pos_convention_pay_with_method CARD → ask_new_order=True."""
+    def test_20_pay_with_card_no_ask_new_order(self):
+        """action_pos_convention_pay_with_method CARD → navega directo, sin ask_new_order."""
         order = self._order_with_line()
         action = order.action_pos_convention_pay_with_method(self.card_pm)
-        self.assertTrue(
+        self.assertFalse(
             action.get("params", {}).get("ask_new_order"),
-            f"CARD debe tener ask_new_order=True. params={action.get('params')}",
+            f"CARD NO debe tener ask_new_order (flujo directo). params={action.get('params')}",
         )
 
     def test_21_pay_with_card_order_becomes_paid(self):
@@ -348,14 +349,18 @@ class TestPaymentFlow(PosConventionalTestCommon):
     # BLOQUE 4 — Diferencia CARD vs CASH: ask_new_order
     # ══════════════════════════════════════════════════════════════════════
 
-    def test_24_card_has_ask_new_order_cash_opens_wizard(self):
-        """Contraste: CARD devuelve ask_new_order=True; CASH abre wizard."""
+    def test_24_card_no_ask_new_order_cash_opens_wizard(self):
+        """Contraste: CARD devuelve new_order sin ask_new_order; CASH abre wizard."""
         session = self._open_session()
         order_card = self._order_with_line(session)
         action_card = order_card.action_pos_convention_pay_with_method(self.card_pm)
-        self.assertTrue(
+        self.assertFalse(
             action_card.get("params", {}).get("ask_new_order"),
-            "CARD debe incluir ask_new_order=True",
+            "CARD NO debe incluir ask_new_order (flujo directo)",
+        )
+        self.assertEqual(
+            action_card.get("tag"), "pos_conventional_new_order",
+            "CARD debe devolver tag=pos_conventional_new_order",
         )
 
         session2 = self._open_session()
@@ -370,13 +375,13 @@ class TestPaymentFlow(PosConventionalTestCommon):
             "CASH NO debe tener ask_new_order",
         )
 
-    def test_25_cash_validate_no_ask_new_order_card_check_has_it(self):
-        """Contraste directo: CASH wizard.action_validate() vs CARD check()."""
+    def test_25_both_card_and_cash_navigate_directly(self):
+        """Contraste: ambos CARD y CASH devuelven new_order sin ask_new_order."""
         # CARD
         order_card = self._order_with_line()
         action_card = self._pay_card_check(order_card)
-        self.assertTrue(action_card.get("params", {}).get("ask_new_order"),
-                        "CARD debe tener ask_new_order=True")
+        self.assertFalse(action_card.get("params", {}).get("ask_new_order"),
+                         "CARD NO debe tener ask_new_order (flujo directo)")
 
         # CASH
         order_cash = self._order_with_line()

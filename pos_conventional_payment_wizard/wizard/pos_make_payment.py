@@ -116,7 +116,6 @@ class PosMakePaymentConventional(models.TransientModel):
                                 "params": {
                                     "config_id": order.config_id.id,
                                     "default_session_id": order.config_id.current_session_id.id,
-                                    "ask_new_order": is_card,
                                 },
                             }
                         print(f"[MAKE_PAYMENT]   returning result: {result.get('type')} tag={result.get('tag','')}")
@@ -129,26 +128,24 @@ class PosMakePaymentConventional(models.TransientModel):
                     print(f"[MAKE_PAYMENT]   ERROR in action_validate_and_invoice: {exc}")
 
                 # FALLBACK: action_validate_and_invoice devolvió False o falló → navegar a nuevo pedido
-                print(f"[MAKE_PAYMENT]   FALLBACK -> pos_conventional_new_order ask_new_order={is_card}")
+                print("[MAKE_PAYMENT]   FALLBACK -> pos_conventional_new_order")
                 return {
                     "type": "ir.actions.client",
                     "tag": "pos_conventional_new_order",
                     "params": {
                         "config_id": order.config_id.id,
                         "default_session_id": order.config_id.current_session_id.id,
-                        "ask_new_order": is_card,
                     },
                 }
 
             elif is_conventional and order.state in {"paid", "done"}:
-                print(f"[MAKE_PAYMENT]   -> pos_conventional_new_order (elif) ask_new_order={is_card}")
+                print("[MAKE_PAYMENT]   -> pos_conventional_new_order (elif)")
                 return {
                     "type": "ir.actions.client",
                     "tag": "pos_conventional_new_order",
                     "params": {
                         "config_id": order.config_id.id,
                         "default_session_id": order.config_id.current_session_id.id,
-                        "ask_new_order": is_card,
                     },
                 }
 
