@@ -122,6 +122,26 @@ class PosSessionClosingWizard(models.TransientModel):
         if session.state not in ["opened", "closing_control"]:
             raise UserError(_("Solo puedes cerrar sesiones en estado abierto o en proceso de cierre."))
 
+        # 0. Cancelar pedidos en borrador vacíos (sin líneas) para que no bloqueen el cierre
+        empty_draft_orders = self.env["pos.order"].search([
+            ("session_id", "=", session.id),
+            ("state", "=", "draft"),
+            ("lines", "=", False),
+        ])
+        if empty_draft_orders:
+            empty_draft_orders.write({"state": "cancel"})
+
+        # Verificar que no queden pedidos en borrador CON líneas (no cerrados)
+        real_draft_orders = self.env["pos.order"].search([
+            ("session_id", "=", session.id),
+            ("state", "=", "draft"),
+        ])
+        if real_draft_orders:
+            raise UserError(_(
+                "No puedes cerrar la caja mientras hay pedidos en borrador sin completar. "
+                "Por favor, finaliza o cancela los pedidos pendientes antes de cerrar."
+            ))
+
         # 1. Registrar efectivo contado (solo si hay control de caja)
         if session.cash_control:
             result = session.post_closing_cash_details(self.cash_register_balance_end_real)

@@ -1,7 +1,26 @@
 from odoo import api, fields, models, _
 
+
 class PosSession(models.Model):
     _inherit = "pos.session"
+
+    def close_session_from_ui(self, bank_payment_method_diff_pairs=None):
+        """Override para POS no táctil: cancela pedidos en borrador vacíos antes de cerrar.
+
+        En el flujo convencional no táctil se puede crear un pedido vacío al navegar
+        al formulario de nuevo pedido. Este pedido vacío bloquea el cierre estándar,
+        por lo que lo cancelamos automáticamente.
+        """
+        self.ensure_one()
+        if self.config_id.pos_non_touch:
+            empty_draft = self.env["pos.order"].search([
+                ("session_id", "=", self.id),
+                ("state", "=", "draft"),
+                ("lines", "=", False),
+            ])
+            if empty_draft:
+                empty_draft.write({"state": "cancel"})
+        return super().close_session_from_ui(bank_payment_method_diff_pairs)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -30,7 +49,7 @@ class PosSession(models.Model):
         non_touch_sessions = self.filtered(
             lambda s: s.config_id.pos_non_touch and s.state == "opening_control"
         )
-        
+
         if non_touch_sessions:
             # En lugar de abrir la UI, abrir el wizard de apertura
             return {
