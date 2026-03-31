@@ -185,16 +185,6 @@ class PosOrder(models.Model):
             price_subtotal = tax_results["total_excluded"]
             price_subtotal_incl = tax_results["total_included"]
 
-        # Calcular coste total para margin y margin_percent
-        cost_currency = product.sudo().cost_currency_id
-        total_cost = qty * cost_currency._convert(
-            from_amount=product.standard_price,
-            to_currency=self.currency_id,
-            company=self.company_id or self.env.company,
-            date=self.date_order or fields.Date.today(),
-            round=False,
-        )
-
         return {
             "order_id": self.id,
             "product_id": product.id,
@@ -205,8 +195,6 @@ class PosOrder(models.Model):
             "price_subtotal": price_subtotal,
             "price_subtotal_incl": price_subtotal_incl,
             "tax_ids": [(6, 0, product_taxes.ids)],
-            "total_cost": total_cost,
-            "is_total_cost_computed": True,
         }
 
     def action_validate_and_invoice(self):

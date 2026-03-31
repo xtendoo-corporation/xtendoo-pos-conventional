@@ -7,58 +7,45 @@ _logger = logging.getLogger(__name__)
 class PosOrderLine(models.Model):
     _inherit = "pos.order.line"
 
-    def _compute_total_cost_from_product(self, product, qty, order=None):
-        """Calcula total_cost usando el precio de coste del producto."""
-        if not product or not product.standard_price:
-            return 0.0
-        cost_currency = product.sudo().cost_currency_id
-        currency = (order.currency_id if order else None) or self.env.company.currency_id
-        company = (order.company_id if order else None) or self.env.company
-        date = (order.date_order if order else None) or fields.Date.today()
-        return qty * cost_currency._convert(
-            from_amount=product.standard_price,
-            to_currency=currency,
-            company=company,
-            date=date,
-            round=False,
-        )
+    total_cost = fields.Float(
+        compute="_compute_total_cost_conventional",
+        store=True,
+        readonly=False,
+    )
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            # Solo calcular si no viene ya informado
-            if not vals.get("total_cost") and not vals.get("is_total_cost_computed"):
-                product_id = vals.get("product_id")
-                if product_id:
-                    product = self.env["product.product"].browse(product_id)
-                    order = (
-                        self.env["pos.order"].browse(vals["order_id"])
-                        if vals.get("order_id")
-                        else None
-                    )
-                    qty = vals.get("qty", 1.0)
-                    total_cost = self._compute_total_cost_from_product(product, qty, order)
-                    vals["total_cost"] = total_cost
-                    vals["is_total_cost_computed"] = True
-        return super().create(vals_list)
+    is_total_cost_computed = fields.Boolean(
+        compute="_compute_total_cost_conventional",
+        store=True,
+        readonly=False,
+    )
 
-    def write(self, vals):
-        # Recalcular total_cost cuando cambia qty o product_id
-        qty_changed = "qty" in vals
-        product_changed = "product_id" in vals
-        if (qty_changed or product_changed) and "total_cost" not in vals:
-            for line in self:
-                product = (
-                    self.env["product.product"].browse(vals["product_id"])
-                    if product_changed
-                    else line.product_id
+    @api.depends(
+        "product_id",
+        "qty",
+        "order_id.currency_id",
+        "order_id.company_id",
+        "order_id.date_order",
+    )
+    def _compute_total_cost_conventional(self):
+        for line in self:
+            product = line.product_id
+            if not product:
+                line.total_cost = 0.0
+                line.is_total_cost_computed = False
+                continue
+            cost_currency = product.sudo().cost_currency_id
+            order = line.order_id
+            currency = order.currency_id or self.env.company.currency_id
+            company = order.company_id or self.env.company
+            date = (order.date_order.date() if order.date_order else None) or fields.Date.today()
+            try:
+                line.total_cost = line.qty * cost_currency._convert(
+                    from_amount=product.standard_price,
+                    to_currency=currency,
+                    company=company,
+                    date=date,
+                    round=False,
                 )
-                qty = vals.get("qty", line.qty)
-                order = line.order_id or None
-                total_cost = self._compute_total_cost_from_product(product, qty, order)
-                super(PosOrderLine, line).write(
-                    dict(vals, total_cost=total_cost, is_total_cost_computed=True)
-                )
-            return True
-        return super().write(vals)
-
+            except Exception:
+                line.total_cost = line.qty * product.standard_price
+            line.is_total_cost_computed = True
