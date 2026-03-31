@@ -112,3 +112,75 @@ class TestPosOrderBarcode(PosConventionalTestCommon):
         result = order.add_product_by_barcode(product_id=99999999)
         self.assertFalse(result.get("success"))
 
+    # ── coste y margen al cargar producto por barcode ─────────────────────
+
+    def test_13_barcode_load_sets_total_cost(self):
+        """add_product_by_barcode crea línea con total_cost correcto según standard_price."""
+        self.product_barcode.write({"standard_price": 15.0, "taxes_id": [(5,)]})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        result = order.add_product_by_barcode(barcode="TST0001BARCODE")
+        self.assertTrue(result.get("success"))
+        self.assertEqual(len(order.lines), 1)
+        line = order.lines[0]
+        self.assertAlmostEqual(line.total_cost, 15.0, places=2)
+
+    def test_14_barcode_load_is_total_cost_computed_true(self):
+        """Línea creada por código de barras tiene is_total_cost_computed = True."""
+        self.product_barcode.write({"standard_price": 8.0})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order.add_product_by_barcode(barcode="TST0001BARCODE")
+        self.assertTrue(order.lines[0].is_total_cost_computed)
+
+    def test_15_barcode_load_margin_formula(self):
+        """Línea creada por barcode cumple margin = price_subtotal − total_cost."""
+        self.product_barcode.write({"standard_price": 10.0, "taxes_id": [(5,)]})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order.add_product_by_barcode(barcode="TST0001BARCODE")
+        line = order.lines[0]
+        expected = line.price_subtotal - line.total_cost
+        self.assertAlmostEqual(line.margin, expected, places=2)
+
+    def test_16_barcode_load_positive_margin_for_profitable_product(self):
+        """Margen positivo cuando standard_price < list_price."""
+        self.product_barcode.write({"standard_price": 5.0, "taxes_id": [(5,)]})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order.add_product_by_barcode(barcode="TST0001BARCODE")
+        line = order.lines[0]
+        self.assertGreater(line.margin, 0.0)
+
+    def test_17_barcode_increment_qty_updates_total_cost(self):
+        """Al añadir el mismo producto dos veces (qty=2), total_cost se duplica."""
+        self.product_barcode.write({"standard_price": 12.0})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order.add_product_by_barcode(barcode="TST0001BARCODE")  # qty = 1
+        order.add_product_by_barcode(barcode="TST0001BARCODE")  # qty = 2
+        line = order.lines[0]
+        self.assertEqual(line.qty, 2.0)
+        self.assertAlmostEqual(line.total_cost, 24.0, places=2)
+
+    def test_18_barcode_load_margin_percent_range(self):
+        """margin_percent está entre 0 y 1 para producto rentable cargado por barcode."""
+        self.product_barcode.write({"standard_price": 5.0, "taxes_id": [(5,)]})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order.add_product_by_barcode(barcode="TST0001BARCODE")
+        line = order.lines[0]
+        if line.price_subtotal > 0:
+            self.assertGreater(line.margin_percent, 0.0)
+            self.assertLessEqual(line.margin_percent, 1.0)
+
+    def test_19_barcode_zero_cost_sets_full_margin(self):
+        """Con standard_price=0, el margen es igual al subtotal sin impuestos."""
+        self.product_barcode.write({"standard_price": 0.0, "taxes_id": [(5,)]})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order.add_product_by_barcode(barcode="TST0001BARCODE")
+        line = order.lines[0]
+        self.assertAlmostEqual(line.total_cost, 0.0, places=2)
+        self.assertAlmostEqual(line.margin, line.price_subtotal, places=2)
+
