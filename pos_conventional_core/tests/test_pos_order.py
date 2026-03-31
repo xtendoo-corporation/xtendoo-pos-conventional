@@ -179,17 +179,64 @@ class TestPosOrder(PosConventionalTestCommon):
         order.write({"nb_print": 1})
         self.assertEqual(order.nb_print, 1)
 
-    def test_20_write_syncs_tax_ids_from_fiscal_position(self):
-        """write() sincroniza tax_ids si la línea tiene taxes en after_fp pero no en tax_ids."""
+    def test_20_write_preserves_tax_ids_on_lines(self):
+        """write() en un pedido no borra tax_ids de las líneas existentes."""
         session = self._open_session()
         order = self._make_draft_order(session)
         line = self._add_line(order, self.product)
-        if line.tax_ids_after_fiscal_position and not line.tax_ids:
-            order.write({})
-            self.assertTrue(line.tax_ids)
-        else:
-            # No hay nada que sincronizar: pasamos el test igualmente
-            self.assertTrue(True)
+        # Guardar los tax_ids originales
+        original_tax_ids = line.tax_ids.ids
+        # Escribir algo en el pedido (simula el guardado desde el formulario)
+        order.write({"nb_print": 0})
+        # tax_ids no debe haberse vaciado
+        self.assertEqual(sorted(line.tax_ids.ids), sorted(original_tax_ids))
+
+    def test_20b_tax_ids_after_fiscal_position_persists_after_write(self):
+        """tax_ids_after_fiscal_position sigue mostrando impuestos tras guardar el pedido."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line = self._add_line(order, self.product)
+        # Verificar que la línea tiene impuestos del producto
+        if not line.tax_ids:
+            self.skipTest("Producto de test no tiene impuestos asignados")
+        # Registrar cuántos taxes tiene antes de guardar
+        taxes_before = line.tax_ids_after_fiscal_position.ids
+        # Simular guardado del pedido (escribe cualquier campo no-tax)
+        order.write({"nb_print": 1})
+        taxes_after = line.tax_ids_after_fiscal_position.ids
+        self.assertEqual(sorted(taxes_before), sorted(taxes_after),
+                         "tax_ids_after_fiscal_position debe mantener sus valores tras guardar el pedido")
+
+    def test_20c_tax_ids_after_fp_equals_tax_ids_without_fiscal_position(self):
+        """Sin posición fiscal, tax_ids_after_fiscal_position == tax_ids."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        # Verificar que el pedido no tiene posición fiscal
+        if order.fiscal_position_id:
+            self.skipTest("El pedido tiene posición fiscal, caso no aplicable")
+        line = self._add_line(order, self.product)
+        if not line.tax_ids:
+            self.skipTest("Producto de test no tiene impuestos")
+        self.assertEqual(
+            sorted(line.tax_ids.ids),
+            sorted(line.tax_ids_after_fiscal_position.ids),
+            "Sin posición fiscal, tax_ids y tax_ids_after_fiscal_position deben coincidir",
+        )
+
+    def test_20d_write_line_tax_ids_not_cleared_by_order_write(self):
+        """Escribir en el pedido (partner, nb_print) no vacía tax_ids de las líneas."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line = self._add_line(order, self.product)
+        if not line.tax_ids:
+            self.skipTest("Producto sin impuestos, test no aplicable")
+        tax_ids_before = set(line.tax_ids.ids)
+        # Simular guardado desde el formulario con diferentes campos
+        order.write({"nb_print": 2})
+        order.write({"partner_id": self.partner.id})
+        tax_ids_after = set(line.tax_ids.ids)
+        self.assertEqual(tax_ids_before, tax_ids_after,
+                         "Los tax_ids de las líneas no deben borrarse al escribir en el pedido")
 
     # ── action_validate_and_invoice ───────────────────────────────────────
 

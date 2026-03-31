@@ -131,12 +131,6 @@ class PosOrder(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        for order in self:
-            for line in order.lines:
-                if line.tax_ids_after_fiscal_position and not line.tax_ids:
-                    line.with_context(skip_inverse=True).write({
-                        "tax_ids": [(6, 0, line.tax_ids_after_fiscal_position.ids)]
-                    })
         return super().write(vals)
 
     def _prepare_order_line_vals(self, product, qty=1.0):
