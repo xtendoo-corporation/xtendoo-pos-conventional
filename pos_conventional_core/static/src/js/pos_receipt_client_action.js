@@ -22,7 +22,7 @@ class MockOrderLine {
         this.price_subtotal_incl = data.price_subtotal_incl;
         this.currency = order.currency;
         this.customer_note = data.customer_note || "";
-        this.customerNote = data.customer_note || ""; // Alias for xtendoo_pos_receipt
+        this.customerNote = data.customer_note || ""; // Alias for pos_conventional_receipt
         this.product_id = {
             id: data.product_id[0],
             name: data.product_id[1],
@@ -73,7 +73,7 @@ class MockOrderLine {
 class MockOrder {
     constructor(data) {
         this.data = data;
-        this.name = data.pos_reference; // Alias for xtendoo_pos_receipt
+        this.name = data.pos_reference; // Alias for pos_conventional_receipt
         this.company = {
              ...data.company,
              logo: data.company.logo,
@@ -111,7 +111,7 @@ class MockOrder {
         this.isSynced = true;
 
         this.lines = data.lines.map(l => new MockOrderLine(l, this));
-        this.orderlines = this.lines; // Alias for xtendoo_pos_receipt
+        this.orderlines = this.lines; // Alias for pos_conventional_receipt
 
         this.prices = {
             taxDetails: data.tax_details

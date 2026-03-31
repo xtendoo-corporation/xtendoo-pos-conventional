@@ -6,7 +6,7 @@
     "description": "Base module for the POS Conventional modular system. Handles non-touch mode toggle and base order logic.",
     "author": "Xtendoo",
     "website": "https://xtendoo.es",
-    "depends": ["point_of_sale", "sale", "mail", "xtendoo_pos_receipt"],
+    "depends": ["point_of_sale", "sale", "mail", "pos_conventional_receipt"],
     "data": [
         "security/ir.model.access.csv",
         "views/res_config_settings_views.xml",
@@ -28,7 +28,7 @@
             "point_of_sale/static/lib/qrcode.js",
             "point_of_sale/static/src/utils.js",
             "point_of_sale/static/src/css/pos_receipts.css",
-            "xtendoo_pos_receipt/static/src/css/pos_receipt.scss",
+            "pos_conventional_receipt/static/src/css/pos_receipt.scss",
             "point_of_sale/static/src/app/utils/use_timed_press.js",
             "point_of_sale/static/src/app/components/centered_icon/centered_icon.js",
             "point_of_sale/static/src/app/screens/receipt_screen/receipt/order_receipt.js",
@@ -41,7 +41,7 @@
             "point_of_sale/static/src/app/screens/receipt_screen/receipt/receipt_header/receipt_header.xml",
             "point_of_sale/static/src/app/components/order_display/order_display.js",
             "point_of_sale/static/src/app/components/order_display/order_display.xml",
-            "xtendoo_pos_receipt/static/src/xml/receipt_templates.xml",
+            "pos_conventional_receipt/static/src/xml/receipt_templates.xml",
             "point_of_sale/static/src/app/screens/receipt_screen/receipt_screen.scss",
             # Actual receipt client action (must go after POS components are registered)
             "pos_conventional_core/static/src/js/pos_receipt_client_action.js",

@@ -90,7 +90,7 @@
                             <label for="amount_total" class="fw-bold fs-2"/>
                         </div>
                         <field name="amount_total" force_save="1" widget="monetary" nolabel="1"
-                               class="oe_subtotal_footer_separator fw-bold fs-2"/>
+                               class="fw-bold fs-2"/>
                     </group>
                 </group>
 
