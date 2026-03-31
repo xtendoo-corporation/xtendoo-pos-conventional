@@ -21,6 +21,7 @@
     <record id="view_pos_pos_form_inherit_pos_conventional_core" model="ir.ui.view">
         <field name="name">pos.order.form.inherit.pos.conventional.core</field>
         <field name="model">pos.order</field>
+        <field name="priority">8</field>
         <field name="inherit_id" ref="point_of_sale.view_pos_pos_form" />
         <field name="arch" type="xml">
 
