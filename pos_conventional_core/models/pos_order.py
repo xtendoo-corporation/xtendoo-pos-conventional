@@ -27,6 +27,18 @@ class PosOrder(models.Model):
         help="Subtotal sin impuestos calculado desde las líneas del pedido",
     )
 
+    amount_tax = fields.Monetary(
+        string="Impuestos",
+        compute="_compute_amount_tax_total",
+        store=True,
+    )
+
+    amount_total = fields.Monetary(
+        string="Total",
+        compute="_compute_amount_tax_total",
+        store=True,
+    )
+
     @api.depends("lines")
     def _compute_has_order_lines(self):
         for order in self:
@@ -50,6 +62,14 @@ class PosOrder(models.Model):
     def _compute_amount_untaxed(self):
         for order in self:
             order.amount_untaxed = sum(line.price_subtotal for line in order.lines)
+
+    @api.depends("lines.price_subtotal_incl", "lines.price_subtotal")
+    def _compute_amount_tax_total(self):
+        for order in self:
+            total_incl = sum(line.price_subtotal_incl for line in order.lines)
+            total_excl = sum(line.price_subtotal for line in order.lines)
+            order.amount_tax = total_incl - total_excl
+            order.amount_total = total_incl
 
     def default_get(self, fields_list):
         res = super().default_get(fields_list)

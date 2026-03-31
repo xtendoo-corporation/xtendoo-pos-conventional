@@ -75,7 +75,7 @@
                     <group>
                         <field name="partner_id"
                             widget="res_partner_many2one"
-                            context="{'res_partner_search_mode': 'customer', 'show_address': 1, 'show_vat': True}"
+                            context="{'res_partner_search_mode': 'customer', 'show_address': False, 'show_vat': False}"
                             placeholder="Escriba para buscar un cliente..."
                             readonly="state != 'draft'" />
                         <field name="date_order" string="Fecha" readonly="state != 'draft'" />
@@ -83,13 +83,13 @@
                         <field name="session_id" readonly="1" force_save="1" />
                         <field name="pricelist_id" invisible="1"/>
                     </group>
-                    <group class="oe_subtotal_footer">
+                    <group>
                         <field name="amount_untaxed" widget="monetary" string="Importe base"/>
-                        <field name="amount_tax" force_save="1" widget="monetary" string="Impuestos"/>
+                        <field name="amount_tax" widget="monetary" string="Impuestos"/>
                         <div class="oe_inline o_td_label">
                             <label for="amount_total" class="fw-bold fs-2"/>
                         </div>
-                        <field name="amount_total" force_save="1" widget="monetary" nolabel="1"
+                        <field name="amount_total" widget="monetary" nolabel="1"
                                class="fw-bold fs-2"/>
                     </group>
                 </group>
