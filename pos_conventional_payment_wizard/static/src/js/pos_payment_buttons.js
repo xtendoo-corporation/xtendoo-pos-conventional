@@ -75,6 +75,15 @@ export class PosPaymentButtons extends Component {
 
             if (action) {
                 await this.action.doAction(action);
+                // Tras resolver la acción, recargar el registro para reflejar el estado
+                // actualizado (p.ej. "paid" tras pago con tarjeta cuando el usuario elige
+                // quedarse en el pedido actual).
+                try {
+                    await this.props.record.load();
+                } catch (_e) {
+                    // El componente puede haber sido desmontado si se navegó a otro pedido;
+                    // ignorar el error silenciosamente.
+                }
             } else {
                 // Si no hay acción, refrescar el registro por si acaso
                 await this.props.record.load();

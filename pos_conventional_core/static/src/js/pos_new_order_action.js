@@ -18,25 +18,24 @@ async function posConventionalNewOrder(env, action) {
 
     if (context.ask_new_order) {
         // CARD: preguntar al usuario si quiere crear un nuevo pedido
+        // El pedido ya está cobrado; nos quedamos en el formulario actual hasta que el usuario decida.
         console.log("[NEW_ORDER] ask_new_order=true -> showing confirmation dialog");
         return new Promise((resolve) => {
             dialogService.add(ConfirmationDialog, {
                 title: _t("Cobro registrado"),
                 body: _t("El pago con tarjeta se ha registrado correctamente. ¿Desea crear un nuevo pedido?"),
                 confirmLabel: _t("Nuevo Pedido"),
-                cancelLabel: _t("Volver a la lista"),
+                cancelLabel: _t("Seguir en el pedido"),
                 confirm: async () => {
                     console.log("[NEW_ORDER] User confirmed new order (CARD)");
                     await _navigateToNewOrder(actionService, context);
                     resolve();
                 },
-                cancel: async () => {
-                    console.log("[NEW_ORDER] User chose list (CARD)");
-                    await actionService.doAction("point_of_sale.action_pos_pos_form", {
-                        clearBreadcrumbs: true,
-                        viewType: "list",
-                        additionalContext: context,
-                    });
+                cancel: () => {
+                    // El usuario quiere quedarse en el pedido actual (ya cobrado).
+                    // Simplemente cerramos el diálogo; el formulario se recargará
+                    // desde pos_payment_buttons.js tras resolver la promesa.
+                    console.log("[NEW_ORDER] User chose to stay on current order (CARD)");
                     resolve();
                 },
             });
