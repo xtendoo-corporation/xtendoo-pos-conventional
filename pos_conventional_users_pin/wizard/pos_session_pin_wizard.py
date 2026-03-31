@@ -15,14 +15,9 @@ class PosSessionPinWizard(models.TransientModel):
     def action_validate_pin(self):
         self.ensure_one()
 
-        # Buscar usuario por PIN usando sudo() para evitar restricciones de acceso
+        # Buscar usuario por pos_pin usando sudo() para evitar restricciones de acceso
         user = self.env["res.users"].sudo().search(
-            [
-                ("pin", "=", self.pos_pin),
-                "|",
-                ("company_id", "=", self.session_id.company_id.id),
-                ("company_id", "=", False),
-            ],
+            [("pos_pin", "=", self.pos_pin)],
             limit=1,
         )
 
@@ -34,7 +29,7 @@ class PosSessionPinWizard(models.TransientModel):
                 )
             )
 
-        # Actualizamos la sesión con el nuevo usuario si es necesario
+        # Actualizamos la sesion con el nuevo usuario si es necesario
         self.session_id.sudo().write({"user_id": user.id})
 
         # Flujo 1: cambio de usuario tras una venta
@@ -48,7 +43,7 @@ class PosSessionPinWizard(models.TransientModel):
                 },
             }
 
-        # Flujo 2: creación de nuevo pedido con PIN obligatorio
+        # Flujo 2: creacion de nuevo pedido con PIN obligatorio
         if self.env.context.get("force_new_order_flow"):
             return {
                 "type": "ir.actions.act_window",
@@ -62,15 +57,7 @@ class PosSessionPinWizard(models.TransientModel):
                 },
             }
 
-        # Flujo 3: validación en apertura de sesión
-        self.env["pos.session.opening.wizard"]._validate_user_pin(
-            {
-                "session_id": self.session_id,
-                "user_id": user,
-                "pos_pin": self.pos_pin,
-            }
-        )
-
+        # Flujo 3 (apertura de sesion): PIN ya validado, abrir popup de apertura
         return {
             "type": "ir.actions.client",
             "tag": "pos_conventional_opening_popup",

@@ -8,7 +8,7 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Punto de Venta (PIN)" name="pos_conventional_pin">
                     <group>
-                        <field name="pin" password="True" string="PIN del TPV" />
+                        <field name="pos_pin" password="True" string="PIN del TPV" />
                     </group>
                 </page>
             </xpath>

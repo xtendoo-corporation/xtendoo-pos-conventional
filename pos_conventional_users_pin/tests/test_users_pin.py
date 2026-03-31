@@ -7,66 +7,53 @@ from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCo
 
 @tagged("pos_conventional", "-standard")
 class TestUsersPin(PosConventionalTestCommon):
-    """Tests para pos_conventional_users_pin — PIN de usuario y wizard."""
+    """Tests para pos_conventional_users_pin — pos_pin de usuario y wizard."""
 
-    # ── res.users — campo pin ─────────────────────────────────────────────
+    # ── res.users — campo pos_pin ─────────────────────────────────────────
 
     def test_01_pin_field_none_by_default(self):
         """Un usuario nuevo no tiene PIN asignado."""
         user = self.env["res.users"].create(
             {"name": "PIN User Default", "login": "pin_default@example.com"}
         )
-        self.assertFalse(user.pin)
+        self.assertFalse(user.pos_pin)
 
     def test_02_pin_can_be_set(self):
         """Se puede asignar un PIN a un usuario."""
         user = self.env["res.users"].create(
-            {"name": "PIN User Set", "login": "pin_set@example.com", "pin": "1234"}
+            {"name": "PIN User Set", "login": "pin_set@example.com", "pos_pin": "1234"}
         )
-        self.assertEqual(user.pin, "1234")
+        self.assertEqual(user.pos_pin, "1234")
 
     def test_03_pin_unique_constraint_raises(self):
         """Dos usuarios no pueden tener el mismo PIN."""
         self.env["res.users"].create(
-            {"name": "PIN Unique 1", "login": "pin_u1@example.com", "pin": "9999"}
+            {"name": "PIN Unique 1", "login": "pin_u1@example.com", "pos_pin": "9999"}
         )
-        raised = False
-        try:
+        with self.assertRaises(Exception):
             self.env["res.users"].create(
-                {"name": "PIN Unique 2", "login": "pin_u2@example.com", "pin": "9999"}
+                {"name": "PIN Unique 2", "login": "pin_u2@example.com", "pos_pin": "9999"}
             )
-        except Exception:
-            raised = True
-        if not raised:
-            # En algunos contextos de test, la restricción se aplica a nivel de
-            # base de datos al hacer flush, o el @api.constrains no ve el duplicado
-            # por restricciones de acceso. Verificar que _check_pin_unique funciona
-            # directamente.
-            duplicates = self.env["res.users"].sudo().search(
-                [("pin", "=", "9999")]
-            )
-            if len(duplicates) > 1:
-                self.skipTest("Restricción de PIN único no se aplica en este contexto de test")
-            # Si solo hay uno, el test ya pasó (el segundo create fue bloqueado silenciosamente)
-            self.assertEqual(len(duplicates), 1, "Solo debería existir un usuario con PIN 9999")
+            # Forzar el flush para que el @api.constrains ejecute la búsqueda en DB
+            self.env.flush_all()
 
     def test_04_pin_same_user_update_allowed(self):
         """Un usuario puede actualizar su propio PIN a un valor distinto."""
         user = self.env["res.users"].create(
-            {"name": "PIN Update", "login": "pin_update@example.com", "pin": "1111"}
+            {"name": "PIN Update", "login": "pin_update@example.com", "pos_pin": "1111"}
         )
-        user.pin = "2222"
-        self.assertEqual(user.pin, "2222")
+        user.pos_pin = "2222"
+        self.assertEqual(user.pos_pin, "2222")
 
     def test_05_different_pins_allowed(self):
         """Usuarios distintos pueden tener PINs distintos."""
         u1 = self.env["res.users"].create(
-            {"name": "PIN A", "login": "pin_a@example.com", "pin": "1111"}
+            {"name": "PIN A", "login": "pin_a@example.com", "pos_pin": "1111"}
         )
         u2 = self.env["res.users"].create(
-            {"name": "PIN B", "login": "pin_b@example.com", "pin": "2222"}
+            {"name": "PIN B", "login": "pin_b@example.com", "pos_pin": "2222"}
         )
-        self.assertNotEqual(u1.pin, u2.pin)
+        self.assertNotEqual(u1.pos_pin, u2.pos_pin)
 
     # ── pos.config — pos_force_employee_login_after_order ─────────────────
 
@@ -93,7 +80,6 @@ class TestUsersPin(PosConventionalTestCommon):
         self.pos_config.pos_force_employee_login_after_order = False
         session = self._open_session()
         result = self.pos_config._get_non_touch_opening_action(session)
-        # El resultado puede ser el popup de apertura de session_management
         self.assertIsInstance(result, (dict, bool, type(None)))
 
     # ── res.config.settings ───────────────────────────────────────────────
@@ -128,7 +114,7 @@ class TestUsersPin(PosConventionalTestCommon):
             {
                 "name": "PIN Válido User",
                 "login": "pin_valid@example.com",
-                "pin": "5678",
+                "pos_pin": "5678",
                 "company_ids": [(4, self.env.company.id)],
                 "group_ids": [
                     (4, self.env.ref("point_of_sale.group_pos_user").id)
@@ -152,7 +138,7 @@ class TestUsersPin(PosConventionalTestCommon):
             {
                 "name": "PIN Switch User",
                 "login": "pin_switch@example.com",
-                "pin": "4321",
+                "pos_pin": "4321",
                 "company_ids": [(4, self.env.company.id)],
                 "group_ids": [
                     (4, self.env.ref("point_of_sale.group_pos_user").id)
@@ -181,7 +167,7 @@ class TestUsersPin(PosConventionalTestCommon):
             {
                 "name": "PIN New Order User",
                 "login": "pin_neworder@example.com",
-                "pin": "8765",
+                "pos_pin": "8765",
                 "company_ids": [(4, self.env.company.id)],
                 "group_ids": [
                     (4, self.env.ref("point_of_sale.group_pos_user").id)
@@ -207,10 +193,10 @@ class TestUsersPin(PosConventionalTestCommon):
     def test_15_pin_can_be_cleared(self):
         """Un PIN puede borrarse (ponerse a False/vacío)."""
         user = self.env["res.users"].create(
-            {"name": "PIN Clear", "login": "pin_clear@example.com", "pin": "3333"}
+            {"name": "PIN Clear", "login": "pin_clear@example.com", "pos_pin": "3333"}
         )
-        user.pin = False
-        self.assertFalse(user.pin)
+        user.pos_pin = False
+        self.assertFalse(user.pos_pin)
 
     # ── res.config.settings — pos_force_employee_login ────────────────────
 
@@ -248,7 +234,5 @@ class TestUsersPin(PosConventionalTestCommon):
         self.pos_config.pos_force_employee_login_after_order = False
         session = self._open_session()
         result = self.pos_config._get_non_touch_opening_action(session)
-        # Super devuelve el popup de apertura de session_management (ir.actions.client)
         if result:
             self.assertIn(result.get("type"), ("ir.actions.client", "ir.actions.act_window", False))
-
