@@ -140,6 +140,12 @@ export class ClosingPopup extends Component {
         if (paymentId) this.state.payments[paymentId].counted = event.target.value;
     }
 
+    pasteCashTotal() {
+        if (!this.state.cashDetails) return;
+        const amount = this.state.cashDetails.amount || 0;
+        this.state.payments[this.state.cashDetails.id].counted = this.formatAmount(amount);
+    }
+
     onPMInputChange(paymentId, event) {
         if (this.state.payments[paymentId]) this.state.payments[paymentId].counted = event.target.value;
     }

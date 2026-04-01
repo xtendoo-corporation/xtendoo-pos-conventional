@@ -72,10 +72,19 @@
                     <hr/>
                     <div t-if="state.cashDetails" class="mb-3">
                         <label class="form-label fw-bold">Recuento de efectivo</label>
-                        <input type="text"
-                               class="form-control cash-input w-100 text-end"
-                               t-att-value="state.payments[state.cashDetails.id]?.counted || '0'"
-                               t-on-input="(ev) => this.onCashInputChange(ev)"/>
+                        <div class="input-group">
+                            <input type="text"
+                                   class="form-control cash-input text-end"
+                                   t-att-value="state.payments[state.cashDetails.id]?.counted || '0'"
+                                   t-on-input="(ev) => this.onCashInputChange(ev)"/>
+                            <button class="btn btn-outline-secondary"
+                                    type="button"
+                                    t-on-click="pasteCashTotal"
+                                    t-att-title="'Rellenar con el total cobrado: ' + formatCurrency(state.cashDetails.amount)">
+                                <i class="fa fa-level-down me-1"/>
+                                <t t-esc="formatCurrency(state.cashDetails.amount)"/>
+                            </button>
+                        </div>
                     </div>
                     <div class="w-100 mb-3" t-foreach="state.paymentMethods" t-as="pm" t-key="pm.id">
                         <t t-if="pm.type === 'bank' and pm.number !== 0">
