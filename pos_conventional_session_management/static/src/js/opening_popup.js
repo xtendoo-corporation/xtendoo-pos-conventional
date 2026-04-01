@@ -1,7 +1,7 @@
 /** @odoo-module **/
 
 import { Dialog } from "@web/core/dialog/dialog";
-import { Component, useState, onWillStart } from "@odoo/owl";
+import { Component, useState, onWillStart, useRef, onMounted } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
@@ -21,6 +21,7 @@ export class OpeningPopup extends Component {
         this.orm = useService("orm");
         this.notification = useService("notification");
         this.action = useService("action");
+        this.openingCashInput = useRef("openingCashInput");
         this.sessionId = this.props.sessionId || this.props.action?.context?.session_id || this.props.action?.params?.session_id;
         this.configId = this.props.configId || this.props.action?.context?.config_id || this.props.action?.params?.config_id;
 
@@ -34,6 +35,14 @@ export class OpeningPopup extends Component {
         });
 
         onWillStart(async () => await this.loadSessionData());
+
+        onMounted(() => {
+            // Seleccionar el valor del campo para que el usuario pueda teclear directamente
+            if (this.openingCashInput.el) {
+                this.openingCashInput.el.select();
+                this.openingCashInput.el.focus();
+            }
+        });
     }
 
     async loadSessionData() {

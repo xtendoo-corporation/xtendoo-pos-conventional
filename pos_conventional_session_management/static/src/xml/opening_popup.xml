@@ -12,7 +12,7 @@
                         <label class="form-label fw-bold">Efectivo de apertura</label>
                         <div class="input-group input-group-lg">
                             <span class="input-group-text"><t t-esc="state.currencySymbol"/></span>
-                            <input type="text" class="form-control text-end" t-model="state.openingCash"/>
+                            <input type="text" class="form-control text-end" t-model="state.openingCash" t-ref="openingCashInput"/>
                         </div>
                     </div>
                     <div class="mb-4">
