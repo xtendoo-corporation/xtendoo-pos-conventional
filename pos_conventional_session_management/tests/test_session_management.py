@@ -1116,5 +1116,96 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
             "El prop 'title' del Dialog debe usar la expresión JS directa con state.sessionName",
         )
 
+    def test_55_closing_popup_cash_moves_section_refreshes_after_cash_out(self):
+        """
+        Escenario completo del ClosingPopup:
+          1. Se abre el popup de cierre → loadClosingData() carga los datos iniciales.
+          2. El usuario registra una SALIDA de caja (cashMove → CashMovePopup).
+          3. Al cerrar el CashMovePopup el JS llama loadClosingData() de nuevo.
+          4. El bloque "Entrada y salida de efectivo" debe mostrar el movimiento
+             con el importe correcto y el total de la sección debe actualizarse.
+
+        Este test cubre la integración backend del flujo completo de refresco
+        que ejecuta el componente OWL ClosingPopup al recibir el cierre del
+        CashMovePopup (la prop `close` llama `this.loadClosingData()`).
+        """
+        # ── Preparación de la sesión con control de caja ─────────────────
+        cash_pm = self._make_fresh_cash_pm()
+        config = self.env["pos.config"].create({
+            "name": "Config Cierre con Movimientos",
+            "pos_non_touch": True,
+            "cash_control": True,
+            "payment_method_ids": [(6, 0, [cash_pm.id])],
+        })
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": config.id}
+        )
+        session.action_pos_session_open()
+
+        # ── Paso 1: Carga inicial (simula el primer loadClosingData del ClosingPopup) ──
+        data_before = session.get_closing_control_data()
+        self.assertIn("default_cash_details", data_before,
+                      "La carga inicial debe incluir default_cash_details")
+
+        cash_details_before = data_before.get("default_cash_details") or {}
+        moves_before = cash_details_before.get("moves", [])
+
+        # Ningún movimiento manual todavía
+        self.assertEqual(
+            len(moves_before), 0,
+            f"Antes de la salida no debe haber movimientos en E/S de efectivo, "
+            f"pero se encontraron: {moves_before}"
+        )
+
+        # ── Paso 2: El usuario registra una SALIDA de caja ────────────────
+        salida_importe = 75.50
+        session.try_cash_in_out(
+            "out",
+            salida_importe,
+            "Pago a proveedor",
+            False,
+            {"formattedAmount": "75,50 €", "translatedType": "out"},
+        )
+
+        # ── Paso 3: Refresco automático (simula el segundo loadClosingData) ──
+        data_after = session.get_closing_control_data()
+        self.assertIn("default_cash_details", data_after,
+                      "Tras el movimiento el refresco debe incluir default_cash_details")
+
+        cash_details_after = data_after.get("default_cash_details") or {}
+        moves_after = cash_details_after.get("moves", [])
+
+        # ── Verificación 1: el movimiento aparece en la sección E/S ──────
+        self.assertGreater(
+            len(moves_after), 0,
+            "Tras la salida de caja debe aparecer al menos un movimiento en "
+            "la sección 'Entrada y salida de efectivo'"
+        )
+
+        move_amounts = [abs(m.get("amount", 0)) for m in moves_after]
+        self.assertIn(
+            salida_importe, move_amounts,
+            f"El movimiento de salida de {salida_importe}€ debe aparecer en los moves "
+            f"tras el refresco. Moves encontrados: {moves_after}"
+        )
+
+        # ── Verificación 2: el nombre/razón aparece en el movimiento ─────
+        move_names = [m.get("name", "") for m in moves_after]
+        self.assertTrue(
+            any("Pago a proveedor" in (n or "") for n in move_names),
+            f"El motivo 'Pago a proveedor' debe aparecer en alguno de los moves: {move_names}"
+        )
+
+        # ── Verificación 3: el total de la sesión refleja la salida ──────
+        # El campo `amount` en cash_details es el total en caja (ventas + entradas - salidas)
+        # Una salida debe reducir (o reflejarse) en el balance visible
+        cash_amount_after = cash_details_after.get("amount", 0)
+        # El total de moves debe coincidir con la suma de los movimientos registrados
+        total_moves = sum(m.get("amount", 0) for m in moves_after)
+        self.assertAlmostEqual(
+            abs(total_moves), salida_importe, places=2,
+            msg=f"La suma de moves ({total_moves}) debe reflejar la salida de {salida_importe}€"
+        )
+
 
 
