@@ -102,7 +102,7 @@ export class ClosingPopup extends Component {
     }
 
     formatCurrency(amount) {
-        if (amount === undefined || amount === null) return "0,00 €";
+        if (amount === undefined || amount === null) amount = 0;
         const iso = this.state.currencyName || "EUR";
         return new Intl.NumberFormat("es-ES", {
             style: "currency",
