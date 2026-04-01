@@ -11,6 +11,32 @@
                     <field name="currency_id" invisible="1" />
                     <field name="available_payment_method_ids" invisible="1" />
 
+                    <!-- Resumen de importes: fuente grande, alineado a la derecha -->
+                    <div class="d-flex justify-content-end align-items-center gap-5 p-3 bg-light rounded mb-3">
+                        <div class="text-end">
+                            <small class="text-muted d-block">Total a pagar</small>
+                            <field name="amount_due" widget="monetary"
+                                options="{'currency_field': 'currency_id'}"
+                                readonly="1" nolabel="1"
+                                class="fs-3 fw-bolder"/>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted d-block">Pagado</small>
+                            <!-- Rojo: amount_paid es menor que amount_due -->
+                            <field name="amount_paid" widget="monetary"
+                                options="{'currency_field': 'currency_id'}"
+                                readonly="1" nolabel="1"
+                                class="fs-3 fw-bolder text-danger"
+                                invisible="amount_paid >= amount_due"/>
+                            <!-- Verde: amount_paid cubre o supera amount_due -->
+                            <field name="amount_paid" widget="monetary"
+                                options="{'currency_field': 'currency_id'}"
+                                readonly="1" nolabel="1"
+                                class="fs-3 fw-bolder text-success"
+                                invisible="amount_paid &lt; amount_due"/>
+                        </div>
+                    </div>
+
                     <separator string="Registrar Pago" />
 
                     <group>
@@ -23,16 +49,6 @@
                             invisible="not is_cash_payment"
                             readonly="1" />
                         <button name="action_add_payment" type="object" string="Añadir" />
-                    </group>
-
-                    <group string="Resumen">
-                        <field name="amount_due" widget="monetary"
-                            options="{'currency_field': 'currency_id'}"
-                            string="Total a pagar"
-                            readonly="1" />
-                        <field name="amount_paid" widget="monetary"
-                            options="{'currency_field': 'currency_id'}"
-                            string="Pagado" />
                     </group>
 
                     <separator string="Pagos registrados" />
@@ -69,22 +85,29 @@
                     <field name="order_id" invisible="1" />
                     <field name="payment_method_id" invisible="1" />
 
-                    <group>
-                        <group string="Importes">
+                    <div class="d-flex justify-content-end align-items-end gap-5 p-3 bg-light rounded mb-3">
+                        <div class="text-end">
+                            <small class="text-muted d-block">Total a pagar</small>
                             <field name="amount_due" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
-                                string="Total a pagar"
-                                readonly="1" />
+                                readonly="1" nolabel="1"
+                                class="fs-3 fw-bolder"/>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted d-block">Importe entregado</small>
                             <field name="amount_tendered" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
-                                string="Importe entregado" />
+                                nolabel="1"
+                                class="fs-3 fw-bolder text-primary"/>
+                        </div>
+                        <div class="text-end" invisible="not is_cash_payment">
+                            <small class="text-muted d-block">Cambio a devolver</small>
                             <field name="amount_change" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
-                                string="Cambio a devolver"
-                                readonly="1"
-                                invisible="not is_cash_payment" />
-                        </group>
-                    </group>
+                                readonly="1" nolabel="1"
+                                class="fs-3 fw-bolder text-warning"/>
+                        </div>
+                    </div>
                 </sheet>
                 <footer>
                     <button name="action_validate" type="object"
