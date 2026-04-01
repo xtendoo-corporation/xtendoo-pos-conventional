@@ -18,7 +18,12 @@ class PosMakePaymentWizard(models.TransientModel):
     amount_tendered = fields.Monetary(string="Importe Entregado", default=0.0)
     amount_change = fields.Monetary(string="Cambio a Devolver", compute="_compute_amount_change")
     is_cash_payment = fields.Boolean(compute="_compute_is_cash_payment")
-    payment_ids = fields.Many2many(comodel_name="pos.payment", compute="_compute_payment_ids", string="Pagos Registrados")
+    payment_ids = fields.Many2many(
+        comodel_name="pos.payment",
+        compute="_compute_payment_ids",
+        inverse="_inverse_payment_ids",
+        string="Pagos Registrados",
+    )
     payment_method_id = fields.Many2one(
         "pos.payment.method",
         string="Diario",
@@ -34,6 +39,21 @@ class PosMakePaymentWizard(models.TransientModel):
     def _compute_payment_ids(self):
         for wizard in self:
             wizard.payment_ids = wizard.order_id.payment_ids
+
+    def _inverse_payment_ids(self):
+        """Elimina del pedido los pagos que el usuario quitó de la lista."""
+        for wizard in self:
+            to_remove = wizard.order_id.payment_ids - wizard.payment_ids
+            to_remove.unlink()
+
+    @api.onchange("payment_ids")
+    def _onchange_payment_ids_totals(self):
+        """Actualiza importes en tiempo real cuando el usuario elimina una fila."""
+        for wizard in self:
+            paid = sum(wizard.payment_ids.mapped("amount"))
+            wizard.amount_paid = paid
+            due = wizard.order_id.amount_total - paid
+            wizard.amount_due = due if due > 0 else 0.0
 
     @api.depends("payment_method_id")
     def _compute_is_cash_payment(self):
