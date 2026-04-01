@@ -81,7 +81,7 @@
                                     type="button"
                                     t-on-click="pasteCashTotal"
                                     t-att-title="'Rellenar con el total cobrado: ' + formatCurrency(state.cashDetails.amount)">
-                                <i class="fa fa-level-down me-1"/>
+                                <i class="fa fa-paste me-1"/>
                                 <t t-esc="formatCurrency(state.cashDetails.amount)"/>
                             </button>
                         </div>
