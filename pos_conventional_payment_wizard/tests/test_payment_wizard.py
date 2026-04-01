@@ -82,9 +82,10 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         self.assertEqual(result.get("res_model"), "pos.make.payment.wizard")
 
     def test_07_pay_with_invalid_method_returns_false(self):
-        """Un método de pago inexistente devuelve False."""
+        """Un método de pago inexistente devuelve False (requiere pedido con importe > 0)."""
         session = self._open_session()
         order = self._make_draft_order(session)
+        self._add_line(order)  # el pedido debe tener importe > 0 para llegar a la validación del método
         result = order.action_pos_convention_pay_with_method("invalid")
         self.assertFalse(result)
 
@@ -375,3 +376,85 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         self.assertEqual(result.get("type"), "ir.actions.act_window")
         self.assertEqual(result.get("res_model"), "pos.make.payment.wizard")
 
+    # ── Validación importe cero ────────────────────────────────────────────
+
+    def test_31_action_pay_cash_zero_amount_raises_error(self):
+        """action_pay_cash lanza UserError si el pedido tiene importe cero."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        # Pedido sin líneas → amount_total = 0
+        with self.assertRaises(UserError) as ctx:
+            order.action_pay_cash()
+        self.assertIn("importe cero", str(ctx.exception).lower())
+
+    def test_32_action_pay_card_zero_amount_raises_error(self):
+        """action_pay_card lanza UserError si el pedido tiene importe cero."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        with self.assertRaises(UserError) as ctx:
+            order.action_pay_card()
+        self.assertIn("importe cero", str(ctx.exception).lower())
+
+    def test_33_action_pos_convention_pay_with_method_zero_amount_raises_error(self):
+        """action_pos_convention_pay_with_method lanza UserError con importe cero."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        with self.assertRaises(UserError) as ctx:
+            order.action_pos_convention_pay_with_method(self.cash_pm.id)
+        self.assertIn("importe cero", str(ctx.exception).lower())
+
+    def test_34_wizard_execute_validation_zero_amount_raises_error(self):
+        """El wizard lanza UserError al validar un pedido con importe cero."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        # Crear wizard con importe 0 (pedido vacío)
+        wizard = self.env["pos.make.payment.wizard"].with_context(active_id=order.id).create({
+            "order_id": order.id,
+            "amount_tendered": 0.0,
+            "payment_method_id": self.cash_pm.id,
+        })
+        with self.assertRaises(UserError) as ctx:
+            wizard.action_validate()
+        self.assertIn("importe cero", str(ctx.exception).lower())
+
+    def test_35_action_pay_cash_with_lines_does_not_raise(self):
+        """action_pay_cash NO lanza error cuando el pedido tiene líneas con importe > 0."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        self.assertGreater(order.amount_total, 0)
+        result = order.action_pay_cash()
+        self.assertEqual(result.get("type"), "ir.actions.act_window")
+
+    def test_36_action_pay_card_with_lines_does_not_raise(self):
+        """action_pay_card NO lanza error cuando el pedido tiene líneas con importe > 0.
+        El pago con tarjeta completa el cobro en el momento y puede devolver
+        ir.actions.client (nuevo pedido) o ir.actions.act_window (wizard)."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        self.assertGreater(order.amount_total, 0)
+        result = order.action_pay_card()
+        self.assertIsInstance(result, dict)
+        self.assertIn(result.get("type"), ("ir.actions.act_window", "ir.actions.client"))
+
+    def test_37_action_pos_convention_pay_with_method_with_lines_does_not_raise(self):
+        """action_pos_convention_pay_with_method con importe > 0 abre el wizard."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        self.assertGreater(order.amount_total, 0)
+        result = order.action_pos_convention_pay_with_method(self.cash_pm.id)
+        self.assertIsNotNone(result)
+
+    def test_38_zero_amount_error_message_is_informative(self):
+        """El mensaje de error de importe cero es informativo y menciona 'productos'."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        with self.assertRaises(UserError) as ctx:
+            order.action_pay_cash()
+        error_msg = str(ctx.exception).lower()
+        self.assertTrue(
+            "importe cero" in error_msg or "productos" in error_msg,
+            f"El mensaje de error debería mencionar 'importe cero' o 'productos', pero fue: {error_msg}"
+        )

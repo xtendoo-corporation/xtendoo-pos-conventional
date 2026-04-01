@@ -4,6 +4,7 @@ import { registry } from "@web/core/registry";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { useService } from "@web/core/utils/hooks";
 import { Component, useState, onWillStart, onWillUpdateProps } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 
 export class PosPaymentButtons extends Component {
     static template = "pos_conventional_payment_wizard.PosPaymentButtons";
@@ -12,6 +13,7 @@ export class PosPaymentButtons extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
+        this.notification = useService("notification");
         this.state = useState({
             methods: [],
         });
@@ -54,6 +56,28 @@ export class PosPaymentButtons extends Component {
     }
 
     async onPaymentMethodClick(methodId) {
+        // Validar que el pedido tiene importe > 0 antes de cobrar
+        const amountTotal = this.props.record.data.amount_total || 0;
+        const linesCount = (this.props.record.data.lines && this.props.record.data.lines.currentIds)
+            ? this.props.record.data.lines.currentIds.length
+            : 0;
+
+        if (linesCount === 0) {
+            this.notification.add(
+                _t("No se puede cobrar un pedido sin líneas. Añada productos al pedido."),
+                { type: "warning", title: _t("Pedido vacío"), sticky: false }
+            );
+            return;
+        }
+
+        if (amountTotal <= 0) {
+            this.notification.add(
+                _t("No se puede cobrar un pedido con importe cero o negativo."),
+                { type: "warning", title: _t("Importe inválido"), sticky: false }
+            );
+            return;
+        }
+
         // Asegurar que el pedido está guardado antes de pagar
         const saved = await this.props.record.save();
         if (!saved && !this.props.record.resId) {

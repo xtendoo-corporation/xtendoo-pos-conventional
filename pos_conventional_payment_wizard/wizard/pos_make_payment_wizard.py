@@ -182,6 +182,9 @@ class PosMakePaymentWizard(models.TransientModel):
         print(f"[WIZARD]   order={self.order_id.id} state={self.order_id.state} print_invoice={print_invoice}")
         print(f"[WIZARD]   amount_tendered={self.amount_tendered} amount_paid={self.amount_paid} amount_total={self.amount_total} amount_change={self.amount_change}")
 
+        if self.amount_total <= 0:
+            raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos al pedido."))
+
         total_covered = self.amount_paid + self.amount_tendered
         if total_covered < self.amount_total - 0.01:
             print(f"[WIZARD]   ERROR: falta importe total_covered={total_covered} amount_total={self.amount_total}")

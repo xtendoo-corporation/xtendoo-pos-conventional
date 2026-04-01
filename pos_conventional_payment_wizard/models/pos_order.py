@@ -35,6 +35,9 @@ class PosOrder(models.Model):
         print(f"[PAYMENT]   config_id={self.config_id.id} name={self.config_id.name}")
         print(f"[PAYMENT]   all payment methods: {[(m.id, m.name, m.journal_id.type) for m in self.config_id.payment_method_ids]}")
 
+        if self.amount_total <= 0:
+            raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos al pedido."))
+
         cash_method = self.config_id.payment_method_ids.filtered('is_cash_count')[:1]
         print(f"[PAYMENT]   cash_method by is_cash_count: {cash_method} -> id={cash_method.id if cash_method else None} name={cash_method.name if cash_method else None}")
 
@@ -66,6 +69,9 @@ class PosOrder(models.Model):
         print(f"[PAYMENT] action_pay_card called for order id={self.id} name={self.name}")
         print(f"[PAYMENT]   all payment methods: {[(m.id, m.name, m.journal_id.type) for m in self.config_id.payment_method_ids]}")
 
+        if self.amount_total <= 0:
+            raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos al pedido."))
+
         card_method = self.config_id.payment_method_ids.filtered(lambda p: p.journal_id.type == 'bank')[:1]
         print(f"[PAYMENT]   card_method by journal.type=bank: {card_method} -> id={card_method.id if card_method else None} name={card_method.name if card_method else None}")
 
@@ -81,6 +87,9 @@ class PosOrder(models.Model):
         print("=" * 60)
         print(f"[PAYMENT] action_pos_convention_pay_with_method called for order id={self.id}")
         print(f"[PAYMENT]   payment_method_id param={payment_method_id} type={type(payment_method_id)}")
+
+        if self.amount_total <= 0:
+            raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos al pedido."))
 
         payment_method = payment_method_id
         if not hasattr(payment_method, "id"):
