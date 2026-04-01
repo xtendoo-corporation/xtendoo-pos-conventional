@@ -1116,6 +1116,18 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
             "El prop 'title' del Dialog debe usar la expresión JS directa con state.sessionName",
         )
 
+        # Verificar que existe la banda de color con el número de sesión
+        self.assertIn(
+            "alert alert-warning",
+            content,
+            "El ClosingPopup debe tener una banda de color (alert-warning) con el número de sesión",
+        )
+        self.assertIn(
+            "state.sessionName",
+            content,
+            "La banda de sesión debe mostrar state.sessionName",
+        )
+
     def test_55_closing_popup_cash_moves_section_refreshes_after_cash_out(self):
         """
         Escenario completo del ClosingPopup:
