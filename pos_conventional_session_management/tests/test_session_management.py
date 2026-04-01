@@ -1077,5 +1077,44 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
             self.assertIn(50.0, move_amounts,
                           "El movimiento de entrada de 50€ debe aparecer en los moves tras el refresco")
 
+    def test_54_closing_popup_xml_uses_direct_props_not_t_att(self):
+        """
+        Regresión: verifica que closing_popup.xml NO usa 't-att-' en el
+        componente <Dialog>. En OWL, 't-att-propname' sólo es válido para
+        atributos de elementos HTML nativos. En componentes los props ya son
+        expresiones JS y deben escribirse directamente (title="expr").
+
+        Bug detectado: 't-att-title' en <Dialog> lanzaba
+        OwlError: 't-att makes no sense on component'.
+        """
+        import os
+        xml_path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "static", "src", "xml", "closing_popup.xml",
+        )
+        xml_path = os.path.normpath(xml_path)
+        self.assertTrue(os.path.exists(xml_path), f"No se encontró {xml_path}")
+
+        with open(xml_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Detectar t-att- sobre el tag Dialog (el componente OWL)
+        import re
+        # Busca líneas con <Dialog ... t-att-... para detectar el patrón incorrecto
+        bad_pattern = re.compile(r"<Dialog[^>]*\bt-att-\w+", re.DOTALL)
+        match = bad_pattern.search(content)
+        self.assertIsNone(
+            match,
+            "closing_popup.xml usa 't-att-' en el componente <Dialog>. "
+            "Los props OWL ya son expresiones: usa 'propname=\"expr\"' en vez de 't-att-propname'.",
+        )
+
+        # Verificar que 'title' se pasa como prop directo (sin t-att-)
+        self.assertIn(
+            'title="state.sessionName',
+            content,
+            "El prop 'title' del Dialog debe usar la expresión JS directa con state.sessionName",
+        )
+
 
 

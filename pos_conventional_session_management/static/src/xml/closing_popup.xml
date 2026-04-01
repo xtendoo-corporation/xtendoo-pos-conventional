@@ -22,7 +22,7 @@
 
     <t t-name="pos_conventional_session_management.ClosingPopup">
         <Dialog contentClass="'close-pos-popup'" size="'lg'"
-                t-att-title="state.sessionName ? 'Cerrando caja — ' + state.sessionName : 'Cerrando la caja registradora'">
+                title="state.sessionName ? 'Cerrando caja — ' + state.sessionName : 'Cerrando la caja registradora'">
             <div class="o_closing_popup_content">
                 <div t-if="!state.loading" class="p-3 bg-light rounded mb-3">
                     <div class="d-flex justify-content-between align-items-center">
