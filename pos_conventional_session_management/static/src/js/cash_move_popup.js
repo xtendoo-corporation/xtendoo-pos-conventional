@@ -2,7 +2,7 @@
 
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
-import { Component, useState, onWillStart, onMounted } from "@odoo/owl";
+import { Component, useState, useRef, onWillStart, onMounted } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { registry } from "@web/core/registry";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
@@ -19,6 +19,7 @@ export class CashMovePopup extends Component {
         this.orm = useService("orm");
         this.notification = useService("notification");
         this.action = useService("action");
+        this.amountInput = useRef("amountInput");
 
         this.state = useState({
             type: "out",
@@ -27,12 +28,17 @@ export class CashMovePopup extends Component {
             loading: false,
             currencySymbol: "€",
             currencyPosition: "after",
-            cashSalesTotal: 0,
-            cashSalesTotalFormatted: "",
         });
 
         onWillStart(async () => {
             await this.loadCurrencyInfo();
+        });
+
+        onMounted(() => {
+            if (this.amountInput.el) {
+                this.amountInput.el.focus();
+                this.amountInput.el.select();
+            }
         });
     }
 
@@ -49,22 +55,6 @@ export class CashMovePopup extends Component {
             }
         } catch (error) {
             console.error("Error loading currency info:", error);
-        }
-        try {
-            const closingData = await this.orm.call("pos.session", "get_closing_control_data", [this.props.sessionId]);
-            const cashDetails = closingData.default_cash_details;
-            if (cashDetails) {
-                this.state.cashSalesTotal = cashDetails.amount || 0;
-                this.state.cashSalesTotalFormatted = this.formatCurrency(this.state.cashSalesTotal);
-            }
-        } catch (error) {
-            console.error("Error loading cash sales total:", error);
-        }
-    }
-
-    pasteCashSalesTotal() {
-        if (this.state.cashSalesTotal > 0) {
-            this.state.amount = this.state.cashSalesTotal.toFixed(2).replace(".", ",");
         }
     }
 
