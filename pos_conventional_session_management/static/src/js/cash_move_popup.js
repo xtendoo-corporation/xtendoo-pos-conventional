@@ -27,6 +27,8 @@ export class CashMovePopup extends Component {
             loading: false,
             currencySymbol: "€",
             currencyPosition: "after",
+            cashSalesTotal: 0,
+            cashSalesTotalFormatted: "",
         });
 
         onWillStart(async () => {
@@ -47,6 +49,22 @@ export class CashMovePopup extends Component {
             }
         } catch (error) {
             console.error("Error loading currency info:", error);
+        }
+        try {
+            const closingData = await this.orm.call("pos.session", "get_closing_control_data", [this.props.sessionId]);
+            const cashDetails = closingData.default_cash_details;
+            if (cashDetails) {
+                this.state.cashSalesTotal = cashDetails.amount || 0;
+                this.state.cashSalesTotalFormatted = this.formatCurrency(this.state.cashSalesTotal);
+            }
+        } catch (error) {
+            console.error("Error loading cash sales total:", error);
+        }
+    }
+
+    pasteCashSalesTotal() {
+        if (this.state.cashSalesTotal > 0) {
+            this.state.amount = this.state.cashSalesTotal.toFixed(2).replace(".", ",");
         }
     }
 

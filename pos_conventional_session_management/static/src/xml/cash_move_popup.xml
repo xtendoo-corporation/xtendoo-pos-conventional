@@ -25,12 +25,21 @@
                         </span>
                         <input type="text"
                                class="form-control form-control-lg text-end cash-amount-input"
+                               t-ref="amountInput"
                                t-att-value="state.amount"
                                t-on-input="(ev) => state.amount = ev.target.value"
                                placeholder="0,00"/>
                         <span t-if="state.currencyPosition === 'after'" class="input-group-text">
                             <t t-esc="state.currencySymbol"/>
                         </span>
+                        <button t-if="state.cashSalesTotal > 0"
+                                class="btn btn-outline-secondary"
+                                type="button"
+                                t-on-click="pasteCashSalesTotal"
+                                t-att-title="'Rellenar con el total cobrado en efectivo: ' + state.cashSalesTotalFormatted">
+                            <i class="fa fa-level-down me-1"/>
+                            <t t-esc="state.cashSalesTotalFormatted"/>
+                        </button>
                     </div>
                 </div>
                 <div class="mb-3">
