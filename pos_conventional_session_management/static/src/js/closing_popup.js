@@ -49,7 +49,6 @@ export class ClosingPopup extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.dialog = useService("dialog");
-        this.report = useService("report");
 
         this.state = useState({
             loading: true,
@@ -196,7 +195,16 @@ export class ClosingPopup extends Component {
 
     async printDailySales() {
         try {
-            await this.report.doAction("point_of_sale.sale_details_report", [this.props.sessionId]);
+            await this.action.doAction({
+                type: "ir.actions.report",
+                report_type: "qweb-pdf",
+                report_name: "point_of_sale.report_saledetails",
+                report_file: "point_of_sale.report_saledetails",
+                context: {
+                    active_ids: [this.props.sessionId],
+                    active_model: "pos.session",
+                },
+            });
         } catch (error) {
             console.error("Error generating daily sale report:", error);
             this.notification.add(_t("Error al generar el informe de venta diaria"), { type: "danger" });

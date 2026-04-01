@@ -937,4 +937,84 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
             f"close_session_from_ui con diff_pairs=[] debe ser exitoso: {result}",
         )
 
+    # ── Daily Sale report (botón "Venta Diaria" del ClosingPopup) ─────────
+
+    def test_49_daily_sale_report_action_exists(self):
+        """
+        El botón 'Venta Diaria' del ClosingPopup usa la acción
+        'point_of_sale.sale_details_report'. Verifica que existe y tiene el
+        tipo de informe correcto (qweb-pdf) para que this.action.doAction()
+        funcione correctamente en el backend.
+        """
+        report_action = self.env.ref("point_of_sale.sale_details_report", raise_if_not_found=False)
+        self.assertIsNotNone(
+            report_action,
+            "La acción 'point_of_sale.sale_details_report' no existe — "
+            "el botón 'Venta Diaria' del ClosingPopup fallaría",
+        )
+        self.assertEqual(
+            report_action.report_type, "qweb-pdf",
+            "El informe debe ser qweb-pdf para que this.action.doAction() "
+            "lo descargue correctamente en el navegador",
+        )
+        self.assertEqual(
+            report_action.model, "pos.session",
+            "El informe debe estar asociado al modelo pos.session",
+        )
+
+    def test_50_daily_sale_report_can_render_for_session(self):
+        """
+        Verifica que el informe 'point_of_sale.sale_details_report' puede
+        invocarse para una sesión válida. Simula lo que hace el frontend
+        cuando el usuario hace clic en 'Venta Diaria'.
+        El botón JS construye: { context: { active_ids: [sessionId] } }
+        y usa this.action.doAction() con type='ir.actions.report'.
+        """
+        config = self._make_no_cash_control_config()
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": config.id}
+        )
+        session.write({"state": "opened", "start_at": fields.Datetime.now()})
+
+        report_action = self.env.ref("point_of_sale.sale_details_report")
+
+        # Verificar que report_action existe y es del modelo pos.session
+        self.assertEqual(report_action.model, "pos.session",
+                         "El informe debe estar vinculado a pos.session")
+
+        # Verificar que el método report_action es invocable para la sesión
+        # (puede devolver un ir.actions.report o un act_window de wizard de fecha)
+        try:
+            result = report_action.with_context(
+                active_ids=[session.id],
+                active_model="pos.session",
+            ).report_action([session.id])
+            self.assertIsInstance(result, dict,
+                                  "report_action debe devolver un dict de acción Odoo")
+            valid_types = ("ir.actions.report", "ir.actions.act_window", "ir.actions.client")
+            self.assertIn(
+                result.get("type"), valid_types,
+                f"El tipo de acción debe ser uno de {valid_types}, "
+                f"obtenido: {result.get('type')}",
+            )
+        except Exception as exc:
+            self.fail(
+                f"El informe 'Venta Diaria' falló al invocarse: {exc}\n"
+                f"El botón 'Venta Diaria' del ClosingPopup quedaría roto",
+            )
+
+    def test_51_daily_sale_report_action_has_correct_report_name(self):
+        """
+        Verifica que el report_name es 'point_of_sale.report_saledetails'.
+        El componente JS ClosingPopup.printDailySales() usa este nombre
+        directamente en el objeto de acción { report_name: '...' }.
+        Si cambia, el frontend dejaría de descargar el PDF correcto.
+        """
+        report_action = self.env.ref("point_of_sale.sale_details_report")
+        self.assertEqual(
+            report_action.report_name,
+            "point_of_sale.report_saledetails",
+            "report_name debe coincidir con el usado en ClosingPopup.printDailySales()",
+        )
+
 
