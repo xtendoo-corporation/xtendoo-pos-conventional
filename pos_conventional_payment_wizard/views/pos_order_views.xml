@@ -25,30 +25,4 @@
             </xpath>
         </field>
     </record>
-
-    <record id="view_pos_pos_form_payment_ribbon" model="ir.ui.view">
-        <field name="name">pos.order.form.payment.ribbon</field>
-        <field name="model">pos.order</field>
-        <field name="inherit_id" ref="pos_conventional_core.view_pos_pos_form_inherit_pos_conventional_core"/>
-        <field name="arch" type="xml">
-            <xpath expr="//div[hasclass('oe_link_ribbon')]" position="replace">
-                <widget name="web_ribbon" title="EFECTIVO" bg_color="text-bg-success"
-                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'EFECTIVO'"/>
-                <widget name="web_ribbon" title="TARJETA" bg_color="text-bg-success"
-                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'TARJETA'"/>
-                <widget name="web_ribbon" title="CARD" bg_color="text-bg-success"
-                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'CARD'"/>
-                <widget name="web_ribbon" title="BANCO" bg_color="text-bg-success"
-                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'BANCO'"/>
-                <widget name="web_ribbon" title="TRANSFERENCIA" bg_color="text-bg-success"
-                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'TRANSFERENCIA'"/>
-                <widget name="web_ribbon" title="VALE" bg_color="text-bg-success"
-                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'VALE'"/>
-                <widget name="web_ribbon" title="PAGO MÚLTIPLE" bg_color="text-bg-success"
-                        invisible="state not in ('paid', 'done') or payment_method_ribbon != 'PAGO MÚLTIPLE'"/>
-                <widget name="web_ribbon" title="PAGADO" bg_color="text-bg-success"
-                        invisible="state not in ('paid', 'done') or not payment_method_ribbon or payment_method_ribbon in ('EFECTIVO', 'TARJETA', 'CARD', 'BANCO', 'TRANSFERENCIA', 'VALE', 'PAGO MÚLTIPLE')"/>
-            </xpath>
-        </field>
-    </record>
 </odoo>

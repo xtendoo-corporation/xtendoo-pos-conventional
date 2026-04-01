@@ -31,14 +31,6 @@
                 <field name="has_order_lines" invisible="1"/>
             </xpath>
 
-            <!-- Cinta de método de pago (visible solo cuando está pagado) -->
-            <xpath expr="//sheet" position="before">
-                <div class="oe_link_ribbon bg-success"
-                     invisible="not payment_method_ribbon or state not in ('paid', 'done')"
-                     style="z-index: 1000;">
-                    <field name="payment_method_ribbon"/>
-                </div>
-            </xpath>
 
             <!-- Reemplazar el grupo de campos del pedido con layout de dos columnas -->
             <xpath expr="//group[@name='order_fields']" position="replace">
