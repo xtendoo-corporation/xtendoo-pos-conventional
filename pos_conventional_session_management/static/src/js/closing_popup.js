@@ -49,6 +49,7 @@ export class ClosingPopup extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.dialog = useService("dialog");
+        this.report = useService("report");
 
         this.state = useState({
             loading: true,
@@ -191,6 +192,15 @@ export class ClosingPopup extends Component {
             sessionId: this.props.sessionId,
             close: () => { this.loadClosingData(); },
         });
+    }
+
+    async printDailySales() {
+        try {
+            await this.report.doAction("point_of_sale.sale_details_report", [this.props.sessionId]);
+        } catch (error) {
+            console.error("Error generating daily sale report:", error);
+            this.notification.add(_t("Error al generar el informe de venta diaria"), { type: "danger" });
+        }
     }
 }
 
