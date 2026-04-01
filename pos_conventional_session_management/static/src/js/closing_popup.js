@@ -55,6 +55,7 @@ export class ClosingPopup extends Component {
             notes: "",
             payments: {},
             sessionData: null,
+            sessionName: "",
             ordersDetails: { quantity: 0, amount: 0 },
             cashDetails: null,
             paymentMethods: [],
@@ -69,11 +70,18 @@ export class ClosingPopup extends Component {
     }
 
     async loadClosingData() {
+        // Guardar inputs previos del usuario para no perderlos al refrescar
+        const previousPayments = { ...this.state.payments };
+
         try {
             const sessionId = this.props.sessionId;
-            const data = await this.orm.call("pos.session", "get_closing_control_data", [sessionId]);
+            const [data, sessionInfo] = await Promise.all([
+                this.orm.call("pos.session", "get_closing_control_data", [sessionId]),
+                this.orm.read("pos.session", [sessionId], ["name"]),
+            ]);
 
             this.state.sessionData = data;
+            this.state.sessionName = sessionInfo?.[0]?.name || "";
             this.state.ordersDetails = data.orders_details || { quantity: 0, amount: 0 };
             this.state.cashDetails = data.default_cash_details || null;
             this.state.paymentMethods = data.non_cash_payment_methods || [];
@@ -82,12 +90,18 @@ export class ClosingPopup extends Component {
             this.state.currencyName = data.currency_name || "EUR";
 
             if (this.state.cashDetails) {
-                this.state.payments[this.state.cashDetails.id] = { counted: "0" };
+                const prev = previousPayments[this.state.cashDetails.id];
+                this.state.payments[this.state.cashDetails.id] = {
+                    counted: prev?.counted !== undefined ? prev.counted : "0",
+                };
             }
 
             for (const pm of this.state.paymentMethods) {
                 if (pm.type === "bank") {
-                    this.state.payments[pm.id] = { counted: this.formatAmount(pm.amount) };
+                    const prev = previousPayments[pm.id];
+                    this.state.payments[pm.id] = {
+                        counted: prev?.counted !== undefined ? prev.counted : this.formatAmount(pm.amount),
+                    };
                 }
             }
             this.state.loading = false;

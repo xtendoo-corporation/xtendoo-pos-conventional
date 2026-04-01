@@ -1017,4 +1017,65 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
             "report_name debe coincidir con el usado en ClosingPopup.printDailySales()",
         )
 
+    def test_52_session_name_readable_for_closing_popup_title(self):
+        """
+        Verifica que pos.session tiene un campo 'name' no vacío,
+        que el ClosingPopup JS lee con orm.read para mostrar en el título.
+        El título del diálogo muestra 'Cerrando caja — <nombre_sesión>'.
+        """
+        config = self._make_no_cash_control_config()
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": config.id}
+        )
+        session.write({"state": "opened", "start_at": fields.Datetime.now()})
+
+        # Simular lo que hace el JS: orm.read("pos.session", [id], ["name"])
+        session_info = self.env["pos.session"].browse(session.id).read(["name"])
+        self.assertTrue(len(session_info) == 1, "Debe devolver exactamente un registro")
+        name = session_info[0].get("name", "")
+        self.assertTrue(name, "El campo 'name' de la sesión no debe estar vacío")
+        # El nombre normalmente tiene formato 'Config/XXXX'
+        self.assertIn("/", name, "El nombre de sesión suele tener formato 'Config/XXXX'")
+
+    def test_53_get_closing_control_data_idempotent_after_cash_move(self):
+        """
+        Verifica que get_closing_control_data puede llamarse varias veces
+        sin errores, simulando el refresco que hace el ClosingPopup JS
+        después de registrar un movimiento de efectivo (E/S).
+        El JS llama loadClosingData() cada vez que cierra el CashMovePopup.
+        """
+        config = self.env["pos.config"].create({
+            "name": "Config Refresco Cierre",
+            "pos_non_touch": True,
+            "cash_control": True,
+            "payment_method_ids": [(6, 0, [self._make_fresh_cash_pm().id])],
+        })
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": config.id}
+        )
+        session.action_pos_session_open()
+
+        # Primera llamada (carga inicial del ClosingPopup)
+        data1 = session.get_closing_control_data()
+        self.assertIn("orders_details", data1)
+        self.assertIn("currency_id", data1)
+
+        # Simular movimiento de efectivo (entrada)
+        session.try_cash_in_out(
+            "in", 50.0, "Fondo de cambio",
+            False, {"formattedAmount": "50,00 €", "translatedType": "in"},
+        )
+
+        # Segunda llamada tras el movimiento (refresco del ClosingPopup)
+        data2 = session.get_closing_control_data()
+        self.assertIn("orders_details", data2)
+        # Los moves deben haberse actualizado
+        cash_details = data2.get("default_cash_details")
+        if cash_details:
+            moves = cash_details.get("moves", [])
+            move_amounts = [m.get("amount", 0) for m in moves]
+            self.assertIn(50.0, move_amounts,
+                          "El movimiento de entrada de 50€ debe aparecer en los moves tras el refresco")
+
+
 
