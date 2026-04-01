@@ -83,16 +83,16 @@ class PosSession(models.Model):
     # ── Override: get_closing_control_data ───────────────────────────────
 
     def get_closing_control_data(self):
-        """Override para añadir currency_id al resultado.
+        """Override para añadir currency_id, currency_name y currency_symbol al resultado.
 
-        El componente JS ClosingPopup hace:
-            this.state.currencyId = data.currency_id
-        y lo pasa como prop a PaymentMethodBreakdown.  Odoo 19 no incluye este
-        campo en la respuesta estándar, así que lo añadimos aquí.
+        El componente JS ClosingPopup usa currency_name (código ISO p.ej. 'EUR', 'USD')
+        para formatear los importes con Intl.NumberFormat respetando la moneda de la empresa.
         """
         self.ensure_one()
         data = super().get_closing_control_data()
         data["currency_id"] = self.currency_id.id
+        data["currency_name"] = self.currency_id.name          # p.ej. 'EUR', 'USD'
+        data["currency_symbol"] = self.currency_id.symbol      # p.ej. '€', '$'
         return data
 
     # ── Override: create ─────────────────────────────────────────────────

@@ -23,10 +23,13 @@
     <t t-name="pos_conventional_session_management.ClosingPopup">
         <Dialog contentClass="'close-pos-popup'" size="'lg'" title="'Cerrando la caja registradora'">
             <div class="o_closing_popup_content">
-                <div t-if="!state.loading" class="d-flex justify-content-end mb-3">
-                    <div class="total-orders fw-bolder">
-                        <t t-esc="state.ordersDetails.quantity"/> pedidos:
-                        <span class="amount text-primary" t-esc="formatCurrency(state.ordersDetails.amount)"/>
+                <div t-if="!state.loading" class="p-3 bg-light rounded mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fs-4 fw-bold">Total Pedidos</span>
+                        <span class="fs-4 fw-bolder" t-esc="formatCurrency(state.ordersDetails.amount)"/>
+                    </div>
+                    <div class="text-end text-muted small mt-1">
+                        (<t t-esc="state.ordersDetails.quantity"/> pedidos)
                     </div>
                 </div>
                 <div t-if="state.loading" class="text-center py-5">
@@ -45,7 +48,8 @@
                             title="'Entrada y salida de efectivo'"
                             total_amount="cashMoveData.total"
                             transactions="cashMoveData.moves"
-                            currencyId="state.currencyId"/>
+                            currencyId="state.currencyId"
+                            currencyName="state.currencyName"/>
                         <div class="d-flex align-items-center justify-content-between border-start ps-2"
                              t-att-class="{'text-danger fw-bold': cashDiff !== 0}">
                             <span>Diferencia</span>
@@ -69,7 +73,7 @@
                     <div t-if="state.cashDetails" class="mb-3">
                         <label class="form-label fw-bold">Recuento de efectivo</label>
                         <input type="text"
-                               class="form-control cash-input w-100"
+                               class="form-control cash-input w-100 text-end"
                                t-att-value="state.payments[state.cashDetails.id]?.counted || '0'"
                                t-on-input="(ev) => this.onCashInputChange(ev)"/>
                     </div>
@@ -77,7 +81,7 @@
                         <t t-if="pm.type === 'bank' and pm.number !== 0">
                             <label class="form-label fw-bold"><t t-esc="pm.name"/> </label>
                             <input type="text"
-                                   class="form-control w-100"
+                                   class="form-control w-100 text-end"
                                    t-att-value="state.payments[pm.id]?.counted || '0'"
                                    t-on-input="(ev) => this.onPMInputChange(pm.id, ev)"/>
                         </t>

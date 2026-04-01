@@ -14,6 +14,7 @@ class PaymentMethodBreakdown extends Component {
         total_amount: { type: Number },
         transactions: { type: Array },
         currencyId: { type: Number, optional: true },
+        currencyName: { type: String, optional: true },
     };
 
     setup() {
@@ -25,9 +26,10 @@ class PaymentMethodBreakdown extends Component {
     }
 
     formatCurrency(amount) {
+        const iso = this.props.currencyName || "EUR";
         return new Intl.NumberFormat("es-ES", {
             style: "currency",
-            currency: "EUR",
+            currency: iso,
         }).format(amount);
     }
 }
@@ -57,6 +59,7 @@ export class ClosingPopup extends Component {
             paymentMethods: [],
             cashMoves: [],
             currencyId: null,
+            currencyName: "EUR",
         });
 
         onWillStart(async () => {
@@ -75,6 +78,7 @@ export class ClosingPopup extends Component {
             this.state.paymentMethods = data.non_cash_payment_methods || [];
             this.state.cashMoves = data.default_cash_details?.moves || [];
             this.state.currencyId = data.currency_id;
+            this.state.currencyName = data.currency_name || "EUR";
 
             if (this.state.cashDetails) {
                 this.state.payments[this.state.cashDetails.id] = { counted: "0" };
@@ -99,9 +103,10 @@ export class ClosingPopup extends Component {
 
     formatCurrency(amount) {
         if (amount === undefined || amount === null) return "0,00 €";
+        const iso = this.state.currencyName || "EUR";
         return new Intl.NumberFormat("es-ES", {
             style: "currency",
-            currency: "EUR",
+            currency: iso,
         }).format(amount);
     }
 
