@@ -6,6 +6,7 @@ import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
+import { CashMovePopup } from "./cash_move_popup";
 
 class PaymentMethodBreakdown extends Component {
     static template = "pos_conventional_session_management.PaymentMethodBreakdown";
@@ -186,7 +187,6 @@ export class ClosingPopup extends Component {
     }
 
     async cashMove() {
-        const { CashMovePopup } = await import("./cash_move_popup");
         this.dialog.add(CashMovePopup, {
             sessionId: this.props.sessionId,
             close: () => { this.loadClosingData(); },
