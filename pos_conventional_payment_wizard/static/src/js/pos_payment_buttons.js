@@ -63,6 +63,7 @@ export class PosPaymentButtons extends Component {
             : 0;
 
         if (linesCount === 0) {
+            this._playErrorBeep();
             this.notification.add(
                 _t("No se puede cobrar un pedido sin líneas. Añada productos al pedido."),
                 { type: "warning", title: _t("Pedido vacío"), sticky: false }
@@ -71,6 +72,7 @@ export class PosPaymentButtons extends Component {
         }
 
         if (amountTotal <= 0) {
+            this._playErrorBeep();
             this.notification.add(
                 _t("No se puede cobrar un pedido con importe cero o negativo."),
                 { type: "warning", title: _t("Importe inválido"), sticky: false }
@@ -105,6 +107,25 @@ export class PosPaymentButtons extends Component {
             }
         } catch (error) {
             console.error("Error al procesar pago:", error);
+        }
+    }
+
+    _playErrorBeep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            oscillator.type = "square";
+            oscillator.frequency.setValueAtTime(380, ctx.currentTime);
+            oscillator.frequency.setValueAtTime(280, ctx.currentTime + 0.15);
+            gainNode.gain.setValueAtTime(0.25, ctx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+            oscillator.start(ctx.currentTime);
+            oscillator.stop(ctx.currentTime + 0.35);
+        } catch (e) {
+            // Fallback silencioso si Web Audio API no está disponible
         }
     }
 }

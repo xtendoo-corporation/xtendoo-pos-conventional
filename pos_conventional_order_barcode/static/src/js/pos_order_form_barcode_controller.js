@@ -5,6 +5,7 @@ import { formView } from "@web/views/form/form_view";
 import { FormController } from "@web/views/form/form_controller";
 import { useService } from "@web/core/utils/hooks";
 import { onMounted, onWillUnmount } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 import { openUrlInHiddenPrintIframe } from "@pos_conventional_core/js/pos_print_iframe";
 
 export class PosOrderBarcodeFormController extends FormController {
@@ -19,15 +20,43 @@ export class PosOrderBarcodeFormController extends FormController {
         this.minBarcodeLength = 3;
         this.isProcessing = false;
         this.boundKeydownHandler = this.onKeyDown.bind(this);
+        this.boundPaymentButtonClickHandler = this._onPaymentButtonClick.bind(this);
 
         onMounted(() => {
             document.addEventListener("keydown", this.boundKeydownHandler, true);
+            // Capturar clicks en el botón "Pago" antes de que Odoo los procese
+            document.addEventListener("click", this.boundPaymentButtonClickHandler, true);
         });
 
         onWillUnmount(() => {
             document.removeEventListener("keydown", this.boundKeydownHandler, true);
+            document.removeEventListener("click", this.boundPaymentButtonClickHandler, true);
             if (this.barcodeTimeout) clearTimeout(this.barcodeTimeout);
         });
+    }
+
+    /**
+     * Intercepta el botón "Pago" (action_open_payment_popup) en fase de captura.
+     * Si el pedido tiene importe cero o no tiene líneas, bloquea la acción,
+     * reproduce el pitido de error y muestra una notificación de aviso.
+     */
+    _onPaymentButtonClick(ev) {
+        const btn = ev.target.closest('button[name="action_open_payment_popup"]');
+        if (!btn) return;
+
+        const record = this.model.root;
+        const amountTotal = record.data.amount_total || 0;
+        const linesCount = record.data.lines?.currentIds?.length || 0;
+
+        if (linesCount === 0 || amountTotal <= 0) {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
+            this._playErrorBeep();
+            this.notification.add(
+                _t("No se puede cobrar un pedido sin productos o con importe cero."),
+                { type: "warning", title: _t("Importe inválido"), sticky: false }
+            );
+        }
     }
 
     onKeyDown(ev) {

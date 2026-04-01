@@ -169,6 +169,10 @@ class PosOrder(models.Model):
         self.ensure_one()
         print("=" * 60)
         print(f"[PAYMENT] action_open_payment_popup called for order id={self.id} name={self.name}")
+
+        if self.amount_total <= 0:
+            raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos al pedido."))
+
         view = self.env.ref("pos_conventional_payment_wizard.view_pos_make_payment_wizard_form", False)
         print(f"[PAYMENT]   view ref: {view} id={view.id if view else None}")
         return {
