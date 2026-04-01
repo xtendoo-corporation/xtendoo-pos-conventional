@@ -13,10 +13,14 @@
                 <field name="cash_register_balance_start" invisible="1" />
                 <field name="cash_register_balance_end" invisible="1" />
                 <field name="cash_register_difference" invisible="1" />
-                <header>
-                    <h4 class="modal-title">Cerrando la caja registradora</h4>
-                </header>
+                <field name="session_name" invisible="1" />
                 <sheet>
+                    <!-- Título sin fondo: simple div dentro del sheet -->
+                    <div class="d-flex align-items-baseline gap-2 border-bottom pb-2 mb-3">
+                        <h4 class="mb-0">Cerrando la caja registradora</h4>
+                        <field name="session_name" class="text-muted fs-6" readonly="1" nolabel="1"/>
+                    </div>
+
                     <div invisible="state != 'input'">
                         <div class="mb-3" invisible="not cash_control">
                             <group string="Resumen de efectivo">
@@ -56,6 +60,7 @@
                 <footer>
                     <button name="action_close_session" string="Cerrar caja" type="object" class="btn-primary" invisible="state != 'input'" data-hotkey="q"/>
                     <button name="action_close_session" string="Continuar de todos modos" type="object" class="btn btn-primary" invisible="state != 'confirmation'" data-hotkey="q"/>
+                    <button name="action_open_cash_move_wizard" string="Entrada/Salida de efectivo" type="object" class="btn btn-secondary" invisible="state != 'input'" data-hotkey="c"/>
                     <button string="Cancelar" class="btn btn-secondary" special="cancel" data-hotkey="x"/>
                 </footer>
             </form>

@@ -66,6 +66,11 @@ class PosSessionClosingWizard(models.TransientModel):
         string="Movimientos de caja",
         readonly=True,
     )
+    session_name = fields.Char(
+        string="Nombre de sesión",
+        related="session_id.name",
+        readonly=True,
+    )
 
     @api.depends("session_id")
     def _compute_session_totals(self):
@@ -230,3 +235,22 @@ class PosSessionClosingWizard(models.TransientModel):
             "target": "new",
             "context": self.env.context,
         }
+
+    def action_open_cash_move_wizard(self):
+        """
+        Abre el wizard de entrada/salida de efectivo.
+        Pasa el ID del wizard de cierre para que al confirmar se recargue.
+        """
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Entrada/Salida de efectivo"),
+            "res_model": "pos.session.cash_move.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_session_id": self.session_id.id,
+                "closing_wizard_id": self.id,
+            },
+        }
+
