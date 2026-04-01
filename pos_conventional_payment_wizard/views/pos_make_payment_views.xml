@@ -11,29 +11,31 @@
                     <field name="currency_id" invisible="1" />
                     <field name="available_payment_method_ids" invisible="1" />
 
-                    <!-- Resumen de importes: fuente grande, alineado a la derecha -->
-                    <div class="d-flex justify-content-end align-items-center gap-5 p-3 bg-light rounded mb-3">
-                        <div class="text-end">
-                            <small class="text-muted d-block">Total a pagar</small>
-                            <field name="amount_due" widget="monetary"
+                    <!-- Resumen del ticket: filas apiladas, etiqueta e importe del mismo tamaño -->
+                    <div class="p-3 bg-light rounded mb-3">
+                        <!-- Fila 1: Total del ticket (fijo, nunca baja) -->
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                            <span class="fs-4 fw-bold">Total a pagar</span>
+                            <field name="amount_total" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 readonly="1" nolabel="1"
-                                class="fs-3 fw-bolder"/>
+                                class="fs-4 fw-bolder"/>
                         </div>
-                        <div class="text-end">
-                            <small class="text-muted d-block">Pagado</small>
-                            <!-- Rojo: amount_paid es menor que amount_due -->
-                            <field name="amount_paid" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                readonly="1" nolabel="1"
-                                class="fs-3 fw-bolder text-danger"
-                                invisible="amount_paid >= amount_due"/>
-                            <!-- Verde: amount_paid cubre o supera amount_due -->
-                            <field name="amount_paid" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                readonly="1" nolabel="1"
-                                class="fs-3 fw-bolder text-success"
-                                invisible="amount_paid &lt; amount_due"/>
+                        <!-- Fila 2: Pagado — rojo si no cubre el total, verde si lo cubre -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fs-4 fw-bold">Pagado</span>
+                            <div>
+                                <field name="amount_paid" widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    readonly="1" nolabel="1"
+                                    class="fs-4 fw-bolder text-danger"
+                                    invisible="amount_paid >= amount_total"/>
+                                <field name="amount_paid" widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    readonly="1" nolabel="1"
+                                    class="fs-4 fw-bolder text-success"
+                                    invisible="amount_paid &lt; amount_total"/>
+                            </div>
                         </div>
                     </div>
 
@@ -64,6 +66,7 @@
                     <separator string="Aún no hay pagos registrados para este pedido." invisible="payment_ids" />
                 </sheet>
                 <footer>
+                    <!-- amount_due sigue controlando si queda saldo pendiente -->
                     <button name="action_validate" type="object"
                         string="Confirmar Pago"
                         icon="fa-check"
@@ -85,27 +88,32 @@
                     <field name="order_id" invisible="1" />
                     <field name="payment_method_id" invisible="1" />
 
-                    <div class="d-flex justify-content-end align-items-end gap-5 p-3 bg-light rounded mb-3">
-                        <div class="text-end">
-                            <small class="text-muted d-block">Total a pagar</small>
-                            <field name="amount_due" widget="monetary"
+                    <!-- Resumen del ticket: filas apiladas, etiqueta e importe del mismo tamaño -->
+                    <div class="p-3 bg-light rounded mb-3">
+                        <!-- Fila 1: Total del ticket (fijo) -->
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                            <span class="fs-4 fw-bold">Total a pagar</span>
+                            <field name="amount_total" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 readonly="1" nolabel="1"
-                                class="fs-3 fw-bolder"/>
+                                class="fs-4 fw-bolder"/>
                         </div>
-                        <div class="text-end">
-                            <small class="text-muted d-block">Importe entregado</small>
+                        <!-- Fila 2: Importe entregado -->
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                            <span class="fs-4 fw-bold">Importe entregado</span>
                             <field name="amount_tendered" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 nolabel="1"
-                                class="fs-3 fw-bolder text-primary"/>
+                                class="fs-4 fw-bolder text-primary"/>
                         </div>
-                        <div class="text-end" invisible="not is_cash_payment">
-                            <small class="text-muted d-block">Cambio a devolver</small>
+                        <!-- Fila 3: Cambio (solo si es pago en efectivo) -->
+                        <div class="d-flex justify-content-between align-items-center"
+                             invisible="not is_cash_payment">
+                            <span class="fs-4 fw-bold">Cambio a devolver</span>
                             <field name="amount_change" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 readonly="1" nolabel="1"
-                                class="fs-3 fw-bolder text-warning"/>
+                                class="fs-4 fw-bolder text-warning"/>
                         </div>
                     </div>
                 </sheet>
