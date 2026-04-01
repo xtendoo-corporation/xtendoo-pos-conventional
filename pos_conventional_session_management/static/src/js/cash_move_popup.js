@@ -156,3 +156,4 @@ class CashMovePopupAction extends Component {
 }
 
 registry.category("actions").add("pos_conventional_cash_move_popup", CashMovePopupAction);
+registry.category("pos_conventional_dialogs").add("CashMovePopup", CashMovePopup);

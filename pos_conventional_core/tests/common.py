@@ -221,3 +221,15 @@ class PosConventionalTestCommon(TransactionCase):
             }
         )
 
+    def _make_no_cash_control_config(self):
+        """Crea un config POS non-touch SIN control de caja para tests de cierre limpio."""
+        pm = self._make_fresh_cash_pm(
+            name=f"PM NCC {self.env['ir.sequence'].next_by_code('pos.order') or ''}"
+        )
+        return self.env["pos.config"].create({
+            "name": "Test POS No Cash Control",
+            "pos_non_touch": True,
+            "cash_control": False,
+            "payment_method_ids": [(6, 0, [pm.id])],
+        })
+

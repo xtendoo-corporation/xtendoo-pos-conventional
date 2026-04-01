@@ -99,33 +99,32 @@ export class PosOrderListController extends ListController {
     }
 
     async onCloseCashRegister() {
-        // This will be overridden or called via dynamic import to avoid hard dependency on session_management
-        try {
-            const { ClosingPopup } = await odoo.loader.import("@pos_conventional_session_management/js/closing_popup");
-            const sessionId = this.currentSessionId || this.activeSessionId;
-            console.log("[CERRAR CAJA] onCloseCashRegister: sessionId=", sessionId, "currentSessionId=", this.currentSessionId, "activeSessionId=", this.activeSessionId);
-            if (!sessionId) {
-                console.error("[CERRAR CAJA] sessionId no disponible — no se puede abrir el popup de cierre");
-                return;
-            }
-            this.dialogService.add(ClosingPopup, {
-                sessionId: sessionId,
-                onSuccess: () => this.actionService.doAction("point_of_sale.action_pos_config_kanban"),
-                close: () => this.model.load(),
-            });
-        } catch (e) {
-            console.error("[CERRAR CAJA] Error al abrir ClosingPopup:", e);
+        const ClosingPopup = registry.category("pos_conventional_dialogs").get("ClosingPopup", null);
+        const sessionId = this.currentSessionId || this.activeSessionId;
+        console.log("[CERRAR CAJA] onCloseCashRegister: sessionId=", sessionId, "ClosingPopup disponible=", !!ClosingPopup);
+        if (!ClosingPopup) {
+            console.error("[CERRAR CAJA] ClosingPopup no disponible — ¿está instalado pos_conventional_session_management?");
+            return;
         }
+        if (!sessionId) {
+            console.error("[CERRAR CAJA] sessionId no disponible — no se puede abrir el popup de cierre");
+            return;
+        }
+        this.dialogService.add(ClosingPopup, {
+            sessionId: sessionId,
+            onSuccess: () => this.actionService.doAction("point_of_sale.action_pos_config_kanban"),
+            close: () => this.model.load(),
+        });
     }
 
     async onCashInOut() {
-        try {
-            const { CashMovePopup } = await odoo.loader.import("@pos_conventional_session_management/js/cash_move_popup");
-            const sessionId = this.currentSessionId || this.activeSessionId;
-            this.dialogService.add(CashMovePopup, { sessionId: sessionId, close: () => {} });
-        } catch (e) {
-            console.warn("CashMovePopup not available", e);
+        const CashMovePopup = registry.category("pos_conventional_dialogs").get("CashMovePopup", null);
+        if (!CashMovePopup) {
+            console.warn("[CERRAR CAJA] CashMovePopup no disponible — ¿está instalado pos_conventional_session_management?");
+            return;
         }
+        const sessionId = this.currentSessionId || this.activeSessionId;
+        this.dialogService.add(CashMovePopup, { sessionId: sessionId, close: () => {} });
     }
 
     get actionMenuItems() {

@@ -670,3 +670,271 @@ class TestSessionManagement(PosConventionalTestCommon):
             self.assertNotEqual(paid_order.state, "cancel",
                                 "Los pedidos pagados no deben cancelarse en el paso 0")
 
+
+@tagged("pos_conventional_core", "-standard")
+class TestClosingPopupDataStructure(PosConventionalTestCommon):
+    """
+    Tests que verifican la estructura de datos que consume el componente JS
+    ClosingPopup.  Cubren exactamente los campos que el template XML accede
+    (formatCurrency, cashMoveData, ordersDetails, cashDetails, paymentMethods,
+    currencyId) para que un cambio en el backend rompa aquí antes de llegar
+    al navegador.
+    """
+
+    # ── get_closing_control_data — claves raíz ───────────────────────────
+
+    def test_39_get_closing_control_data_has_required_root_keys(self):
+        """get_closing_control_data devuelve todas las claves que usa ClosingPopup."""
+        session = self._open_session()
+        data = session.get_closing_control_data()
+
+        # Claves que el componente JS asigna a this.state.*
+        required_keys = [
+            "orders_details",           # → this.state.ordersDetails
+            "default_cash_details",     # → this.state.cashDetails  (puede ser None)
+            "non_cash_payment_methods", # → this.state.paymentMethods
+            "currency_id",              # → this.state.currencyId
+        ]
+        for key in required_keys:
+            self.assertIn(
+                key, data,
+                f"Falta la clave '{key}' en get_closing_control_data — "
+                f"el componente JS ClosingPopup la requiere",
+            )
+
+    def test_40_orders_details_has_quantity_and_amount(self):
+        """orders_details contiene 'quantity' y 'amount' (usados en formatCurrency)."""
+        session = self._open_session()
+        data = session.get_closing_control_data()
+        od = data.get("orders_details", {})
+
+        self.assertIn("quantity", od,
+                      "'quantity' es necesario para renderizar el total de pedidos")
+        self.assertIn("amount", od,
+                      "'amount' es necesario para llamar a formatCurrency(ordersDetails.amount)")
+        # amount debe ser numérico para que formatCurrency no falle
+        self.assertIsInstance(
+            od["amount"], (int, float),
+            "orders_details.amount debe ser numérico — de lo contrario formatCurrency lanza TypeError",
+        )
+        # quantity también debe ser numérico
+        self.assertIsInstance(
+            od["quantity"], (int, float),
+            "orders_details.quantity debe ser numérico",
+        )
+
+    def test_41_default_cash_details_structure_when_present(self):
+        """
+        Si default_cash_details existe, debe contener id, name, amount y moves.
+        El getter JS 'cashMoveData' accede a default_cash_details.moves y
+        formatCurrency usa cashDetails.amount.
+        """
+        pm_cash = self._make_fresh_cash_pm()
+        config = self.env["pos.config"].create({
+            "name": "Test CashDetails Structure",
+            "pos_non_touch": True,
+            "cash_control": True,
+            "payment_method_ids": [(6, 0, [pm_cash.id])],
+        })
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": config.id}
+        )
+        session.write({"state": "opened", "start_at": fields.Datetime.now()})
+
+        data = session.get_closing_control_data()
+        cash_details = data.get("default_cash_details")
+
+        if cash_details is None:
+            # Si no hay detalles de efectivo, el template lo omite con t-if — OK
+            return
+
+        required_cash_keys = {
+            "id":     "cashDetails.id necesario para getDifference() y state.payments[id]",
+            "name":   "cashDetails.name necesario para la etiqueta del método de pago",
+            "amount": "cashDetails.amount necesario para formatCurrency(cashDetails.amount)",
+            "moves":  "cashDetails.moves necesario para el getter cashMoveData (reduce total)",
+        }
+        for key, msg in required_cash_keys.items():
+            self.assertIn(key, cash_details, msg)
+
+        # amount debe ser numérico
+        self.assertIsInstance(
+            cash_details["amount"], (int, float),
+            "cashDetails.amount debe ser numérico para que formatCurrency no lance TypeError",
+        )
+        # moves debe ser iterable (lista)
+        self.assertIsInstance(
+            cash_details["moves"], list,
+            "cashDetails.moves debe ser una lista para el getter cashMoveData",
+        )
+
+    def test_42_cash_move_data_getter_simulation(self):
+        """
+        Simula el getter JS 'cashMoveData':
+          moves = cashDetails?.moves || []
+          total = moves.reduce((sum, m) => sum + (m.amount || 0), 0)
+        Si algún move no tiene 'amount' numérico, formatCurrency lanzará TypeError.
+        """
+        pm_cash = self._make_fresh_cash_pm()
+        config = self.env["pos.config"].create({
+            "name": "Test CashMoveData Getter",
+            "pos_non_touch": True,
+            "cash_control": True,
+            "payment_method_ids": [(6, 0, [pm_cash.id])],
+        })
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": config.id}
+        )
+        session.write({"state": "opened", "start_at": fields.Datetime.now()})
+
+        data = session.get_closing_control_data()
+        cash_details = data.get("default_cash_details") or {}
+        moves = cash_details.get("moves", [])
+
+        # Simula: moves.reduce((sum, m) => sum + (m.amount || 0), 0)
+        try:
+            total = sum(m.get("amount", 0) or 0 for m in moves)
+        except (TypeError, AttributeError) as exc:
+            self.fail(
+                f"cashMoveData.total fallaría en el cliente JS: {exc}\n"
+                f"Cada move debe tener 'amount' numérico o ausente (fallback a 0)"
+            )
+
+        self.assertIsInstance(
+            total, (int, float),
+            "La suma de moves.amount debe ser numérica para formatCurrency",
+        )
+
+    def test_43_non_cash_payment_methods_structure(self):
+        """
+        non_cash_payment_methods es una lista.
+        Cada elemento debe tener id, name, amount y type (usado en getDifference y
+        el template con pm.type === 'bank').
+        """
+        session = self._open_session()
+        data = session.get_closing_control_data()
+        pms = data.get("non_cash_payment_methods", [])
+
+        self.assertIsInstance(pms, list,
+                              "non_cash_payment_methods debe ser lista para t-foreach")
+
+        for pm in pms:
+            for key in ("id", "name", "amount", "type"):
+                self.assertIn(
+                    key, pm,
+                    f"non_cash_payment_methods[].'{key}' requerido por el template ClosingPopup",
+                )
+            self.assertIsInstance(
+                pm["amount"], (int, float),
+                f"pm.amount debe ser numérico para formatCurrency — pm.id={pm.get('id')}",
+            )
+
+    def test_44_currency_id_is_numeric(self):
+        """currency_id debe ser un entero para que currencyId se pueda pasar a PaymentMethodBreakdown."""
+        session = self._open_session()
+        data = session.get_closing_control_data()
+        currency_id = data.get("currency_id")
+
+        self.assertIsNotNone(currency_id, "currency_id no debe ser None")
+        self.assertIsInstance(
+            currency_id, int,
+            "currency_id debe ser un int — el prop currencyId de PaymentMethodBreakdown lo requiere",
+        )
+
+    # ── Flujo completo del popup de cierre ───────────────────────────────
+
+    def test_45_post_closing_cash_details_does_not_raise(self):
+        """post_closing_cash_details acepta counted_cash sin lanzar error."""
+        pm_cash = self._make_fresh_cash_pm()
+        config = self.env["pos.config"].create({
+            "name": "Test PostClosingCash",
+            "pos_non_touch": True,
+            "cash_control": True,
+            "payment_method_ids": [(6, 0, [pm_cash.id])],
+        })
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": config.id}
+        )
+        session.write({"state": "opened", "start_at": fields.Datetime.now()})
+
+        try:
+            session.post_closing_cash_details(counted_cash=0.0)
+        except Exception as exc:
+            self.fail(
+                f"post_closing_cash_details lanzó error inesperado: {exc}\n"
+                f"El botón 'Cerrar caja registradora' de ClosingPopup llama a este método"
+            )
+
+    def test_46_update_closing_control_state_session_does_not_raise(self):
+        """update_closing_control_state_session acepta notas vacías sin error."""
+        session = self._open_session()
+        try:
+            session.update_closing_control_state_session("")
+        except Exception as exc:
+            self.fail(
+                f"update_closing_control_state_session('') lanzó error inesperado: {exc}\n"
+                f"El componente ClosingPopup llama a este método con this.state.notes"
+            )
+
+    def test_47_full_closing_popup_confirm_flow(self):
+        """
+        Simula el flujo completo del botón 'Cerrar caja registradora' del popup JS:
+          1. get_closing_control_data  → estructura OK
+          2. post_closing_cash_details → no error
+          3. update_closing_control_state_session → no error
+          4. close_session_from_ui     → successful=True
+        Si algún paso falla, el popup mostraría un error al usuario.
+        """
+        pm_cash = self._make_fresh_cash_pm()
+        config = self.env["pos.config"].create({
+            "name": "Test Full Popup Flow",
+            "pos_non_touch": True,
+            "cash_control": False,   # sin control de caja para simplificar el cierre
+            "payment_method_ids": [(6, 0, [pm_cash.id])],
+        })
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": config.id}
+        )
+        session.write({"state": "opened", "start_at": fields.Datetime.now()})
+
+        # Paso 1: cargar datos (simula onWillStart del componente)
+        data = session.get_closing_control_data()
+        self.assertIn("orders_details", data, "Paso 1 — estructura de datos incompleta")
+
+        # Paso 2: registrar efectivo contado (importe 0 al no haber cash_control)
+        session.post_closing_cash_details(counted_cash=0.0)
+
+        # Paso 3: actualizar estado de cierre con nota
+        session.update_closing_control_state_session("Test de cierre automático")
+
+        # Paso 4: cerrar desde UI
+        result = session.close_session_from_ui()
+        self.assertTrue(
+            result.get("successful"),
+            f"close_session_from_ui debe devolver successful=True, obtuvo: {result}",
+        )
+        self.assertEqual(session.state, "closed",
+                         "La sesión debe estar cerrada tras el flujo completo del popup")
+
+    def test_48_closing_popup_confirm_flow_with_bank_payment_method_diff_pairs(self):
+        """
+        close_session_from_ui acepta bank_payment_method_diff_pairs vacío
+        (el caso más común cuando no hay métodos bancarios con diferencia).
+        """
+        config = self._make_no_cash_control_config()
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": config.id}
+        )
+        session.write({"state": "opened", "start_at": fields.Datetime.now()})
+
+        session.post_closing_cash_details(counted_cash=0.0)
+        session.update_closing_control_state_session("")
+
+        # bankPaymentMethodDiffPairs = [] (sin métodos de banco)
+        result = session.close_session_from_ui(bank_payment_method_diff_pairs=[])
+        self.assertTrue(
+            result.get("successful"),
+            f"close_session_from_ui con diff_pairs=[] debe ser exitoso: {result}",
+        )
+
+

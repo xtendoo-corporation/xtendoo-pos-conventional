@@ -97,9 +97,23 @@ export class ClosingPopup extends Component {
         return amount.toFixed(2).replace(".", ",");
     }
 
+    formatCurrency(amount) {
+        if (amount === undefined || amount === null) return "0,00 €";
+        return new Intl.NumberFormat("es-ES", {
+            style: "currency",
+            currency: "EUR",
+        }).format(amount);
+    }
+
     parseFloat(value) {
         if (typeof value === "number") return value;
         return parseFloat(String(value).replace(",", ".")) || 0;
+    }
+
+    get cashMoveData() {
+        const moves = this.state.cashMoves || [];
+        const total = moves.reduce((sum, m) => sum + (m.amount || 0), 0);
+        return { moves, total };
     }
 
     getDifference(paymentId) {
@@ -219,3 +233,4 @@ class ClosingPopupAction extends Component {
 }
 
 registry.category("actions").add("pos_conventional_closing_popup", ClosingPopupAction);
+registry.category("pos_conventional_dialogs").add("ClosingPopup", ClosingPopup);

@@ -80,6 +80,21 @@ class PosSession(models.Model):
         print(f"[CERRAR CAJA]   → close_session_from_ui result: {result}")
         return result
 
+    # ── Override: get_closing_control_data ───────────────────────────────
+
+    def get_closing_control_data(self):
+        """Override para añadir currency_id al resultado.
+
+        El componente JS ClosingPopup hace:
+            this.state.currencyId = data.currency_id
+        y lo pasa como prop a PaymentMethodBreakdown.  Odoo 19 no incluye este
+        campo en la respuesta estándar, así que lo añadimos aquí.
+        """
+        self.ensure_one()
+        data = super().get_closing_control_data()
+        data["currency_id"] = self.currency_id.id
+        return data
+
     # ── Override: create ─────────────────────────────────────────────────
 
     @api.model_create_multi
