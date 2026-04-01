@@ -103,13 +103,18 @@ export class PosOrderListController extends ListController {
         try {
             const { ClosingPopup } = await odoo.loader.import("@pos_conventional_session_management/js/closing_popup");
             const sessionId = this.currentSessionId || this.activeSessionId;
+            console.log("[CERRAR CAJA] onCloseCashRegister: sessionId=", sessionId, "currentSessionId=", this.currentSessionId, "activeSessionId=", this.activeSessionId);
+            if (!sessionId) {
+                console.error("[CERRAR CAJA] sessionId no disponible — no se puede abrir el popup de cierre");
+                return;
+            }
             this.dialogService.add(ClosingPopup, {
                 sessionId: sessionId,
                 onSuccess: () => this.actionService.doAction("point_of_sale.action_pos_config_kanban"),
                 close: () => this.model.load(),
             });
         } catch (e) {
-            console.warn("ClosingPopup not available", e);
+            console.error("[CERRAR CAJA] Error al abrir ClosingPopup:", e);
         }
     }
 
