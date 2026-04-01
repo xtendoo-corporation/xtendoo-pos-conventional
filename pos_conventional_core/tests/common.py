@@ -122,12 +122,28 @@ class PosConventionalTestCommon(TransactionCase):
             {"name": "Cliente Test POS", "customer_rank": 1}
         )
 
+        # ── Diario de facturas de clientes ────────────────────────────────
+        cls.invoice_journal = cls.env["account.journal"].search(
+            [("type", "=", "sale"), ("company_id", "=", company.id)], limit=1
+        )
+        if not cls.invoice_journal:
+            cls.invoice_journal = cls.env["account.journal"].create(
+                {
+                    "name": "Facturas Clientes Test POS",
+                    "type": "sale",
+                    "code": "FCTST",
+                    "company_id": company.id,
+                }
+            )
+
         # ── Configuración POS (modo no táctil) ─────────────────────────────
         cls.pos_config = cls.env["pos.config"].create(
             {
                 "name": "Test POS Non-Touch",
                 "pos_non_touch": True,
                 "payment_method_ids": [(6, 0, [cls.cash_pm.id, cls.card_pm.id])],
+                "invoice_journal_id": cls.invoice_journal.id,
+                "default_partner_id": cls.partner.id,
             }
         )
 

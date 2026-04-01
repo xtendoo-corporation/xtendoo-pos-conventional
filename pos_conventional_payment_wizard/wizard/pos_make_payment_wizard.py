@@ -256,44 +256,32 @@ class PosMakePaymentWizard(models.TransientModel):
                 order._send_order()
                 order.config_id.notify_synchronisation(order.config_id.current_session_id.id, 0)
 
-            should_print = print_invoice or order.config_id.iface_print_auto
-            print(f"[WIZARD]   should_print={should_print} (print_invoice={print_invoice} iface_print_auto={order.config_id.iface_print_auto})")
-
-            if should_print and is_conventional and order.state in {"paid", "done"} and not order.account_move:
-                print("[WIZARD]   -> calling action_validate_and_invoice() (should_print=True)")
+            # ── Factura simplificada: siempre para POS convencional ─────────
+            if is_conventional and order.state in {"paid", "done"} and not order.account_move:
+                print(f"[WIZARD]   -> generando factura simplificada")
                 try:
-                    result = order.action_validate_and_invoice()
-                    print(f"[WIZARD]   action_validate_and_invoice returned: type={type(result)} value={result}")
-                    if result and isinstance(result, dict) and result.get("type") == "ir.actions.client":
-                        params = result.get("params", {})
-                        if not params.get("next_action"):
-                            result.setdefault("params", {})["next_action"] = {
-                                "type": "ir.actions.client",
-                                "tag": "pos_conventional_new_order",
-                                "params": {
-                                    "config_id": order.config_id.id,
-                                    "default_session_id": order.config_id.current_session_id.id,
-                                },
-                            }
-                        print(f"[WIZARD]   returning print result: {result.get('type')} tag={result.get('tag','')}")
-                        return result
+                    # Si no hay cliente, usar el cliente por defecto del config
+                    # o el partner de la empresa como fallback para factura simplificada
+                    if not order.partner_id:
+                        fallback_partner = (
+                            order.config_id.default_partner_id
+                            or order.company_id.partner_id
+                        )
+                        if fallback_partner:
+                            order.write({"partner_id": fallback_partner.id})
+                            print(f"[WIZARD]   partner asignado: {fallback_partner.name}")
+                    order.write({"to_invoice": True})
+                    order._generate_pos_order_invoice()
+                    print(f"[WIZARD]   factura generada: {order.account_move.name if order.account_move else 'None'}")
                 except Exception as exc:
-                    _logger.exception("Error en factura automática: %s", str(exc))
-                    print(f"[WIZARD]   ERROR in action_validate_and_invoice: {exc}")
+                    _logger.error(
+                        "Error al generar factura simplificada para %s: %s",
+                        order.name, exc,
+                    )
+                    print(f"[WIZARD]   ERROR generating invoice: {exc}")
 
-                # FALLBACK: action_validate_and_invoice devolvió False o falló
-                print("[WIZARD]   FALLBACK (should_print) -> pos_conventional_new_order")
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "pos_conventional_new_order",
-                    "params": {
-                        "config_id": order.config_id.id,
-                        "default_session_id": order.config_id.current_session_id.id,
-                    },
-                }
-
-            elif is_conventional and order.state in {"paid", "done"}:
-                print("[WIZARD]   -> pos_conventional_new_order (no print)")
+            if is_conventional and order.state in {"paid", "done"}:
+                print("[WIZARD]   -> pos_conventional_new_order")
                 return {
                     "type": "ir.actions.client",
                     "tag": "pos_conventional_new_order",

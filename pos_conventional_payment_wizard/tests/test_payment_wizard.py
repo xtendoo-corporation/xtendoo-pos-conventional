@@ -458,3 +458,118 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             "importe cero" in error_msg or "productos" in error_msg,
             f"El mensaje de error debería mencionar 'importe cero' o 'productos', pero fue: {error_msg}"
         )
+
+    # ── Factura simplificada ──────────────────────────────────────────────
+
+    def test_39_cash_payment_generates_simplified_invoice(self):
+        """
+        Al pagar en efectivo un pedido POS convencional se genera automáticamente
+        la factura simplificada (account_move) con el importe correcto.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+        self._add_line(order)
+        self.assertGreater(order.amount_total, 0)
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+            "amount_tendered": order.amount_total,
+        })
+        result = wizard.action_validate()
+
+        # El pedido debe estar pagado o done
+        self.assertIn(order.state, ("paid", "done"),
+                      f"El pedido debe estar en 'paid'/'done', estado actual: {order.state}")
+
+        # Debe haberse generado la factura simplificada
+        self.assertTrue(
+            order.account_move,
+            "El pago en efectivo debe generar una factura simplificada (account_move)"
+        )
+
+    def test_40_simplified_invoice_has_correct_amount(self):
+        """
+        La factura simplificada generada tiene el mismo importe que el pedido POS.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+        self._add_line(order)
+        expected_amount = order.amount_total
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+            "amount_tendered": expected_amount,
+        })
+        wizard.action_validate()
+
+        self.assertTrue(order.account_move, "Debe existir una factura simplificada")
+        invoice = order.account_move
+        self.assertAlmostEqual(
+            invoice.amount_total, expected_amount, places=2,
+            msg=f"El importe de la factura ({invoice.amount_total}) debe coincidir con el pedido ({expected_amount})"
+        )
+
+    def test_41_simplified_invoice_is_posted(self):
+        """
+        La factura simplificada generada está en estado 'posted' (publicada),
+        no en borrador.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+        self._add_line(order)
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+            "amount_tendered": order.amount_total,
+        })
+        wizard.action_validate()
+
+        self.assertTrue(order.account_move, "Debe existir una factura simplificada")
+        self.assertEqual(
+            order.account_move.state, "posted",
+            f"La factura simplificada debe estar en estado 'posted', estado actual: {order.account_move.state}"
+        )
+
+    def test_42_simplified_invoice_generated_without_explicit_customer(self):
+        """
+        Cuando el pedido no tiene cliente explícito, se usa el 'default_partner_id'
+        del pos.config para generar la factura simplificada.
+        Este es el caso habitual de venta anónima ('Consumidor Final').
+        """
+        session = self._open_session()
+        # Pedido SIN cliente → el config tiene default_partner_id = self.partner
+        order = self._make_draft_order(session)  # sin partner
+        self._add_line(order)
+        self.assertFalse(order.partner_id, "El pedido no debe tener cliente al crearse")
+        self.assertTrue(
+            session.config_id.default_partner_id,
+            "El config debe tener un default_partner_id configurado"
+        )
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+            "amount_tendered": order.amount_total,
+        })
+        wizard.action_validate()
+
+        self.assertIn(order.state, ("paid", "done"),
+                      f"El pedido debe estar pagado, estado: {order.state}")
+        self.assertTrue(
+            order.account_move,
+            "Debe generarse factura simplificada usando el default_partner_id del config"
+        )
+        self.assertEqual(order.account_move.state, "posted",
+                         "La factura simplificada debe estar publicada")
+
