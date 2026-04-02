@@ -201,10 +201,11 @@ export class ClosingPopup extends Component {
     }
 
     async cashMove() {
-        this.dialog.add(CashMovePopup, {
-            sessionId: this.props.sessionId,
-            close: () => { this.loadClosingData(); },
-        });
+        this.dialog.add(
+            CashMovePopup,
+            { sessionId: this.props.sessionId },
+            { onClose: () => this.loadClosingData() }
+        );
     }
 
     async printDailySales() {

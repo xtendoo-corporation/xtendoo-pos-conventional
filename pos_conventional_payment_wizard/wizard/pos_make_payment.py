@@ -132,10 +132,7 @@ class PosMakePaymentConventional(models.TransientModel):
                 print("[MAKE_PAYMENT]   -> act_window_close (not conventional or not paid)")
                 return {"type": "ir.actions.act_window_close"}
 
-            # CARD y demás métodos no efectivo navegan directamente al nuevo pedido.
-            # El ticket/factura para CARD se gestiona por otro canal si procede.
-            print("[MAKE_PAYMENT]   -> pos_conventional_new_order")
-            return {
+            next_action = {
                 "type": "ir.actions.client",
                 "tag": "pos_conventional_new_order",
                 "params": {
@@ -143,6 +140,22 @@ class PosMakePaymentConventional(models.TransientModel):
                     "default_session_id": order.config_id.current_session_id.id,
                 },
             }
+
+            # Imprimir la factura siempre que se haya generado,
+            # independientemente de iface_print_auto.
+            if order.account_move:
+                print(f"[MAKE_PAYMENT]   -> pos_conventional_print_receipt_client (factura {order.account_move.name})")
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "pos_conventional_print_receipt_client",
+                    "params": {
+                        "order_id": order.id,
+                        "next_action": next_action,
+                    },
+                }
+
+            print("[MAKE_PAYMENT]   -> pos_conventional_new_order")
+            return next_action
 
 
         print("[MAKE_PAYMENT]   -> calling launch_payment() (order not paid)")
