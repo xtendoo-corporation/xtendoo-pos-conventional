@@ -249,50 +249,66 @@ class PosMakePaymentWizard(models.TransientModel):
                         "payment_method_id": self.payment_method_id.id,
                     })
 
+            # Si no hay cliente explícito, asignar el partner por defecto del config
+            # (venta anónima → 'Consumidor Final').  Debe hacerse ANTES de _process_saved_order.
+            if not order.partner_id:
+                fallback_partner = (
+                    order.config_id.default_partner_id
+                    or order.company_id.partner_id
+                )
+                if fallback_partner:
+                    order.write({"partner_id": fallback_partner.id})
+                    _logger.info(
+                        "POS: partner por defecto asignado (%s) para pedido %s",
+                        fallback_partner.name, order.name,
+                    )
+                    print(f"[WIZARD]   partner por defecto asignado: {fallback_partner.name}")
+
+            # Marcar para facturación automática cuando el pedido tiene cliente asignado.
+            # _process_saved_order de Odoo genera la factura si to_invoice=True y state='paid'.
+            # Esto debe establecerse ANTES de llamar a _process_saved_order.
+            if order.partner_id and not order.account_move:
+                order.write({"to_invoice": True})
+                _logger.info(
+                    "POS: to_invoice=True para pedido %s con cliente %s",
+                    order.name, order.partner_id.name,
+                )
+                print(f"[WIZARD]   to_invoice=True para cliente {order.partner_id.name}")
+
             order._process_saved_order(False)
-            print(f"[WIZARD]   after _process_saved_order: state={order.state}")
+            print(f"[WIZARD]   after _process_saved_order: state={order.state} account_move={order.account_move.name if order.account_move else 'None'}")
 
             if order.state in {"paid", "done"}:
                 order._send_order()
                 order.config_id.notify_synchronisation(order.config_id.current_session_id.id, 0)
 
-            # ── Factura simplificada: siempre para POS convencional ─────────
-            if is_conventional and order.state in {"paid", "done"} and not order.account_move:
-                print(f"[WIZARD]   -> generando factura simplificada")
-                try:
-                    # Si no hay cliente, usar el cliente por defecto del config
-                    # o el partner de la empresa como fallback para factura simplificada
-                    if not order.partner_id:
-                        fallback_partner = (
-                            order.config_id.default_partner_id
-                            or order.company_id.partner_id
-                        )
-                        if fallback_partner:
-                            order.write({"partner_id": fallback_partner.id})
-                            print(f"[WIZARD]   partner asignado: {fallback_partner.name}")
-                    order.write({"to_invoice": True})
-                    order._generate_pos_order_invoice()
-                    print(f"[WIZARD]   factura generada: {order.account_move.name if order.account_move else 'None'}")
-                except Exception as exc:
-                    _logger.error(
-                        "Error al generar factura simplificada para %s: %s",
-                        order.name, exc,
-                    )
-                    print(f"[WIZARD]   ERROR generating invoice: {exc}")
+            if not is_conventional or order.state not in {"paid", "done"}:
+                print("[WIZARD]   -> act_window_close (not conventional or not paid)")
+                return {"type": "ir.actions.act_window_close"}
 
-            if is_conventional and order.state in {"paid", "done"}:
-                print("[WIZARD]   -> pos_conventional_new_order")
+            next_action = {
+                "type": "ir.actions.client",
+                "tag": "pos_conventional_new_order",
+                "params": {
+                    "config_id": order.config_id.id,
+                    "default_session_id": order.config_id.current_session_id.id,
+                },
+            }
+
+            should_print = print_invoice or order.config_id.iface_print_auto
+            if should_print and order.account_move:
+                print(f"[WIZARD]   -> pos_conventional_print_receipt_client (factura {order.account_move.name})")
                 return {
                     "type": "ir.actions.client",
-                    "tag": "pos_conventional_new_order",
+                    "tag": "pos_conventional_print_receipt_client",
                     "params": {
-                        "config_id": order.config_id.id,
-                        "default_session_id": order.config_id.current_session_id.id,
+                        "order_id": order.id,
+                        "next_action": next_action,
                     },
                 }
 
-            print("[WIZARD]   -> act_window_close (not conventional or not paid)")
-            return {"type": "ir.actions.act_window_close"}
+            print("[WIZARD]   -> pos_conventional_new_order")
+            return next_action
 
         print(f"[WIZARD]   -> act_window_close (order not in draft, state={order.state})")
         return {"type": "ir.actions.act_window_close"}

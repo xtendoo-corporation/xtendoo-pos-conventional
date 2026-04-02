@@ -95,62 +95,55 @@ class PosMakePaymentConventional(models.TransientModel):
         print(f"[MAKE_PAYMENT]   _is_pos_order_paid={order._is_pos_order_paid()} state={order.state}")
 
         if order.state == "draft" and order._is_pos_order_paid():
+            # Si no hay cliente explícito, asignar el partner por defecto del config
+            # (venta anónima → 'Consumidor Final').  Debe hacerse ANTES de _process_saved_order.
+            if not order.partner_id:
+                fallback_partner = (
+                    order.config_id.default_partner_id
+                    or order.company_id.partner_id
+                )
+                if fallback_partner:
+                    order.write({"partner_id": fallback_partner.id})
+                    _logger.info(
+                        "POS: partner por defecto asignado (%s) para pedido %s",
+                        fallback_partner.name, order.name,
+                    )
+                    print(f"[MAKE_PAYMENT]   partner por defecto asignado: {fallback_partner.name}")
+
+            # Marcar para facturación automática cuando el pedido tiene cliente asignado.
+            # _process_saved_order de Odoo genera la factura si to_invoice=True y state='paid'.
+            # Esto debe establecerse ANTES de llamar a _process_saved_order.
+            if order.partner_id and not order.account_move:
+                order.write({"to_invoice": True})
+                _logger.info(
+                    "POS: to_invoice=True para pedido %s con cliente %s",
+                    order.name, order.partner_id.name,
+                )
+                print(f"[MAKE_PAYMENT]   to_invoke=True para cliente {order.partner_id.name}")
+
             order._process_saved_order(False)
-            print(f"[MAKE_PAYMENT]   after _process_saved_order: state={order.state}")
+            print(f"[MAKE_PAYMENT]   after _process_saved_order: state={order.state} account_move={order.account_move.name if order.account_move else 'None'}")
 
             if order.state in {"paid", "done"}:
                 order._send_order()
                 order.config_id.notify_synchronisation(order.config_id.current_session_id.id, 0)
 
-            if is_conventional and order.state in {"paid", "done"} and not order.account_move:
-                print("[MAKE_PAYMENT]   -> calling action_validate_and_invoice()")
-                try:
-                    result = order.action_validate_and_invoice()
-                    print(f"[MAKE_PAYMENT]   action_validate_and_invoice returned: type={type(result)} value={result}")
-                    if result and isinstance(result, dict) and result.get("type"):
-                        params = result.get("params", {})
-                        if not params.get("next_action"):
-                            result.setdefault("params", {})["next_action"] = {
-                                "type": "ir.actions.client",
-                                "tag": "pos_conventional_new_order",
-                                "params": {
-                                    "config_id": order.config_id.id,
-                                    "default_session_id": order.config_id.current_session_id.id,
-                                },
-                            }
-                        print(f"[MAKE_PAYMENT]   returning result: {result.get('type')} tag={result.get('tag','')}")
-                        return result
-                except Exception as exc:
-                    _logger.exception(
-                        "Error al facturar automáticamente el pedido %s: %s",
-                        order.name, str(exc),
-                    )
-                    print(f"[MAKE_PAYMENT]   ERROR in action_validate_and_invoice: {exc}")
+            if not is_conventional or order.state not in {"paid", "done"}:
+                print("[MAKE_PAYMENT]   -> act_window_close (not conventional or not paid)")
+                return {"type": "ir.actions.act_window_close"}
 
-                # FALLBACK: action_validate_and_invoice devolvió False o falló → navegar a nuevo pedido
-                print("[MAKE_PAYMENT]   FALLBACK -> pos_conventional_new_order")
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "pos_conventional_new_order",
-                    "params": {
-                        "config_id": order.config_id.id,
-                        "default_session_id": order.config_id.current_session_id.id,
-                    },
-                }
+            # CARD y demás métodos no efectivo navegan directamente al nuevo pedido.
+            # El ticket/factura para CARD se gestiona por otro canal si procede.
+            print("[MAKE_PAYMENT]   -> pos_conventional_new_order")
+            return {
+                "type": "ir.actions.client",
+                "tag": "pos_conventional_new_order",
+                "params": {
+                    "config_id": order.config_id.id,
+                    "default_session_id": order.config_id.current_session_id.id,
+                },
+            }
 
-            elif is_conventional and order.state in {"paid", "done"}:
-                print("[MAKE_PAYMENT]   -> pos_conventional_new_order (elif)")
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "pos_conventional_new_order",
-                    "params": {
-                        "config_id": order.config_id.id,
-                        "default_session_id": order.config_id.current_session_id.id,
-                    },
-                }
-
-            print("[MAKE_PAYMENT]   -> act_window_close (not conventional or not paid)")
-            return {"type": "ir.actions.act_window_close"}
 
         print("[MAKE_PAYMENT]   -> calling launch_payment() (order not paid)")
         return self.launch_payment()
