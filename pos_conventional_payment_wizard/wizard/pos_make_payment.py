@@ -141,9 +141,10 @@ class PosMakePaymentConventional(models.TransientModel):
                 },
             }
 
-            # Imprimir la factura siempre que se haya generado,
-            # independientemente de iface_print_auto.
-            if order.account_move:
+            # Imprimir si iface_print_auto está activado ("Impresión automática de recibo")
+            # y hay factura generada. Si el ajuste está desactivado, navegar directamente
+            # al nuevo pedido sin mostrar diálogo de impresión.
+            if order.config_id.iface_print_auto and order.account_move:
                 print(f"[MAKE_PAYMENT]   -> pos_conventional_print_receipt_client (factura {order.account_move.name})")
                 return {
                     "type": "ir.actions.client",

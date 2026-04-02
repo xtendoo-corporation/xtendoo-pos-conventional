@@ -236,9 +236,10 @@ class PosOrder(models.Model):
         if getattr(self.config_id, 'pos_force_employee_login_after_order', False):
             next_action["params"]["force_login_after_order"] = True
 
-        # Imprimir si se generó factura o si iface_print_auto está activado.
-        if self.account_move or self.config_id.iface_print_auto:
-            print(f"[CORE]   account_move={self.account_move.name if self.account_move else 'None'} iface_print_auto={self.config_id.iface_print_auto} -> pos_conventional_print_receipt_client")
+        # Imprimir si iface_print_auto está activado en la configuración de la caja
+        # ("Impresión automática de recibo"). Este ajuste controla tanto tickets como facturas.
+        if self.config_id.iface_print_auto:
+            print(f"[CORE]   iface_print_auto=True -> pos_conventional_print_receipt_client")
             return {
                 "type": "ir.actions.client",
                 "tag": "pos_conventional_print_receipt_client",
@@ -248,7 +249,7 @@ class PosOrder(models.Model):
                 },
             }
 
-        print(f"[CORE]   sin factura ni iface_print_auto -> pos_conventional_new_order")
+        print(f"[CORE]   iface_print_auto=False -> pos_conventional_new_order")
         return next_action
 
     @api.model

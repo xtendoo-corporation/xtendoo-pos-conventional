@@ -5,12 +5,14 @@ Tests de cobertura para el flujo completo de cobro en POS Convencional.
 
 Comportamiento esperado:
   - CARD: pos.make.payment.check() debe cerrar el pedido y devolver:
-    · ir.actions.client tag=pos_conventional_print_receipt_client cuando se generó
-      factura (partner asignado), con next_action=pos_conventional_new_order.
-    · ir.actions.client tag=pos_conventional_new_order si no hay factura.
+    · ir.actions.client tag=pos_conventional_print_receipt_client cuando
+      iface_print_auto=True y se generó factura.
+    · ir.actions.client tag=pos_conventional_new_order cuando
+      iface_print_auto=False (independientemente de si hay factura).
   - CASH: pos.make.payment.wizard._execute_validation() mismo comportamiento.
-  - Cuando la configuración tiene default_partner_id, siempre se genera factura
-    y siempre se devuelve pos_conventional_print_receipt_client.
+    Adicionalmente, action_validate_print() imprime siempre (print_invoice=True).
+  - La configuración de test usa iface_print_auto=False (valor por defecto),
+    por lo que los tests del flujo normal esperan pos_conventional_new_order.
   - POS no convencional: devuelve act_window_close (sin navegar a nuevo pedido).
 """
 from odoo.tests.common import tagged
@@ -78,15 +80,14 @@ class TestPaymentFlow(PosConventionalTestCommon):
         )
 
     def test_02_card_check_returns_new_order_tag(self):
-        """check() CARD devuelve pos_conventional_print_receipt_client (con factura)
-        o pos_conventional_new_order (sin factura). Con default_partner_id en config
-        siempre se genera factura y se devuelve print_receipt_client."""
+        """check() CARD devuelve tag=pos_conventional_new_order cuando iface_print_auto=False.
+        Cuando iface_print_auto=True y hay factura, devuelve pos_conventional_print_receipt_client."""
         order = self._order_with_line()
         action = self._pay_card_check(order)
-        self.assertIn(
-            action.get("tag"),
-            ("pos_conventional_new_order", "pos_conventional_print_receipt_client"),
-            f"Tag inesperado: {action.get('tag')}",
+        # El config de test tiene iface_print_auto=False → new_order
+        self.assertEqual(
+            action.get("tag"), "pos_conventional_new_order",
+            f"Con iface_print_auto=False debe devolver 'pos_conventional_new_order'. tag={action.get('tag')}",
         )
 
     def test_03_card_check_no_ask_new_order(self):
@@ -109,22 +110,24 @@ class TestPaymentFlow(PosConventionalTestCommon):
         )
 
     def test_05_card_check_params_has_config_id(self):
-        """Los params de la acción CARD contienen config_id válido.
-        Si la acción es print_receipt_client, config_id está en next_action.params."""
+        """Los params del action CARD contienen config_id válido.
+        Con iface_print_auto=False la acción es new_order y params están en el nivel raíz.
+        Con iface_print_auto=True la acción es print_receipt_client y están en next_action.params."""
         order = self._order_with_line()
         action = self._pay_card_check(order)
         params = self._get_final_params(action)
-        self.assertIn("config_id", params, f"Falta config_id en params finales: {params}")
+        self.assertIn("config_id", params, f"Falta config_id en params: {params}")
         self.assertEqual(params["config_id"], order.config_id.id)
 
     def test_06_card_check_params_has_default_session_id(self):
-        """Los params de la acción CARD contienen default_session_id válido.
-        Si la acción es print_receipt_client, default_session_id está en next_action.params."""
+        """Los params del action CARD contienen default_session_id válido.
+        Con iface_print_auto=False la acción es new_order y params están en el nivel raíz.
+        Con iface_print_auto=True la acción es print_receipt_client y están en next_action.params."""
         order = self._order_with_line()
         action = self._pay_card_check(order)
         params = self._get_final_params(action)
         self.assertIn("default_session_id", params,
-                      f"Falta default_session_id en params finales: {params}")
+                      f"Falta default_session_id en params: {params}")
         self.assertEqual(params["default_session_id"],
                          order.session_id.id)
 
@@ -187,14 +190,14 @@ class TestPaymentFlow(PosConventionalTestCommon):
         )
 
     def test_10_cash_wizard_validate_returns_new_order_tag(self):
-        """action_validate() CASH devuelve pos_conventional_print_receipt_client (con factura)
-        o pos_conventional_new_order (sin factura). Con default_partner_id siempre hay factura."""
+        """action_validate() CASH devuelve tag=pos_conventional_new_order cuando iface_print_auto=False.
+        Cuando iface_print_auto=True devuelve pos_conventional_print_receipt_client si hay factura."""
         order = self._order_with_line()
         _wizard, action = self._pay_cash_wizard_validate(order)
-        self.assertIn(
-            action.get("tag"),
-            ("pos_conventional_new_order", "pos_conventional_print_receipt_client"),
-            f"Tag inesperado: {action.get('tag')}",
+        # El config de test tiene iface_print_auto=False → new_order
+        self.assertEqual(
+            action.get("tag"), "pos_conventional_new_order",
+            f"Con iface_print_auto=False debe devolver 'pos_conventional_new_order'. tag={action.get('tag')}",
         )
 
     def test_11_cash_wizard_validate_no_ask_new_order(self):
@@ -218,7 +221,8 @@ class TestPaymentFlow(PosConventionalTestCommon):
 
     def test_13_cash_wizard_params_has_config_and_session(self):
         """action_validate() CASH → params contiene config_id y default_session_id.
-        Si la acción es print_receipt_client, están en next_action.params."""
+        Con iface_print_auto=False la acción es new_order y params están en el nivel raíz.
+        Con iface_print_auto=True están en next_action.params (usa _get_final_params)."""
         order = self._order_with_line()
         _wizard, action = self._pay_cash_wizard_validate(order)
         params = self._get_final_params(action)
@@ -228,16 +232,15 @@ class TestPaymentFlow(PosConventionalTestCommon):
         self.assertEqual(params["default_session_id"], order.session_id.id)
 
     def test_14_cash_wizard_with_change_returns_new_order(self):
-        """Con importe entregado > total (cambio), devuelve print_receipt_client o new_order."""
+        """Con importe entregado > total (cambio), sigue devolviendo new_order (iface_print_auto=False)."""
         order = self._order_with_line()
         total = order.amount_total
         if total <= 0:
             self.skipTest("Pedido sin importe")
         _wizard, action = self._pay_cash_wizard_validate(order, tendered=total + 50.0)
-        self.assertIn(
-            action.get("tag"),
-            ("pos_conventional_new_order", "pos_conventional_print_receipt_client"),
-            f"Con cambio debe devolver new_order o print_receipt_client. action={action}",
+        self.assertEqual(
+            action.get("tag"), "pos_conventional_new_order",
+            f"Con cambio e iface_print_auto=False debe devolver new_order. action={action}",
         )
 
     def test_15_cash_wizard_with_change_order_becomes_paid(self):
@@ -314,15 +317,16 @@ class TestPaymentFlow(PosConventionalTestCommon):
     # ══════════════════════════════════════════════════════════════════════
 
     def test_19_pay_with_card_method_returns_new_order_action(self):
-        """action_pos_convention_pay_with_method CARD → pos_conventional_print_receipt_client
-        (cuando se genera factura) o pos_conventional_new_order."""
+        """action_pos_convention_pay_with_method CARD → pos_conventional_new_order
+        cuando iface_print_auto=False. Con iface_print_auto=True y factura devuelve
+        pos_conventional_print_receipt_client."""
         order = self._order_with_line()
         action = order.action_pos_convention_pay_with_method(self.card_pm)
         self.assertIsInstance(action, dict)
-        self.assertIn(
-            action.get("tag"),
-            ("pos_conventional_new_order", "pos_conventional_print_receipt_client"),
-            f"CARD debe devolver new_order o print_receipt_client. tag={action.get('tag')}",
+        # El config de test tiene iface_print_auto=False → new_order
+        self.assertEqual(
+            action.get("tag"), "pos_conventional_new_order",
+            f"Con iface_print_auto=False debe devolver new_order. tag={action.get('tag')}",
         )
 
     def test_20_pay_with_card_no_ask_new_order(self):
@@ -371,7 +375,7 @@ class TestPaymentFlow(PosConventionalTestCommon):
     # ══════════════════════════════════════════════════════════════════════
 
     def test_24_card_no_ask_new_order_cash_opens_wizard(self):
-        """Contraste: CARD devuelve print_receipt_client o new_order sin ask_new_order;
+        """Contraste: CARD devuelve new_order sin ask_new_order (iface_print_auto=False);
         CASH abre wizard. Ambos pedidos usan la misma sesión.
         """
         session = self._open_session()
@@ -382,10 +386,9 @@ class TestPaymentFlow(PosConventionalTestCommon):
             action_card.get("params", {}).get("ask_new_order"),
             "CARD NO debe incluir ask_new_order (flujo directo)",
         )
-        self.assertIn(
-            action_card.get("tag"),
-            ("pos_conventional_new_order", "pos_conventional_print_receipt_client"),
-            "CARD debe devolver tag=pos_conventional_new_order o print_receipt_client",
+        self.assertEqual(
+            action_card.get("tag"), "pos_conventional_new_order",
+            "Con iface_print_auto=False CARD debe devolver tag=pos_conventional_new_order",
         )
 
         # Reutilizamos la misma sesión para el pedido CASH
@@ -401,8 +404,8 @@ class TestPaymentFlow(PosConventionalTestCommon):
         )
 
     def test_25_both_card_and_cash_navigate_directly(self):
-        """Contraste: CARD y CASH devuelven print_receipt_client (con factura) o new_order,
-        sin ask_new_order. Ambos pedidos usan la misma sesión abierta.
+        """Contraste: ambos CARD y CASH devuelven new_order sin ask_new_order
+        cuando iface_print_auto=False. Ambos pedidos usan la misma sesión abierta.
         """
         session = self._open_session()
 
@@ -418,12 +421,11 @@ class TestPaymentFlow(PosConventionalTestCommon):
         self.assertFalse(action_cash.get("params", {}).get("ask_new_order"),
                          "CASH NO debe tener ask_new_order")
 
-        # Ambos deben devolver new_order o print_receipt_client
-        valid_tags = ("pos_conventional_new_order", "pos_conventional_print_receipt_client")
-        self.assertIn(action_card.get("tag"), valid_tags,
-                      f"CARD tag inesperado: {action_card.get('tag')}")
-        self.assertIn(action_cash.get("tag"), valid_tags,
-                      f"CASH tag inesperado: {action_cash.get('tag')}")
+        # Con iface_print_auto=False ambos deben devolver new_order
+        self.assertEqual(action_card.get("tag"), "pos_conventional_new_order",
+                         f"CARD tag inesperado: {action_card.get('tag')}")
+        self.assertEqual(action_cash.get("tag"), "pos_conventional_new_order",
+                         f"CASH tag inesperado: {action_cash.get('tag')}")
 
     # ══════════════════════════════════════════════════════════════════════
     # BLOQUE 5 — action_register_payments_and_validate (flujo popup UI)
@@ -499,3 +501,69 @@ class TestPaymentFlow(PosConventionalTestCommon):
             msg=f"El cambio debe ser {extra}€. pagos_negativos={negative.mapped('amount')}",
         )
 
+    # ══════════════════════════════════════════════════════════════════════
+    # BLOQUE 6 — iface_print_auto=True: debe imprimir cuando hay factura
+    # ══════════════════════════════════════════════════════════════════════
+
+    def test_31_card_with_iface_print_auto_returns_print_receipt(self):
+        """Con iface_print_auto=True y factura generada, check() CARD devuelve
+        pos_conventional_print_receipt_client con next_action=pos_conventional_new_order."""
+        fresh_cash = self._make_fresh_cash_pm()
+        config_print = self.env["pos.config"].create({
+            "name": "POS Print Auto Test",
+            "pos_non_touch": True,
+            "iface_print_auto": True,
+            "payment_method_ids": [(6, 0, [fresh_cash.id, self.card_pm.id])],
+            "invoice_journal_id": self.invoice_journal.id,
+            "default_partner_id": self.partner.id,
+        })
+        session = self._open_session(config_print)
+        order = self._order_with_line(session)
+        wizard = self.env["pos.make.payment"].with_context(
+            active_id=order.id, card_payment=True
+        ).create({
+            "amount": order.amount_total,
+            "payment_method_id": self.card_pm.id,
+        })
+        action = wizard.check()
+        self.assertEqual(
+            action.get("tag"), "pos_conventional_print_receipt_client",
+            f"Con iface_print_auto=True y factura debe devolver print_receipt_client. tag={action.get('tag')}",
+        )
+        next_action = action.get("params", {}).get("next_action", {})
+        self.assertEqual(
+            next_action.get("tag"), "pos_conventional_new_order",
+            f"next_action debe ser pos_conventional_new_order. next_action={next_action}",
+        )
+
+    def test_32_cash_with_iface_print_auto_returns_print_receipt(self):
+        """Con iface_print_auto=True y factura generada, action_validate() CASH devuelve
+        pos_conventional_print_receipt_client con next_action=pos_conventional_new_order."""
+        fresh_cash = self._make_fresh_cash_pm()
+        config_print = self.env["pos.config"].create({
+            "name": "POS Print Auto Cash Test",
+            "pos_non_touch": True,
+            "iface_print_auto": True,
+            "payment_method_ids": [(6, 0, [fresh_cash.id])],
+            "invoice_journal_id": self.invoice_journal.id,
+            "default_partner_id": self.partner.id,
+        })
+        session = self._open_session(config_print)
+        order = self._order_with_line(session)
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": fresh_cash.id,
+            "amount_tendered": order.amount_total,
+        })
+        action = wizard.action_validate()
+        self.assertEqual(
+            action.get("tag"), "pos_conventional_print_receipt_client",
+            f"Con iface_print_auto=True y factura debe devolver print_receipt_client. tag={action.get('tag')}",
+        )
+        next_action = action.get("params", {}).get("next_action", {})
+        self.assertEqual(
+            next_action.get("tag"), "pos_conventional_new_order",
+            f"next_action debe ser pos_conventional_new_order. next_action={next_action}",
+        )
