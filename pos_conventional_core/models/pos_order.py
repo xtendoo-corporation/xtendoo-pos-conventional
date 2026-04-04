@@ -9,32 +9,32 @@ class PosOrder(models.Model):
     _inherit = "pos.order"
 
     payment_method_ribbon = fields.Char(
-        string="Cinta de método de pago",
+        string="Payment Method Ribbon",
         compute="_compute_payment_method_ribbon",
         store=False,
     )
 
     has_order_lines = fields.Boolean(
-        string="Tiene líneas de pedido",
+        string="Has Order Lines",
         compute="_compute_has_order_lines",
         store=False,
     )
 
     amount_untaxed = fields.Monetary(
-        string="Importe base",
+        string="Untaxed Amount",
         compute="_compute_amount_untaxed",
         store=False,
-        help="Subtotal sin impuestos calculado desde las líneas del pedido",
+        help="Subtotal excluding taxes, computed from order lines.",
     )
 
     amount_tax = fields.Monetary(
-        string="Impuestos",
+        string="Taxes",
         compute="_compute_amount_tax_total",
         store=True,
     )
 
     amount_total = fields.Monetary(
-        string="Total",
+        string="Total Amount",
         compute="_compute_amount_tax_total",
         store=True,
     )
@@ -54,7 +54,7 @@ class PosOrder(models.Model):
             if not methods:
                 order.payment_method_ribbon = False
             elif len(methods) > 1:
-                order.payment_method_ribbon = "PAGO MÚLTIPLE"
+                order.payment_method_ribbon = "MULTIPLE PAYMENT"
             else:
                 order.payment_method_ribbon = methods[0].name.upper()
 
@@ -124,7 +124,7 @@ class PosOrder(models.Model):
                         vals["currency_id"] = session.currency_id.id
             if "amount_paid" not in vals:
                 vals["amount_paid"] = 0.0
-            # Evitar violación NOT NULL en campos de importe
+            # Avoid NOT NULL violation on amount fields
             for _f in ("amount_tax", "amount_total", "amount_return"):
                 if _f not in vals:
                     vals[_f] = 0.0
@@ -135,11 +135,11 @@ class PosOrder(models.Model):
 
     def _prepare_order_line_vals(self, product, qty=1.0):
         """
-        Prepara los valores para crear una línea de pedido POS.
+        Prepares the values for creating a POS order line.
         """
         self.ensure_one()
 
-        # Obtener precio desde la lista de precios
+        # Get price from pricelist
         public_price = product.lst_price
         pricelist = self.pricelist_id or self.config_id.pricelist_id
         discount = 0.0
@@ -153,17 +153,17 @@ class PosOrder(models.Model):
         else:
             price_unit = public_price
 
-        # Obtener impuestos aplicables del producto
+        # Get applicable taxes for the product
         product_taxes = product.taxes_id.filtered(
             lambda t: t.company_id == self.company_id
         )
 
-        # Aplicar posición fiscal si existe
+        # Apply fiscal position if defined
         taxes_after_fp = product_taxes
         if self.fiscal_position_id:
             taxes_after_fp = self.fiscal_position_id.map_tax(product_taxes)
 
-        # Calcular subtotales
+        # Calculate subtotals
         price = price_unit
         price_subtotal = price * qty
         price_subtotal_incl = price * qty
@@ -193,7 +193,7 @@ class PosOrder(models.Model):
 
     def action_validate_and_invoice(self):
         """
-        Lógica completa para validar y facturar desde el backend.
+        Full logic to validate and invoice a POS order from the backend.
         """
         self.ensure_one()
         print("=" * 60)
@@ -202,27 +202,36 @@ class PosOrder(models.Model):
             print(f"[CORE]   state={self.state} is not 'draft' -> returning False")
             return False
 
-        # 1. Marcar para facturar
+        # 1. Mark for invoicing
         self.write({"to_invoice": True})
         print(f"[CORE]   to_invoice=True, calling action_pos_order_paid()")
 
-        # 2. Validar pedido (esto crea la factura)
+        # 2. Validate order (transitions to 'paid' state)
         self.action_pos_order_paid()
         print(f"[CORE]   after action_pos_order_paid: state={self.state}")
 
-        # 3. Devolver acción según configuración (redirección o impresión)
+        # 3. Generate invoice (action_pos_order_paid only sets state='paid',
+        #    it does NOT create the account.move; we must call this explicitly)
+        if not self.account_move and self.config_id.invoice_journal_id:
+            print(f"[CORE]   generating invoice via _generate_pos_order_invoice()")
+            self._generate_pos_order_invoice()
+            print(f"[CORE]   invoice created: account_move={self.account_move.id}")
+        else:
+            print(f"[CORE]   account_move already exists or no invoice_journal_id: {self.account_move}")
+
+        # 4. Return action based on configuration (redirect or print)
         result = self._get_post_validation_action()
         print(f"[CORE]   _get_post_validation_action returned: {result.get('type')} tag={result.get('tag','')}")
         return result
 
     def _get_post_validation_action(self):
         """
-        Calcula la acción que debe realizarse después de validar un pedido.
+        Returns the client action to execute after a POS order has been validated.
         """
         self.ensure_one()
         print(f"[CORE] _get_post_validation_action called: order={self.id}")
 
-        # Configurar acción base de Nuevo Pedido
+        # Base action: New Order
         next_action = {
             "type": "ir.actions.client",
             "tag": "pos_conventional_new_order",
@@ -232,12 +241,12 @@ class PosOrder(models.Model):
             },
         }
 
-        # Si está activada la opción de forzar login tras pedido, añadir flag
+        # If force employee login after order is enabled, propagate the flag
         if getattr(self.config_id, 'pos_force_employee_login_after_order', False):
             next_action["params"]["force_login_after_order"] = True
 
-        # Imprimir si iface_print_auto está activado en la configuración de la caja
-        # ("Impresión automática de recibo"). Este ajuste controla tanto tickets como facturas.
+        # Print receipt if iface_print_auto is enabled in the POS config
+        # ("Automatic Receipt Printing"). This controls both ticket and invoice printing.
         if self.config_id.iface_print_auto:
             print(f"[CORE]   iface_print_auto=True -> pos_conventional_print_receipt_client")
             return {
@@ -256,8 +265,8 @@ class PosOrder(models.Model):
     @api.model
     def get_order_receipt_data(self, order_id):
         """
-        Devuelve los datos necesarios para imprimir un ticket desde JS.
-        Formato compatible con lo que espera el frontend (MockOrder/MockOrderLine).
+        Returns the data required to print a receipt from JS.
+        Format compatible with what the frontend expects (MockOrder/MockOrderLine).
         """
         order = self.browse(order_id)
         if not order.exists():
@@ -279,13 +288,13 @@ class PosOrder(models.Model):
             "amount_paid": order.amount_paid,
             "amount_return": order.amount_return,
             "amount_tax": order.amount_tax,
-            # Atajos de nivel superior esperados por los tests y el frontend
+            # Top-level shortcuts expected by tests and frontend
             "company_name": company.name,
             "company_vat": company.vat or "",
             "currency_symbol": currency.symbol,
             "receipt_header": config.receipt_header or "",
             "receipt_footer": config.receipt_footer or "",
-            # Formato lista compatible con MockOrder ([id, symbol, position, decimals])
+            # List format compatible with MockOrder ([id, symbol, position, decimals])
             "currency_id": [
                 currency.id,
                 currency.symbol,
@@ -301,9 +310,9 @@ class PosOrder(models.Model):
                     "vat_label": company.country_id.vat_label or "VAT",
                 } if company.country_id else {"vat_label": "VAT"},
             },
-            # Cajero: [id, nombre] para que MockOrder.getCashierName() funcione
+            # Cashier: [id, name] so that MockOrder.getCashierName() works
             "user_id": [order.user_id.id, order.user_id.name] if order.user_id else False,
-            # Cliente para MockOrder.partner_id
+            # Customer for MockOrder.partner_id
             "partner": {
                 "id": partner.id,
                 "name": partner.name,
@@ -312,7 +321,7 @@ class PosOrder(models.Model):
                 "email": partner.email or "",
                 "phone": partner.phone or "",
             } if partner else False,
-            # Pagos: lista compatible con MockOrder.payment_ids
+            # Payments: list compatible with MockOrder.payment_ids
             "payment_ids": [{
                 "amount": p.amount,
                 "payment_method_id": [p.payment_method_id.id, p.payment_method_id.name],
