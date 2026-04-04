@@ -75,11 +75,11 @@
                             <tbody>
                                 <t t-foreach="o.invoice_line_ids" t-as="line">
                                     <tr t-if="line.display_type == 'product'">
-                                        <td class="text-left" style="padding-right: 2px;">
+                                        <td class="text-left col-name" style="padding-right: 2px;">
                                             <span t-field="line.name" />
                                         </td>
-                                        <td class="text-center"><span t-esc="'%.0f' % line.quantity" /></td>
-                                        <td class="text-right"><span t-esc="'%.2f' % line.price_total" />€</td>
+                                        <td class="text-center col-ud"><span t-esc="'%.0f' % line.quantity" /></td>
+                                        <td class="text-right col-total"><span t-esc="'%.2f' % line.price_total" />€</td>
                                     </tr>
                                 </t>
                             </tbody>
