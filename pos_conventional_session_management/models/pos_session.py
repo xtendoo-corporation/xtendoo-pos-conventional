@@ -80,19 +80,22 @@ class PosSession(models.Model):
         print(f"[CERRAR CAJA]   → close_session_from_ui result: {result}")
         return result
 
-    # ── Override: get_closing_control_data ───────────────────────────────
+    # ── Dedicated method for the non-touch closing popup ─────────────────
 
-    def get_closing_control_data(self):
-        """Override para añadir currency_id, currency_name y currency_symbol al resultado.
+    def get_closing_control_data_non_touch(self):
+        """Return closing control data extended with currency fields.
 
-        El componente JS ClosingPopup usa currency_name (código ISO p.ej. 'EUR', 'USD')
-        para formatear los importes con Intl.NumberFormat respetando la moneda de la empresa.
+        This method is called exclusively by the non-touch ClosingPopup JS
+        component.  Using a separate RPC call avoids polluting the standard
+        get_closing_control_data return value, which is passed directly to the
+        core ClosePosPopup component whose static props array does not include
+        currency_id, currency_name or currency_symbol.
         """
         self.ensure_one()
-        data = super().get_closing_control_data()
+        data = self.get_closing_control_data()
         data["currency_id"] = self.currency_id.id
-        data["currency_name"] = self.currency_id.name          # p.ej. 'EUR', 'USD'
-        data["currency_symbol"] = self.currency_id.symbol      # p.ej. '€', '$'
+        data["currency_name"] = self.currency_id.name
+        data["currency_symbol"] = self.currency_id.symbol
         return data
 
     # ── Override: create ─────────────────────────────────────────────────

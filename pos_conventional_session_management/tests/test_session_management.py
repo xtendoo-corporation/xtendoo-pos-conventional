@@ -919,22 +919,22 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
     # ── get_closing_control_data — claves raíz ───────────────────────────
 
     def test_39_get_closing_control_data_has_required_root_keys(self):
-        """get_closing_control_data devuelve todas las claves que usa ClosingPopup."""
+        """get_closing_control_data_non_touch returns all keys used by ClosingPopup."""
         session = self._open_session()
-        data = session.get_closing_control_data()
+        data = session.get_closing_control_data_non_touch()
 
-        # Claves que el componente JS asigna a this.state.*
+        # Keys that the JS component assigns to this.state.*
         required_keys = [
             "orders_details",           # → this.state.ordersDetails
-            "default_cash_details",     # → this.state.cashDetails  (puede ser None)
+            "default_cash_details",     # → this.state.cashDetails  (can be None)
             "non_cash_payment_methods", # → this.state.paymentMethods
             "currency_id",              # → this.state.currencyId
         ]
         for key in required_keys:
             self.assertIn(
                 key, data,
-                f"Falta la clave '{key}' en get_closing_control_data — "
-                f"el componente JS ClosingPopup la requiere",
+                f"Missing key '{key}' in get_closing_control_data_non_touch — "
+                f"the ClosingPopup JS component requires it",
             )
 
     def test_40_orders_details_has_quantity_and_amount(self):
@@ -1065,15 +1065,15 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
             )
 
     def test_44_currency_id_is_numeric(self):
-        """currency_id debe ser un entero para que currencyId se pueda pasar a PaymentMethodBreakdown."""
+        """currency_id must be an integer so currencyId can be passed to PaymentMethodBreakdown."""
         session = self._open_session()
-        data = session.get_closing_control_data()
+        data = session.get_closing_control_data_non_touch()
         currency_id = data.get("currency_id")
 
-        self.assertIsNotNone(currency_id, "currency_id no debe ser None")
+        self.assertIsNotNone(currency_id, "currency_id must not be None")
         self.assertIsInstance(
             currency_id, int,
-            "currency_id debe ser un int — el prop currencyId de PaymentMethodBreakdown lo requiere",
+            "currency_id must be an int — the currencyId prop of PaymentMethodBreakdown requires it",
         )
 
     # ── Flujo completo del popup de cierre ───────────────────────────────
@@ -1291,7 +1291,7 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
         session.action_pos_session_open()
 
         # Primera llamada (carga inicial del ClosingPopup)
-        data1 = session.get_closing_control_data()
+        data1 = session.get_closing_control_data_non_touch()
         self.assertIn("orders_details", data1)
         self.assertIn("currency_id", data1)
 
@@ -1302,7 +1302,7 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
         )
 
         # Segunda llamada tras el movimiento (refresco del ClosingPopup)
-        data2 = session.get_closing_control_data()
+        data2 = session.get_closing_control_data_non_touch()
         self.assertIn("orders_details", data2)
         # Los moves deben haberse actualizado
         cash_details = data2.get("default_cash_details")

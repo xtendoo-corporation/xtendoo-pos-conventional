@@ -76,7 +76,7 @@ export class ClosingPopup extends Component {
         try {
             const sessionId = this.props.sessionId;
             const [data, sessionInfo] = await Promise.all([
-                this.orm.call("pos.session", "get_closing_control_data", [sessionId]),
+                this.orm.call("pos.session", "get_closing_control_data_non_touch", [sessionId]),
                 this.orm.read("pos.session", [sessionId], ["name"]),
             ]);
 
