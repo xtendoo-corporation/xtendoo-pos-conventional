@@ -63,21 +63,23 @@ class PosOrder(models.Model):
             return {}
 
         res = super().get_order_receipt_data(order_id)
-        
-        # Enriquecer con más datos
+
+        # Enriquecer con datos adicionales de empresa y detalles de impuestos
+        order = self.browse(order_id)
+        if not order.exists():
+            return res
+
+        res["company"].update({
+            "phone": order.company_id.phone or "",
+            "email": order.company_id.email or "",
+            "address": order.company_id.partner_id._display_address(without_company=True),
+        })
         res.update({
-            'company': {
-                'name': order.company_id.name,
-                'vat': order.company_id.vat,
-                'phone': order.company_id.phone,
-                'email': order.company_id.email,
-                'address': order.company_id.partner_id._display_address(without_company=True),
-            },
-            'partner': {
-                'name': order.partner_id.name,
-                'vat': order.partner_id.vat,
+            "partner": {
+                "name": order.partner_id.name,
+                "vat": order.partner_id.vat or "",
             } if order.partner_id else False,
-            'tax_details': order._get_receipt_tax_details(),
+            "tax_details": order._get_receipt_tax_details(),
         })
         return res
 

@@ -6,7 +6,22 @@
     "description": "Base module for the POS Conventional modular system. Handles non-touch mode toggle and base order logic.",
     "author": "Xtendoo",
     "website": "https://xtendoo.es",
-    "depends": ["point_of_sale", "sale", "mail", "pos_conventional_receipt"],
+    "depends": [
+        "point_of_sale",
+        "sale",
+        "mail",
+        "pos_conventional_receipt",
+        "pos_conventional_cash_calculator",
+        "pos_conventional_config_user_filter",
+        "pos_conventional_order_barcode",
+        "pos_conventional_payment_wizard",
+        "pos_conventional_picking_integration",
+        "pos_conventional_receipt_custom",
+        "pos_conventional_sale_integration",
+        "pos_conventional_session_management",
+        "pos_conventional_users_pin",
+    ],
+
     "data": [
         "security/ir.model.access.csv",
         "views/res_config_settings_views.xml",

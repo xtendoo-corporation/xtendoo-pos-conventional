@@ -6,7 +6,7 @@
     "author": "Xtendoo",
     "website": "https://xtendoo.es",
     "license": "LGPL-3",
-    "depends": ["pos_conventional_core"],
+    "depends": ["point_of_sale", "sale", "mail"],
     "data": [
         "security/ir.model.access.csv",
         "views/pos_make_payment_views.xml",

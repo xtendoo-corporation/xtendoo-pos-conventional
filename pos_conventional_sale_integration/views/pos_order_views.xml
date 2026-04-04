@@ -3,7 +3,7 @@
     <record id="view_pos_order_form_sale" model="ir.ui.view">
         <field name="name">pos.order.form.sale</field>
         <field name="model">pos.order</field>
-        <field name="inherit_id" ref="pos_conventional_core.view_pos_pos_form_inherit_pos_conventional_core" />
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form" />
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
                 <button name="open_linked_sale_order" string="Ver Venta Vinculada" type="object"
@@ -19,7 +19,7 @@
     <record id="view_pos_order_list_sale" model="ir.ui.view">
         <field name="name">pos.order.list.sale</field>
         <field name="model">pos.order</field>
-        <field name="inherit_id" ref="pos_conventional_core.view_pos_order_tree_inherit_pos_conventional_core" />
+        <field name="inherit_id" ref="point_of_sale.view_pos_order_tree" />
         <field name="arch" type="xml">
             <xpath expr="//list" position="attributes">
                  <attribute name="decoration-muted">state == 'linked'</attribute>
