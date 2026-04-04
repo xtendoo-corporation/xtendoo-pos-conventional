@@ -1,4 +1,8 @@
+import logging
+
 from odoo import api, fields, models, _
+
+_logger = logging.getLogger(__name__)
 
 
 class PosSession(models.Model):
@@ -10,20 +14,18 @@ class PosSession(models.Model):
         """Cancela pedidos POS en borrador vacíos (sin líneas) para sesiones no táctiles.
 
         En el flujo convencional no táctil se navega a un formulario vacío después
-        de cada venta, lo que crea un pos.order en borrador sin líneas.  Ese pedido
+        de cada venta, lo que crea un pos.order en borrador sin líneas. Ese pedido
         bloquea el cierre porque _cannot_close_session() lo detecta como "draft".
         Este helper se llama en post_closing_cash_details Y en close_session_from_ui
         para cubrir los dos caminos (OWL popup y wizard Python).
         """
         self.ensure_one()
-        print(
-            f"\n[CERRAR CAJA] _cancel_empty_draft_orders"
-            f" — sesión #{self.id} ({self.name})"
-            f" non_touch={self.config_id.pos_non_touch}"
+        _logger.debug(
+            "_cancel_empty_draft_orders — sesión #%s (%s) non_touch=%s",
+            self.id, self.name, self.config_id.pos_non_touch,
         )
 
         if not self.config_id.pos_non_touch:
-            print("[CERRAR CAJA]   → sesión TOUCH: no se cancelan borradores vacíos")
             return False
 
         empty_draft = self.env["pos.order"].search([
@@ -32,14 +34,13 @@ class PosSession(models.Model):
             ("lines", "=", False),
         ])
         if empty_draft:
-            print(
-                f"[CERRAR CAJA]   → cancelando {len(empty_draft)} pedido(s) vacío(s):"
-                f" {empty_draft.mapped('name')}"
+            _logger.debug(
+                "_cancel_empty_draft_orders — cancelando %s pedido(s) vacío(s): %s",
+                len(empty_draft), empty_draft.mapped("name"),
             )
             empty_draft.write({"state": "cancel"})
             return True
 
-        print("[CERRAR CAJA]   → no hay pedidos en borrador vacíos")
         return False
 
     # ── Override: post_closing_cash_details ───────────────────────────────
@@ -47,22 +48,18 @@ class PosSession(models.Model):
     def post_closing_cash_details(self, counted_cash):
         """Override para cancelar pedidos vacíos ANTES de la comprobación de cierre.
 
-        *** Esta es la causa raíz del bug ***
         El OWL popup (ClosingPopup.confirm) llama a este método ANTES que a
-        close_session_from_ui.  Sin este override, _cannot_close_session() encuentra
-        el pedido vacío en borrador y devuelve {successful: False}, lo que hace que
-        el popup muestre una notificación fugaz y el usuario percibe "no pasa nada".
+        close_session_from_ui. Sin este override, _cannot_close_session() encuentra
+        el pedido vacío en borrador y devuelve {successful: False}.
         """
         self.ensure_one()
-        print(
-            f"\n[CERRAR CAJA] post_closing_cash_details"
-            f" — sesión #{self.id} state={self.state}"
-            f" cash_control={self.config_id.cash_control}"
-            f" counted_cash={counted_cash}"
+        _logger.debug(
+            "post_closing_cash_details — sesión #%s state=%s counted_cash=%s",
+            self.id, self.state, counted_cash,
         )
         self._cancel_empty_draft_orders()
         result = super().post_closing_cash_details(counted_cash)
-        print(f"[CERRAR CAJA]   → post_closing_cash_details result: {result}")
+        _logger.debug("post_closing_cash_details — resultado: %s", result)
         return result
 
     # ── Override: close_session_from_ui ──────────────────────────────────
@@ -70,14 +67,13 @@ class PosSession(models.Model):
     def close_session_from_ui(self, bank_payment_method_diff_pairs=None):
         """Override para POS no táctil: cancela pedidos en borrador vacíos antes de cerrar."""
         self.ensure_one()
-        print(
-            f"\n[CERRAR CAJA] close_session_from_ui"
-            f" — sesión #{self.id} state={self.state}"
-            f" bank_diffs={bank_payment_method_diff_pairs}"
+        _logger.debug(
+            "close_session_from_ui — sesión #%s state=%s bank_diffs=%s",
+            self.id, self.state, bank_payment_method_diff_pairs,
         )
         self._cancel_empty_draft_orders()
         result = super().close_session_from_ui(bank_payment_method_diff_pairs)
-        print(f"[CERRAR CAJA]   → close_session_from_ui result: {result}")
+        _logger.debug("close_session_from_ui — resultado: %s", result)
         return result
 
     # ── Dedicated method for the non-touch closing popup ─────────────────
@@ -86,10 +82,8 @@ class PosSession(models.Model):
         """Return closing control data extended with currency fields.
 
         This method is called exclusively by the non-touch ClosingPopup JS
-        component.  Using a separate RPC call avoids polluting the standard
-        get_closing_control_data return value, which is passed directly to the
-        core ClosePosPopup component whose static props array does not include
-        currency_id, currency_name or currency_symbol.
+        component. Using a separate RPC call avoids polluting the standard
+        get_closing_control_data return value.
         """
         self.ensure_one()
         data = self.get_closing_control_data()
@@ -102,17 +96,25 @@ class PosSession(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Hereda el saldo final de la última sesión cerrada como saldo inicial."""
+        """Hereda el saldo final de la última sesión cerrada como saldo inicial.
+
+        Se aplica a todos los terminales no táctiles (pos_non_touch=True)
+        independientemente de si tienen control de caja activo, para que el
+        efectivo del cierre anterior siempre se proponga como apertura.
+        """
         for vals in vals_list:
-            if 'config_id' in vals and 'cash_register_balance_start' not in vals:
-                config = self.env['pos.config'].browse(vals['config_id'])
-                if config.cash_control:
-                    last_session = self.search([
-                        ('config_id', '=', config.id),
-                        ('state', '=', 'closed')
-                    ], order='id desc', limit=1)
+            if "config_id" in vals and "cash_register_balance_start" not in vals:
+                config = self.env["pos.config"].browse(vals["config_id"])
+                if config.pos_non_touch:
+                    last_session = self.search(
+                        [("config_id", "=", config.id), ("state", "=", "closed")],
+                        order="id desc",
+                        limit=1,
+                    )
                     if last_session:
-                        vals['cash_register_balance_start'] = last_session.cash_register_balance_end_real
+                        vals["cash_register_balance_start"] = (
+                            last_session.cash_register_balance_end_real
+                        )
         return super().create(vals_list)
 
     # ── Override: action_pos_session_open ────────────────────────────────

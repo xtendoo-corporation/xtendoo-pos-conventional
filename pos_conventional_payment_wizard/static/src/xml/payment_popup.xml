@@ -3,53 +3,51 @@
 
     <t t-name="pos_conventional_payment_wizard.PaymentPopup">
         <Dialog title="'Realizar Pago'" size="'xl'" contentClass="'payment-popup-dialog'">
-            <style>
-                .payment-popup-container { display: flex; flex-direction: column; min-height: 500px; background-color: #f8f9fa; }
-                .payment-top-row { display: flex; justify-content: space-between; padding: 20px; background: white; border-bottom: 1px solid #ddd; }
-                .payment-methods-container { display: flex; flex-direction: column; gap: 10px; flex: 1; }
-                .payment-method-btn { padding: 15px; border: 1px solid #ccc; border-radius: 8px; text-align: left; font-weight: bold; cursor: pointer; }
-                .payment-total-section { text-align: right; min-width: 200px; }
-                .payment-total-amount { font-size: 3rem; font-weight: bold; }
-                .payment-list-column { flex: 1; padding: 20px; overflow-y: auto; }
-                .payment-line { display: flex; justify-content: space-between; padding: 15px; background: white; border: 1px solid #ddd; margin-bottom: 10px; border-radius: 8px; }
-                .payment-line.selected { border-color: #007bff; background: #e7f1ff; }
-                .payment-bottom-section { display: flex; justify-content: space-between; padding: 20px; border-top: 1px solid #ddd; }
-                .btn-validate { padding: 15px 40px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-                .btn-validate:disabled { background: #6c757d; }
-            </style>
-            <div class="payment-popup-container">
+            <div class="d-flex flex-column bg-light">
                 <t t-if="state.loading">
                     <div class="text-center p-5">Cargando...</div>
                 </t>
                 <t t-else="">
-                    <div class="payment-top-row">
-                        <div class="payment-methods-container">
+                    <!-- Cabecera: métodos de pago + total pendiente -->
+                    <div class="d-flex justify-content-between align-items-start p-4 bg-white border-bottom">
+                        <div class="d-flex flex-column gap-3 flex-grow-1">
                             <t t-foreach="state.orderData.available_methods" t-as="method" t-key="method.id">
-                                <button class="payment-method-btn" t-on-click="() => this.addPayment(method.id)">
-                                    <i t-attf-class="fa {{method.icon}} me-2"></i>
+                                <button class="btn btn-outline-secondary text-start fw-bold p-3"
+                                        t-on-click="() => this.addPayment(method.id)">
+                                    <i t-attf-class="fa {{method.icon}} me-2"/>
                                     <t t-esc="method.name"/>
                                 </button>
                             </t>
                         </div>
-                        <div class="payment-total-section">
-                            <div class="text-muted">PENDIENTE</div>
-                            <div t-attf-class="payment-total-amount {{ amountDue &lt;= 0 ? 'text-success' : 'text-danger' }}">
-                                <t t-esc="amountDue"/> <t t-esc="state.orderData.currency_symbol"/>
+                        <!-- Importe pendiente -->
+                        <div class="text-end ms-4">
+                            <div class="text-muted small text-uppercase mb-1">Pendiente</div>
+                            <div t-attf-class="display-5 fw-bolder {{ amountDue &lt;= 0 ? 'text-success' : 'text-danger' }}">
+                                <t t-esc="amountDue"/>
+                                <span class="fs-3 ms-1"><t t-esc="state.orderData.currency_symbol"/></span>
                             </div>
                         </div>
                     </div>
-                    <div class="payment-list-column">
+
+                    <!-- Lista de pagos registrados -->
+                    <div class="flex-grow-1 p-4 overflow-auto">
                         <div t-foreach="state.payments" t-as="p" t-key="p.id"
-                             t-attf-class="payment-line {{state.selectedPaymentId === p.id ? 'selected' : ''}}"
+                             t-attf-class="d-flex justify-content-between align-items-center p-3 bg-white border mb-2 rounded {{ state.selectedPaymentId === p.id ? 'border-primary bg-primary bg-opacity-10' : '' }}"
                              t-on-click="() => this.selectPayment(p)">
-                             <span><t t-esc="p.payment_method_name"/></span>
-                             <span class="fw-bold"><t t-esc="p.amount"/></span>
+                            <span><t t-esc="p.payment_method_name"/></span>
+                            <span class="fw-bolder text-end"><t t-esc="p.amount"/></span>
                         </div>
                     </div>
-                    <div class="payment-bottom-section">
-                        <button class="btn btn-secondary" t-on-click="props.close">Cancelar</button>
-                        <button class="btn-validate" t-att-disabled="amountDue > 0.05" t-on-click="validate">
-                            VALIDAR <i class="fa fa-chevron-right ms-2"></i>
+
+                    <!-- Pie: cancelar / validar -->
+                    <div class="d-flex justify-content-between align-items-center p-4 bg-white border-top">
+                        <button class="btn btn-secondary btn-lg" t-on-click="props.close">
+                            Cancelar
+                        </button>
+                        <button class="btn btn-success btn-lg fw-bold px-5"
+                                t-att-disabled="amountDue > 0.05"
+                                t-on-click="validate">
+                            VALIDAR <i class="fa fa-chevron-right ms-2"/>
                         </button>
                     </div>
                 </t>

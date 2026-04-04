@@ -34,9 +34,6 @@ class PosConfig(models.Model):
             }
         )
 
-    def _get_non_touch_opening_action(self, session):
-        self.ensure_one()
-        return False
 
     def open_ui(self):
         """

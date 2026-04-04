@@ -19,12 +19,12 @@
                             <field name="amount_total" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 readonly="1" nolabel="1"
-                                class="fs-4 fw-bolder"/>
+                                class="fs-4 fw-bolder text-end"/>
                         </div>
                         <!-- Fila 2: Pagado — rojo si no cubre el total, verde si lo cubre -->
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="fs-4 fw-bold">Pagado</span>
-                            <div>
+                            <div class="text-end">
                                 <field name="amount_paid" widget="monetary"
                                     options="{'currency_field': 'currency_id'}"
                                     readonly="1" nolabel="1"
@@ -95,7 +95,7 @@
                             <field name="amount_total" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 readonly="1" nolabel="1"
-                                class="fs-4 fw-bolder"/>
+                                class="fs-4 fw-bolder text-end"/>
                         </div>
                         <!-- Fila 2: Importe entregado -->
                         <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
@@ -103,7 +103,7 @@
                             <field name="amount_tendered" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 nolabel="1"
-                                class="fs-4 fw-bolder text-primary"/>
+                                class="fs-4 fw-bolder text-primary text-end"/>
                         </div>
                         <!-- Fila 3: Cambio (solo si es pago en efectivo) -->
                         <div class="d-flex justify-content-between align-items-center"
@@ -112,7 +112,7 @@
                             <field name="amount_change" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 readonly="1" nolabel="1"
-                                class="fs-4 fw-bolder text-warning"/>
+                                class="fs-4 fw-bolder text-warning text-end"/>
                         </div>
                     </div>
                 </sheet>
