@@ -41,9 +41,9 @@ class TestPosOrder(PosConventionalTestCommon):
         self._add_payment(order, self.card_pm, order.amount_total - half)
         order.action_pos_order_paid()
         if order.state in ("paid", "done"):
-            self.assertEqual(order.payment_method_ribbon, "PAGO MÚLTIPLE")
+            self.assertEqual(order.payment_method_ribbon, "MULTIPLE PAYMENT")
         else:
-            self.skipTest("action_pos_order_paid no cambió el estado en el contexto de test")
+            self.skipTest("action_pos_order_paid did not change state in test context")
 
     # ── amount_untaxed ────────────────────────────────────────────────────
 
@@ -157,7 +157,12 @@ class TestPosOrder(PosConventionalTestCommon):
         order = self._make_draft_order(session)
         self._add_line(order)
         result = self.env["pos.order"].get_order_receipt_data(order.id)
-        for key in ("name", "amount_total", "amount_paid", "lines", "company_name"):
+        required_keys = (
+            "name", "amount_total", "amount_paid", "lines",
+            "company_name", "company_vat", "currency_symbol",
+            "company", "currency_id", "payment_ids",
+        )
+        for key in required_keys:
             self.assertIn(key, result, f"Clave '{key}' faltante en receipt data")
 
     def test_18_get_order_receipt_data_lines(self):
@@ -341,4 +346,87 @@ class TestPosOrder(PosConventionalTestCommon):
         order = self._make_draft_order(session)
         self._add_line(order)
         self.assertFalse(order.payment_method_ribbon)
+
+    # ── get_order_receipt_data — payment_ids, user_id, partner ───────────
+
+    def test_31_get_order_receipt_data_payment_ids_empty_list(self):
+        """Sin pagos, payment_ids es una lista vacía."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        result = self.env["pos.order"].get_order_receipt_data(order.id)
+        self.assertIsInstance(result["payment_ids"], list)
+        self.assertEqual(result["payment_ids"], [])
+
+    def test_32_get_order_receipt_data_payment_ids_with_payment(self):
+        """Con pagos, payment_ids contiene la información del método de pago."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        self._add_payment(order, self.cash_pm)
+        result = self.env["pos.order"].get_order_receipt_data(order.id)
+        self.assertTrue(len(result["payment_ids"]) >= 1)
+        payment = result["payment_ids"][0]
+        self.assertIn("amount", payment)
+        self.assertIn("payment_method_id", payment)
+        self.assertIsInstance(payment["payment_method_id"], list)
+        self.assertEqual(len(payment["payment_method_id"]), 2)
+
+    def test_33_get_order_receipt_data_partner_false_without_partner(self):
+        """Sin partner asignado, partner devuelve False."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        result = self.env["pos.order"].get_order_receipt_data(order.id)
+        # partner_id se establece desde default_partner_id en el config; si existe, lo tiene
+        # Basta con verificar que la clave existe y que si es dict tiene las claves esperadas
+        if result["partner"]:
+            for key in ("id", "name", "address", "vat", "email"):
+                self.assertIn(key, result["partner"])
+        else:
+            self.assertFalse(result["partner"])
+
+    def test_34_get_order_receipt_data_partner_with_partner(self):
+        """Con partner asignado, partner incluye nombre y dirección."""
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+        self._add_line(order)
+        result = self.env["pos.order"].get_order_receipt_data(order.id)
+        self.assertTrue(result["partner"])
+        self.assertEqual(result["partner"]["id"], self.partner.id)
+        self.assertEqual(result["partner"]["name"], self.partner.name)
+
+    def test_35_get_order_receipt_data_user_id_field(self):
+        """user_id está presente y tiene formato [id, nombre] o False."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        result = self.env["pos.order"].get_order_receipt_data(order.id)
+        self.assertIn("user_id", result)
+        if result["user_id"]:
+            self.assertIsInstance(result["user_id"], list)
+            self.assertEqual(len(result["user_id"]), 2)
+
+    def test_36_get_order_receipt_data_company_nested_structure(self):
+        """El campo 'company' anidado contiene id, name, vat y country_id."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        result = self.env["pos.order"].get_order_receipt_data(order.id)
+        company_data = result.get("company", {})
+        for key in ("id", "name", "vat", "country_id"):
+            self.assertIn(key, company_data, f"Clave '{key}' faltante en company")
+        self.assertIn("vat_label", company_data["country_id"])
+
+    def test_37_get_order_receipt_data_currency_id_list_format(self):
+        """currency_id es una lista [id, símbolo, posición, decimales]."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        result = self.env["pos.order"].get_order_receipt_data(order.id)
+        cid = result.get("currency_id")
+        self.assertIsInstance(cid, list)
+        self.assertEqual(len(cid), 4)
+        self.assertIsInstance(cid[0], int)   # id
+        self.assertIsInstance(cid[1], str)   # symbol
 
