@@ -111,3 +111,8 @@ export class PosReceiptClientAction extends Component {
     }
 }
 
+registry.category("actions").add(
+    "pos_conventional_print_receipt_client",
+    PosReceiptClientAction
+);
+
