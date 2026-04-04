@@ -31,9 +31,9 @@
                         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
                         th { font-weight: normal; border-bottom: 1px dashed #000; padding-bottom: 2px; }
                         td { vertical-align: top; padding: 2px 0; }
-                        .col-name { width: 89%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-                        .col-ud { width: 3%; text-align: center; }
-                        .col-total { width: 8%; text-align: right; }
+                        .col-name { width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                        .col-ud { width: 10%; text-align: center; }
+                        .col-total { width: 30%; text-align: right; }
                     </style>
 
                     <div class="page">
