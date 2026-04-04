@@ -22,7 +22,7 @@ class MockOrderLine {
         this.price_subtotal_incl = data.price_subtotal_incl;
         this.currency = order.currency;
         this.customer_note = data.customer_note || "";
-        this.customerNote = data.customer_note || ""; // Alias for pos_conventional_receipt
+        this.customerNote = data.customer_note || ""; // alias for pos_conventional_receipt
         this.product_id = {
             id: data.product_id[0],
             name: data.product_id[1],
@@ -73,31 +73,33 @@ class MockOrderLine {
 class MockOrder {
     constructor(data) {
         this.data = data;
-        this.name = data.pos_reference; // Alias for pos_conventional_receipt
+        this.name = data.pos_reference;
+        const company = data.company || {};
         this.company = {
-             ...data.company,
-             logo: data.company.logo,
+             ...company,
+             logo: company.logo || false,
              point_of_sale_use_ticket_qr_code: true,
              point_of_sale_ticket_portal_url_display_mode: 'qr_code',
-             country_id: data.company.country_id || { vat_label: "VAT" },
+             country_id: company.country_id || { vat_label: "VAT" },
         };
         this.config = {
             name: data.pos_reference,
-            receipt_header: data.receipt_header,
-            receipt_footer: data.receipt_footer,
-            receiptLogoUrl: data.company.logo ? "/web/image?model=res.company&id=" + data.company.id + "&field=logo" : false,
+            receipt_header: data.receipt_header || "",
+            receipt_footer: data.receipt_footer || "",
+            receiptLogoUrl: company.logo ? "/web/image?model=res.company&id=" + company.id + "&field=logo" : false,
             _base_url: window.location.origin,
             _IS_VAT: true,
             displayTrackingNumber: false,
             displayBigTrackingNumber: false,
         };
+        const currencyId = data.currency_id || [];
         this.currency = {
-            id: data.currency_id[0],
-            symbol: data.currency_id[1],
-            position: data.currency_id[2],
-            decimal_places: data.currency_id[3],
+            id: currencyId[0] || 1,
+            symbol: currencyId[1] || "",
+            position: currencyId[2] || "after",
+            decimal_places: currencyId[3] || 2,
             round: (val) => Math.round(val * 100) / 100,
-            format: (val) => formatCurrency(val, data.currency_id[0]),
+            format: (val) => formatCurrency(val, currencyId[0] || 1),
             isZero: (val) => Math.abs(val) < 0.001,
         };
         this.amount_total = data.amount_total;
@@ -111,13 +113,13 @@ class MockOrder {
         this.isSynced = true;
 
         this.lines = data.lines.map(l => new MockOrderLine(l, this));
-        this.orderlines = this.lines; // Alias for pos_conventional_receipt
+        this.orderlines = this.lines; // alias for pos_conventional_receipt
 
         this.prices = {
-            taxDetails: data.tax_details
+            taxDetails: data.tax_details || []
         };
 
-        this.priceExcl = data.tax_details.base_amount;
+        this.priceExcl = (data.tax_details && data.tax_details.base_amount) || (data.amount_total - data.amount_tax);
         this.priceIncl = data.amount_total;
         this.currencyDisplayPriceIncl = formatCurrency(data.amount_total, this.currency.id);
         this.totalDue = data.amount_total;
@@ -171,13 +173,13 @@ export class PosReceiptClientAction extends Component {
         <div class="o_pos_receipt_client_action h-100 w-100 d-flex flex-column align-items-center justify-content-center bg-view">
              <div class="o_loader" t-if="state.loading">
                 <i class="fa fa-spinner fa-spin fa-3x mb-3 text-primary"/>
-                <p class="h4">Generando ticket...</p>
+                <p class="h4">Generating receipt...</p>
                 <div t-if="state.message" class="mt-2 text-muted italic">
                     <t t-esc="state.message"/>
                 </div>
             </div>
 
-            <!-- Contenedor para renderizado (oculto en pantalla) -->
+            <!-- Render container (hidden off-screen) -->
             <div t-if="state.order" t-ref="receipt" class="pos-receipt-container" style="position: absolute; left: -9999px; width: 300px; padding: 10px;">
                 <div class="render-container" style="display: block !important;">
                     <OrderReceipt order="state.order" />
@@ -186,10 +188,10 @@ export class PosReceiptClientAction extends Component {
 
             <div t-if="!state.loading" class="text-center p-5 rounded shadow-sm bg-surface">
                 <i class="fa fa-check-circle fa-5x text-success mb-4"/>
-                <h2 class="fw-bold mb-3">Impresión del documento realizada</h2>
+                <h2 class="fw-bold mb-3">Document printed successfully</h2>
                 <div class="d-flex gap-2 justify-content-center">
-                    <button class="btn btn-primary btn-lg px-5" t-on-click="closeAction">Cerrar</button>
-                    <button class="btn btn-outline-secondary btn-lg" t-on-click="reprint">Volver a Imprimir</button>
+                    <button class="btn btn-primary btn-lg px-5" t-on-click="closeAction">Close</button>
+                    <button class="btn btn-outline-secondary btn-lg" t-on-click="reprint">Print Again</button>
                 </div>
             </div>
         </div>
@@ -209,10 +211,10 @@ export class PosReceiptClientAction extends Component {
 
              try {
                  if (orderId) {
-                     this.state.message = "Cargando datos del pedido...";
+                     this.state.message = "Loading order data...";
                      const orderData = await this.orm.call("pos.order", "get_order_receipt_data", [orderId]);
 
-                     this.state.message = "Aplicando plantillas personalizadas...";
+                     this.state.message = "Applying custom templates...";
                      this.state.order = new MockOrder(orderData);
 
                      await new Promise(resolve => setTimeout(resolve, 1000));
@@ -222,7 +224,7 @@ export class PosReceiptClientAction extends Component {
                          if (content && content.innerHTML.trim().length > 0) {
                              await this.printReceipt();
                          } else {
-                             throw new Error("El ticket personalizado se ha generado vacío.");
+                             throw new Error("The custom receipt was generated empty.");
                          }
                      }
                  }
@@ -320,7 +322,7 @@ export class PosReceiptClientAction extends Component {
                 background: white !important;
             }
 
-            /* Asegurar que las reglas de alineación de Odoo y Xtendoo funcionen */
+            /* Ensure Odoo and Xtendoo alignment rules work correctly */
             .pos-receipt-right-align {
                 float: right !important;
             }
@@ -344,7 +346,7 @@ export class PosReceiptClientAction extends Component {
 
             .d-none, .d-print-none { display: none !important; }
 
-            /* Estilos específicos de Lucida Console para el diseño de Xtendoo */
+            /* Lucida Console specific styles for Xtendoo receipt layout */
             .custom-header, .pos-receipt-container {
                 font-family: 'Lucida Console', 'DejaVu Sans Mono', monospace !important;
             }
@@ -359,7 +361,7 @@ export class PosReceiptClientAction extends Component {
             </div>
         `;
 
-        // Esperar imágenes
+        // Wait for images to load
         const images = iframeDoc.querySelectorAll('img');
         const imagePromises = Array.from(images).map(img => {
             if (img.complete) return Promise.resolve();
