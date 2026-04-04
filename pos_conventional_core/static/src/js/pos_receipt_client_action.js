@@ -1,192 +1,25 @@
 /** @odoo-module **/
 
 import { registry } from "@web/core/registry";
-import { Component, onMounted, useState, useRef, xml } from "@odoo/owl";
+import { Component, onMounted, useState, xml } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
-import { OrderReceipt } from "@point_of_sale/app/screens/receipt_screen/receipt/order_receipt";
-import { formatCurrency } from "@web/core/currency";
-import { _t } from "@web/core/l10n/translation";
 
-class MockOrderLine {
-    constructor(data, order) {
-        this.data = data;
-        this.order = order;
-        this.id = data.id || Math.random();
-        this.order_id = true;
-        this.full_product_name = data.product_id[1];
-        this.qty = data.qty;
-        this.price = data.price_unit;
-        this.discount = data.discount;
-        this.price_unit = data.price_unit;
-        this.price_subtotal = data.price_subtotal;
-        this.price_subtotal_incl = data.price_subtotal_incl;
-        this.currency = order.currency;
-        this.customer_note = data.customer_note || "";
-        this.customerNote = data.customer_note || ""; // alias for pos_conventional_receipt
-        this.product_id = {
-            id: data.product_id[0],
-            name: data.product_id[1],
-            display_name: data.product_id[1],
-            getImageUrl: () => false,
-            tracking: "none",
-            taxes_id: [],
-            uom_id: { name: _t("Units") }
-        };
-        this.combo_parent_id = false;
-        this.combo_line_ids = [];
-        this.taxGroupLabels = false;
-        this.packLotLines = [];
-
-        this.currencyDisplayPrice = formatCurrency(data.price_subtotal_incl, order.currency.id);
-        this.currencyDisplayPriceUnit = formatCurrency(data.price_unit, order.currency.id);
-        this.displayPriceNoDiscount = data.price_unit * data.qty;
-        this.displayPriceUnit = data.price_unit;
-        this.displayPriceUnitNoDiscount = data.price_unit;
-        this.priceIncl = data.price_subtotal_incl;
-        this.priceExcl = data.price_subtotal;
-
-        this.orderDisplayProductName = {
-             name: data.product_id[1],
-             attributeString: ""
-        };
-    }
-
-    getQuantityStr() {
-        const qty = this.qty;
-        return {
-            unitPart: Math.floor(qty).toString(),
-            decimalPart: (qty % 1) > 0 ? (qty % 1).toFixed(2).split(".")[1] : "",
-            decimalPoint: (qty % 1) > 0 ? "," : "",
-        };
-    }
-
-    getDiscountStr() {
-        return this.discount > 0 ? this.discount.toString() : "0";
-    }
-
-    isSelected() { return false; }
-    getDisplayClasses() { return {}; }
-    getQuantity() { return this.qty; }
-    displayDiscountPolicy() { return "with_discount"; }
-}
-
-class MockOrder {
-    constructor(data) {
-        this.data = data;
-        this.name = data.pos_reference;
-        const company = data.company || {};
-        this.company = {
-             ...company,
-             logo: company.logo || false,
-             point_of_sale_use_ticket_qr_code: true,
-             point_of_sale_ticket_portal_url_display_mode: 'qr_code',
-             country_id: company.country_id || { vat_label: "VAT" },
-        };
-        this.config = {
-            name: data.pos_reference,
-            receipt_header: data.receipt_header || "",
-            receipt_footer: data.receipt_footer || "",
-            receiptLogoUrl: company.logo ? "/web/image?model=res.company&id=" + company.id + "&field=logo" : false,
-            _base_url: window.location.origin,
-            _IS_VAT: true,
-            displayTrackingNumber: false,
-            displayBigTrackingNumber: false,
-        };
-        const currencyId = data.currency_id || [];
-        this.currency = {
-            id: currencyId[0] || 1,
-            symbol: currencyId[1] || "",
-            position: currencyId[2] || "after",
-            decimal_places: currencyId[3] || 2,
-            round: (val) => Math.round(val * 100) / 100,
-            format: (val) => formatCurrency(val, currencyId[0] || 1),
-            isZero: (val) => Math.abs(val) < 0.001,
-        };
-        this.amount_total = data.amount_total;
-        this.amount_return = data.amount_return;
-        this.amount_tax = data.amount_tax;
-        this.pos_reference = data.pos_reference;
-        this.access_token = data.access_token;
-        this.ticket_code = data.ticket_code;
-        this.date_order = data.date_order;
-        this.finalized = true;
-        this.isSynced = true;
-
-        this.lines = data.lines.map(l => new MockOrderLine(l, this));
-        this.orderlines = this.lines; // alias for pos_conventional_receipt
-
-        this.prices = {
-            taxDetails: data.tax_details || []
-        };
-
-        this.priceExcl = (data.tax_details && data.tax_details.base_amount) || (data.amount_total - data.amount_tax);
-        this.priceIncl = data.amount_total;
-        this.currencyDisplayPriceIncl = formatCurrency(data.amount_total, this.currency.id);
-        this.totalDue = data.amount_total;
-        this.change = data.amount_return;
-        this.showChange = data.amount_return > 0;
-        this.appliedRounding = 0;
-
-        this.payment_ids = (data.payment_ids || []).map(p => ({
-            is_change: false,
-            amount: p.amount,
-            payment_method_id: { name: p.payment_method_id[1], is_cash_count: false },
-            getAmount: () => p.amount,
-            isDone: () => true,
-        }));
-
-        if (this.amount_return > 0) {
-            this.payment_ids.push({
-                is_change: true,
-                amount: -this.amount_return,
-                payment_method_id: { name: _t("Change"), is_cash_count: true },
-                getAmount: () => -this.amount_return,
-                isDone: () => true,
-            });
-        }
-
-        this.partner_id = data.partner ? {
-            ...data.partner,
-            pos_contact_address: data.partner.address || "",
-            parent_name: false
-        } : false;
-    }
-
-    getCashierName() {
-        return this.data.user_id ? this.data.user_id[1].split(" ")[0] : "";
-    }
-
-    getTotalDiscount() {
-        return this.lines.reduce((acc, line) => acc + (line.displayPriceNoDiscount - line.price_subtotal_incl), 0);
-    }
-
-    formatDateOrTime(fieldName, type = 'datetime') {
-        const val = this[fieldName] || this.data[fieldName];
-        if (!val) return "";
-        return val;
-    }
-}
+const REPORT_XMLID = "pos_conventional_receipt_custom.report_factura_simplificada_80mm";
 
 export class PosReceiptClientAction extends Component {
-    static components = { OrderReceipt };
+    static components = {};
     static template = xml`
         <div class="o_pos_receipt_client_action h-100 w-100 d-flex flex-column align-items-center justify-content-center bg-view">
-             <div class="o_loader" t-if="state.loading">
+            <div t-if="state.loading" class="text-center">
                 <i class="fa fa-spinner fa-spin fa-3x mb-3 text-primary"/>
                 <p class="h4">Generating receipt...</p>
-                <div t-if="state.message" class="mt-2 text-muted italic">
-                    <t t-esc="state.message"/>
-                </div>
             </div>
-
-            <!-- Render container (hidden off-screen) -->
-            <div t-if="state.order" t-ref="receipt" class="pos-receipt-container" style="position: absolute; left: -9999px; width: 300px; padding: 10px;">
-                <div class="render-container" style="display: block !important;">
-                    <OrderReceipt order="state.order" />
-                </div>
+            <div t-if="state.error" class="text-center text-danger p-5">
+                <i class="fa fa-exclamation-circle fa-3x mb-3"/>
+                <p class="h5"><t t-esc="state.error"/></p>
+                <button class="btn btn-secondary mt-3" t-on-click="closeAction">Close</button>
             </div>
-
-            <div t-if="!state.loading" class="text-center p-5 rounded shadow-sm bg-surface">
+            <div t-if="!state.loading and !state.error" class="text-center p-5 rounded shadow-sm bg-surface">
                 <i class="fa fa-check-circle fa-5x text-success mb-4"/>
                 <h2 class="fw-bold mb-3">Document printed successfully</h2>
                 <div class="d-flex gap-2 justify-content-center">
@@ -198,189 +31,83 @@ export class PosReceiptClientAction extends Component {
     `;
 
     setup() {
-        this.orm = useService("orm");
         this.actionService = useService("action");
         this.notification = useService("notification");
-        this.state = useState({ loading: true, order: null, message: "" });
-        this.receiptRef = useRef("receipt");
+        this.state = useState({ loading: true, error: "" });
 
         onMounted(async () => {
-             const params = this.props.action.params;
-             const orderId = params.order_id;
-             console.log("PosReceiptClientAction (Custom Overrides) for order:", orderId);
+            const params = this.props.action.params || {};
+            const moveId = params.move_id;
 
-             try {
-                 if (orderId) {
-                     this.state.message = "Loading order data...";
-                     const orderData = await this.orm.call("pos.order", "get_order_receipt_data", [orderId]);
+            if (!moveId) {
+                this.state.error = "No invoice found for this order. Cannot print receipt.";
+                this.state.loading = false;
+                return;
+            }
 
-                     this.state.message = "Applying custom templates...";
-                     this.state.order = new MockOrder(orderData);
+            try {
+                await this._printReport(moveId);
+            } catch (error) {
+                console.error("Error printing receipt:", error);
+                this.state.error = error.message || "Unexpected error while printing.";
+            } finally {
+                this.state.loading = false;
+            }
+        });
+    }
 
-                     await new Promise(resolve => setTimeout(resolve, 1000));
+    _printReport(moveId) {
+        return new Promise((resolve, reject) => {
+            const url = `/report/html/${REPORT_XMLID}/${moveId}`;
 
-                     if (this.receiptRef.el) {
-                         const content = this.receiptRef.el.querySelector('.pos-receipt');
-                         if (content && content.innerHTML.trim().length > 0) {
-                             await this.printReceipt();
-                         } else {
-                             throw new Error("The custom receipt was generated empty.");
-                         }
-                     }
-                 }
-             } catch (error) {
-                 console.error("Error generating customized receipt:", error);
-                 this.notification.add("Error: " + error.message, { type: "danger" });
-             } finally {
-                 this.state.loading = false;
-             }
+            const iframe = document.createElement("iframe");
+            iframe.style.cssText = "position:fixed;left:-2000px;width:1px;height:1px;";
+            document.body.appendChild(iframe);
+
+            iframe.onload = () => {
+                try {
+                    // Wait for sub-resources (images, fonts) then print
+                    const iframeWin = iframe.contentWindow;
+                    const doprint = () => {
+                        iframeWin.focus();
+                        iframeWin.print();
+                        setTimeout(() => iframe.remove(), 8000);
+                        resolve();
+                    };
+                    // Give the browser a tick to render before printing
+                    setTimeout(doprint, 600);
+                } catch (e) {
+                    iframe.remove();
+                    reject(e);
+                }
+            };
+
+            iframe.onerror = () => {
+                iframe.remove();
+                reject(new Error("Failed to load the receipt report."));
+            };
+
+            iframe.src = url;
         });
     }
 
     closeAction() {
-        const params = this.props.action.params;
+        const params = this.props.action.params || {};
         if (params.next_action) {
             this.actionService.doAction(params.next_action);
         } else {
-            this.actionService.doAction({type: 'ir.actions.act_window_close'});
+            this.actionService.doAction({ type: "ir.actions.act_window_close" });
         }
     }
 
     reprint() {
-        this.printReceipt();
-    }
-
-    async printReceipt() {
-        if (!this.receiptRef.el) return;
-        const receiptEl = this.receiptRef.el.querySelector('.pos-receipt');
-        if (!receiptEl) return;
-
-        const receiptHtml = receiptEl.outerHTML;
-
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.left = '-2000px';
-        iframe.style.width = '300px';
-        document.body.appendChild(iframe);
-
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-
-        // Copiar todos los estilos del backend
-        const links = document.querySelectorAll('link[rel="stylesheet"], style');
-        links.forEach(link => {
-            iframeDoc.head.appendChild(link.cloneNode(true));
-        });
-
-        const style = iframeDoc.createElement('style');
-        style.textContent = `
-            @page { margin: 0; size: auto; }
-
-            @media print {
-                body, html {
-                    display: block !important;
-                    visibility: visible !important;
-                    background: white !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                }
-                body > * {
-                    display: none !important;
-                }
-                body > .pos-receipt-print-wrapper {
-                    display: block !important;
-                    visibility: visible !important;
-                }
-            }
-
-            body {
-                background: white !important;
-                color: black !important;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif !important;
-                font-size: 14px !important;
-                line-height: normal !important;
-            }
-
-            .pos-receipt-print-wrapper {
-                width: 100%;
-                display: block !important;
-                visibility: visible !important;
-            }
-
-            .render-container {
-                display: block !important;
-                visibility: visible !important;
-                margin: 0 auto !important;
-                width: 300px !important;
-            }
-
-            .pos-receipt {
-                width: 100% !important;
-                display: block !important;
-                visibility: visible !important;
-                padding: 10px !important;
-                box-sizing: border-box !important;
-                background: white !important;
-            }
-
-            /* Ensure Odoo and Xtendoo alignment rules work correctly */
-            .pos-receipt-right-align {
-                float: right !important;
-            }
-
-            .pos-receipt * {
-                visibility: visible !important;
-            }
-
-            .pos-receipt img {
-                max-width: 50% !important;
-                height: auto;
-                display: block;
-                margin: 0 auto 10px;
-            }
-
-            .pos-receipt-qrcode {
-                width: 100px !important;
-                height: 100px !important;
-                margin: 15px auto !important;
-            }
-
-            .d-none, .d-print-none { display: none !important; }
-
-            /* Lucida Console specific styles for Xtendoo receipt layout */
-            .custom-header, .pos-receipt-container {
-                font-family: 'Lucida Console', 'DejaVu Sans Mono', monospace !important;
-            }
-        `;
-        iframeDoc.head.appendChild(style);
-
-        iframeDoc.body.innerHTML = `
-            <div class="pos-receipt-print-wrapper">
-                <div class="render-container">
-                    ${receiptHtml}
-                </div>
-            </div>
-        `;
-
-        // Wait for images to load
-        const images = iframeDoc.querySelectorAll('img');
-        const imagePromises = Array.from(images).map(img => {
-            if (img.complete) return Promise.resolve();
-            return new Promise(resolve => {
-                img.onload = resolve;
-                img.onerror = resolve;
+        const params = this.props.action.params || {};
+        const moveId = params.move_id;
+        if (moveId) {
+            this._printReport(moveId).catch((e) => {
+                this.notification.add("Error reprinting: " + e.message, { type: "danger" });
             });
-        });
-        await Promise.all(imagePromises);
-
-        setTimeout(() => {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-
-            setTimeout(() => {
-                iframe.remove();
-            }, 6000);
-        }, 500);
+        }
     }
 }
 
-registry.category("actions").add("pos_conventional_print_receipt_client", PosReceiptClientAction);

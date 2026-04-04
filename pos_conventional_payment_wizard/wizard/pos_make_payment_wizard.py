@@ -306,6 +306,7 @@ class PosMakePaymentWizard(models.TransientModel):
                     "tag": "pos_conventional_print_receipt_client",
                     "params": {
                         "order_id": order.id,
+                        "move_id": order.account_move.id,
                         "next_action": next_action,
                     },
                 }

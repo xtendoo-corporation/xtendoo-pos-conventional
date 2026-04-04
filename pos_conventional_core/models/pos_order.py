@@ -245,6 +245,7 @@ class PosOrder(models.Model):
                 "tag": "pos_conventional_print_receipt_client",
                 "params": {
                     "order_id": self.id,
+                    "move_id": self.account_move.id if self.account_move else False,
                     "next_action": next_action,
                 },
             }
@@ -256,29 +257,78 @@ class PosOrder(models.Model):
     def get_order_receipt_data(self, order_id):
         """
         Devuelve los datos necesarios para imprimir un ticket desde JS.
-        Formato compatible con lo que espera el frontend.
+        Formato compatible con lo que espera el frontend (MockOrder/MockOrderLine).
         """
         order = self.browse(order_id)
         if not order.exists():
             return {}
 
+        company = order.company_id
+        currency = order.currency_id
+        session = order.session_id
+        config = session.config_id if session else self.env["pos.config"].browse()
+        partner = order.partner_id
+
         return {
             "name": order.name,
             "pos_reference": order.pos_reference,
             "ticket_code": order.ticket_code,
+            "access_token": order.access_token,
             "date_order": order.date_order.strftime("%Y-%m-%d %H:%M:%S") if order.date_order else "",
             "amount_total": order.amount_total,
             "amount_paid": order.amount_paid,
             "amount_return": order.amount_return,
             "amount_tax": order.amount_tax,
-            "currency_symbol": order.currency_id.symbol,
-            "company_name": order.company_id.name,
-            "company_vat": order.company_id.vat,
+            # Atajos de nivel superior esperados por los tests y el frontend
+            "company_name": company.name,
+            "company_vat": company.vat or "",
+            "currency_symbol": currency.symbol,
+            "receipt_header": config.receipt_header or "",
+            "receipt_footer": config.receipt_footer or "",
+            # Formato lista compatible con MockOrder ([id, symbol, position, decimals])
+            "currency_id": [
+                currency.id,
+                currency.symbol,
+                currency.position,
+                currency.decimal_places,
+            ],
+            "company": {
+                "id": company.id,
+                "name": company.name,
+                "vat": company.vat or "",
+                "logo": bool(company.logo),
+                "country_id": {
+                    "vat_label": company.country_id.vat_label or "VAT",
+                } if company.country_id else {"vat_label": "VAT"},
+            },
+            # Cajero: [id, nombre] para que MockOrder.getCashierName() funcione
+            "user_id": [order.user_id.id, order.user_id.name] if order.user_id else False,
+            # Cliente para MockOrder.partner_id
+            "partner": {
+                "id": partner.id,
+                "name": partner.name,
+                "address": partner.contact_address or "",
+                "vat": partner.vat or "",
+                "email": partner.email or "",
+                "phone": partner.phone or "",
+            } if partner else False,
+            # Pagos: lista compatible con MockOrder.payment_ids
+            "payment_ids": [{
+                "amount": p.amount,
+                "payment_method_id": [p.payment_method_id.id, p.payment_method_id.name],
+            } for p in order.payment_ids],
             "lines": [{
-                "product_name": line.full_product_name or line.product_id.display_name,
+                "id": line.id,
+                "product_id": [
+                    line.product_id.id,
+                    line.full_product_name or line.product_id.display_name,
+                ],
                 "qty": line.qty,
                 "price_unit": line.price_unit,
+                "price_subtotal": line.price_subtotal,
                 "price_subtotal_incl": line.price_subtotal_incl,
                 "discount": line.discount,
+                "customer_note": line.note or "",
+                "tax_ids": [t.name for t in line.tax_ids_after_fiscal_position],
             } for line in order.lines],
         }
