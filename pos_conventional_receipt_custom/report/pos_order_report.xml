@@ -31,9 +31,9 @@
                         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
                         th { font-weight: normal; border-bottom: 1px dashed #000; padding-bottom: 2px; }
                         td { vertical-align: top; padding: 2px 0; }
-                        .col-name { width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                        .col-name { width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                         .col-ud { width: 10%; text-align: center; }
-                        .col-total { width: 30%; text-align: right; }
+                        .col-total { width: 20%; text-align: right; }
                     </style>
 
                     <div class="page">
@@ -76,10 +76,11 @@
                                 <t t-foreach="o.invoice_line_ids" t-as="line">
                                     <tr t-if="line.display_type == 'product'">
                                         <td class="text-left col-name" style="padding-right: 2px;">
-                                            <span t-field="line.name" />
+                                            <t t-set="line_name" t-value="(line.name or '').split('] ', 1)[-1] if '] ' in (line.name or '') else (line.name or '')" />
+                                            <span t-out="line_name" />
                                         </td>
                                         <td class="text-center col-ud"><span t-esc="'%.0f' % line.quantity" /></td>
-                                        <td class="text-right col-total"><span t-esc="'%.2f' % line.price_total" />€</td>
+                                        <td class="text-right col-total"><span t-esc="'%.2f' % line.price_total" /></td>
                                     </tr>
                                 </t>
                             </tbody>
