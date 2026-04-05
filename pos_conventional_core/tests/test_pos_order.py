@@ -430,3 +430,258 @@ class TestPosOrder(PosConventionalTestCommon):
         self.assertIsInstance(cid[0], int)   # id
         self.assertIsInstance(cid[1], str)   # symbol
 
+    # ── _compute_has_order_lines ──────────────────────────────────────────
+
+    def test_38_has_order_lines_true_when_lines_exist(self):
+        """has_order_lines es True cuando el pedido tiene líneas."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        order.invalidate_recordset(["has_order_lines"])
+        self.assertTrue(order.has_order_lines)
+
+    def test_39_has_order_lines_false_when_no_lines(self):
+        """has_order_lines es False cuando el pedido no tiene líneas."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order.invalidate_recordset(["has_order_lines"])
+        self.assertFalse(order.has_order_lines)
+
+    # ── _compute_payment_method_ribbon (rama paid + métodos vacíos) ───────
+
+    def test_40_ribbon_paid_all_zero_amount_payments(self):
+        """Estado 'paid' con todos los pagos de importe 0: ribbon debe ser False."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        # Registrar un pago con importe 0
+        self.env["pos.payment"].create({
+            "pos_order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+            "amount": 0.0,
+            "session_id": session.id,
+        })
+        order.write({"state": "paid"})
+        order.invalidate_recordset(["payment_method_ribbon"])
+        self.assertFalse(
+            order.payment_method_ribbon,
+            "Con pagos de importe 0, el ribbon debe ser False aunque el estado sea 'paid'",
+        )
+
+    # ── default_get — ramas adicionales ───────────────────────────────────
+
+    def test_41_default_get_fallback_finds_active_non_touch_session(self):
+        """default_get sin contexto de sesión usa el fallback y encuentra la sesión abierta."""
+        session = self._open_session()
+        defaults = self.env["pos.order"].default_get(["session_id", "currency_id"])
+        self.assertEqual(
+            defaults.get("session_id"),
+            session.id,
+            "El fallback de default_get debe encontrar la sesión non-touch activa",
+        )
+
+    def test_42_default_get_with_session_id_context_key(self):
+        """default_get usa 'session_id' en el contexto (no 'default_session_id')."""
+        session = self._open_session()
+        defaults = self.env["pos.order"].with_context(
+            session_id=session.id
+        ).default_get(["session_id", "currency_id"])
+        self.assertEqual(defaults.get("session_id"), session.id)
+        self.assertEqual(defaults.get("currency_id"), session.currency_id.id)
+
+    def test_43_default_get_non_existent_session_id_not_used_for_session(self):
+        """default_get con session_id que no existe: no establece session_id desde esa sesión.
+
+        Cubre la rama `if session:` → False cuando browse(id).exists() devuelve vacío.
+        La clave de contexto 'session_id' (sin prefijo 'default_') no es aplicada
+        automáticamente por el default_get del padre, por lo que OUR código la procesa.
+        """
+        invalid_id = 999999999
+        # Confirmar que el ID realmente no existe
+        self.assertFalse(self.env["pos.session"].browse(invalid_id).exists())
+        # Usar 'session_id' (no 'default_session_id') para que el padre no lo auto-aplique
+        defaults = self.env["pos.order"].with_context(
+            session_id=invalid_id
+        ).default_get(["session_id"])
+        # Nuestra lógica: browse(invalid_id).exists() → vacío → if session: False → skip
+        # El fallback puede encontrar otra sesión, pero NO el ID inválido
+        self.assertNotEqual(
+            defaults.get("session_id"),
+            invalid_id,
+            "default_get no debe establecer session_id desde una sesión inexistente",
+        )
+
+    def test_44_default_get_partner_not_set_when_no_default_partner_on_config(self):
+        """default_get no asigna partner_id cuando el config no tiene default_partner_id."""
+        config = self.env["pos.config"].create({
+            "name": "Config Sin Partner",
+            "pos_non_touch": True,
+            "payment_method_ids": [(6, 0, [self._make_fresh_cash_pm().id])],
+            # default_partner_id NOT set
+        })
+        session = self._open_session(config=config)
+        defaults = self.env["pos.order"].with_context(
+            default_session_id=session.id
+        ).default_get(["partner_id"])
+        # El config no tiene default_partner_id → no se asigna partner
+        self.assertFalse(
+            defaults.get("partner_id"),
+            "Sin default_partner_id en el config, no se debe asignar partner automáticamente",
+        )
+
+    def test_45_default_get_partner_not_set_when_not_in_fields_list(self):
+        """default_get no ejecuta el bloque de partner cuando partner_id no está en fields_list."""
+        self.pos_config.default_partner_id = self.partner
+        session = self._open_session()
+        # partner_id NOT in fields_list → el bloque de partner se salta
+        defaults = self.env["pos.order"].with_context(
+            default_session_id=session.id
+        ).default_get(["session_id", "currency_id"])
+        # No debería haber partner_id en el resultado
+        self.assertNotIn("partner_id", defaults)
+        self.pos_config.default_partner_id = False
+
+    # ── create — ramas adicionales ────────────────────────────────────────
+
+    def test_46_create_auto_assigns_currency_id_when_not_in_vals(self):
+        """create() auto-asigna currency_id desde la sesión activa cuando no viene en los vals.
+
+        Cubre la rama `if not vals.get("currency_id"): vals["currency_id"] = ...`
+        """
+        session = self._open_session()
+        order = self.env["pos.order"].create({
+            "config_id": self.pos_config.id,
+            "session_id": session.id,
+            # currency_id NOT provided → debe auto-asignarse desde la sesión
+            "amount_tax": 0.0,
+            "amount_total": 0.0,
+            "amount_paid": 0.0,
+            "amount_return": 0.0,
+        })
+        self.assertEqual(
+            order.currency_id,
+            session.currency_id,
+            "create() debe auto-asignar currency_id desde la sesión cuando no viene en los vals",
+        )
+
+    def test_47_create_preserves_pricelist_when_already_in_vals(self):
+        """create() no sobreescribe pricelist_id cuando ya está en los valores."""
+        session = self._open_session()
+        custom_pricelist = self.env["product.pricelist"].create({
+            "name": "Custom Pricelist Test",
+            "currency_id": session.currency_id.id,
+        })
+        order = self.env["pos.order"].create({
+            "session_id": session.id,
+            "config_id": self.pos_config.id,
+            "pricelist_id": custom_pricelist.id,
+            "currency_id": session.currency_id.id,
+            "amount_tax": 0.0,
+            "amount_total": 0.0,
+            "amount_paid": 0.0,
+            "amount_return": 0.0,
+        })
+        self.assertEqual(
+            order.pricelist_id,
+            custom_pricelist,
+            "create() no debe sobreescribir pricelist_id cuando ya viene en los vals",
+        )
+
+    # ── _prepare_order_line_vals — ramas adicionales ───────────────────────
+
+    def test_48_prepare_order_line_vals_pricelist_applies_discount(self):
+        """_prepare_order_line_vals calcula el descuento cuando la tarifa da precio inferior."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        # Crear tarifa con precio fijo reducido (80 para producto de lista 100)
+        discount_pricelist = self.env["product.pricelist"].create({
+            "name": "Tarifa Con Descuento Test",
+            "currency_id": session.currency_id.id,
+        })
+        self.env["product.pricelist.item"].create({
+            "pricelist_id": discount_pricelist.id,
+            "compute_price": "fixed",
+            "fixed_price": 80.0,
+            "applied_on": "0_product_variant",
+            "product_id": self.product.id,
+        })
+        order.pricelist_id = discount_pricelist
+        vals = order._prepare_order_line_vals(self.product, qty=1.0)
+        # public_price=100, pricelist price=80 → discount≈20%, price_unit=100
+        self.assertGreater(
+            vals["discount"], 0.0,
+            "_prepare_order_line_vals debe calcular descuento cuando la tarifa da precio inferior",
+        )
+        self.assertAlmostEqual(
+            vals["price_unit"],
+            self.product.lst_price,
+            places=2,
+            msg="price_unit debe ser el precio público (lst_price) cuando hay descuento",
+        )
+
+    def test_49_prepare_order_line_vals_with_fiscal_position(self):
+        """_prepare_order_line_vals aplica la posición fiscal al mapeo de impuestos."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        fiscal_pos = self.env["account.fiscal.position"].create({
+            "name": "Posición Fiscal Test Vals",
+        })
+        order.write({"fiscal_position_id": fiscal_pos.id})
+        vals = order._prepare_order_line_vals(self.product, qty=1.0)
+        # El método debe ejecutarse sin error aplicando la posición fiscal
+        self.assertIn("order_id", vals)
+        self.assertEqual(vals["product_id"], self.product.id)
+        self.assertEqual(vals["qty"], 1.0)
+
+    def test_50_prepare_order_line_vals_product_without_taxes(self):
+        """_prepare_order_line_vals con producto sin impuestos: taxes_after_fp vacío."""
+        product_no_tax = self.env["product.product"].create({
+            "name": "Producto Sin Impuesto Vals",
+            "type": "consu",
+            "list_price": 50.0,
+            "taxes_id": [(5,)],
+            "available_in_pos": True,
+        })
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        vals = order._prepare_order_line_vals(product_no_tax, qty=2.0)
+        # Sin impuestos, price_subtotal = price_unit * qty
+        self.assertAlmostEqual(vals["price_subtotal"], 50.0 * 2.0, places=2)
+        self.assertAlmostEqual(vals["price_subtotal_incl"], 50.0 * 2.0, places=2)
+        self.assertEqual(vals["tax_ids"], [(6, 0, [])])
+
+    # ── get_order_receipt_data — ramas adicionales ─────────────────────────
+
+    def test_51_get_order_receipt_data_company_without_country(self):
+        """get_order_receipt_data con compañía sin país: country_id devuelve vat_label='VAT'."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        original_country = self.env.company.country_id
+        self.env.company.country_id = False
+        try:
+            result = self.env["pos.order"].get_order_receipt_data(order.id)
+            country_data = result["company"]["country_id"]
+            self.assertEqual(
+                country_data.get("vat_label"),
+                "VAT",
+                "Sin país en la compañía, vat_label debe ser 'VAT' (valor por defecto)",
+            )
+        finally:
+            self.env.company.country_id = original_country
+
+    def test_52_get_order_receipt_data_config_receipt_header_footer(self):
+        """get_order_receipt_data incluye receipt_header y receipt_footer del config."""
+        self.pos_config.write({
+            "receipt_header": "Cabecera Test",
+            "receipt_footer": "Pie Test",
+        })
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        result = self.env["pos.order"].get_order_receipt_data(order.id)
+        self.assertEqual(result["receipt_header"], "Cabecera Test")
+        self.assertEqual(result["receipt_footer"], "Pie Test")
+        # Cleanup
+        self.pos_config.write({"receipt_header": False, "receipt_footer": False})
+

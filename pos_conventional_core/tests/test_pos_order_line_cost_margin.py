@@ -342,4 +342,183 @@ class TestPosOrderLineCostMargin(PosConventionalTestCommon):
         line = self._add_line(order, product, qty=0.0)
         self.assertAlmostEqual(line.margin, 0.0, places=2)
 
+    # ── _onchange_total_cost_conventional ─────────────────────────────────
+
+    def test_31_onchange_total_cost_conventional_computes_correctly(self):
+        """_onchange_total_cost_conventional calcula total_cost e is_total_cost_computed."""
+        product = self._product_with_cost(standard_price=45.0)
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        # Crear un registro virtual (new) para probar el onchange
+        line = self.env["pos.order.line"].new({
+            "order_id": order.id,
+            "product_id": product.id,
+            "qty": 3.0,
+            "price_unit": product.list_price,
+            "price_subtotal": product.list_price * 3,
+            "price_subtotal_incl": product.list_price * 3,
+        })
+        line._onchange_total_cost_conventional()
+        self.assertAlmostEqual(
+            line.total_cost, 135.0, places=2,
+            msg="_onchange debe calcular total_cost = qty * standard_price = 3 * 45",
+        )
+        self.assertTrue(
+            line.is_total_cost_computed,
+            "_onchange debe marcar is_total_cost_computed=True para producto con coste",
+        )
+
+    def test_32_onchange_total_cost_no_product_returns_zero(self):
+        """_onchange con línea sin producto: total_cost=0, is_total_cost_computed=False."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line = self.env["pos.order.line"].new({"order_id": order.id, "qty": 1.0})
+        line._onchange_total_cost_conventional()
+        self.assertEqual(line.total_cost, 0.0)
+        self.assertFalse(line.is_total_cost_computed)
+
+    # ── _inverse_tax_ids_after_fiscal_position ────────────────────────────
+
+    def test_33_inverse_syncs_tax_ids_when_no_fiscal_position(self):
+        """_inverse sincroniza tax_ids cuando tax_ids_after_fp difiere y no hay FP."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line = self._add_line(order, self.product)
+        self.assertTrue(line.tax_ids, "La línea debe tener impuestos para este test")
+
+        # Crear un impuesto diferente para asignar
+        other_tax = self.env["account.tax"].create({
+            "name": "IVA 10% Inverse Test",
+            "amount": 10.0,
+            "type_tax_use": "sale",
+            "company_id": self.env.company.id,
+        })
+        # Asignar directamente tax_ids_after_fiscal_position (sin FP) → inverse sincroniza
+        line.tax_ids_after_fiscal_position = other_tax
+        # El inverse debe haber propagado el cambio a tax_ids
+        self.assertIn(
+            other_tax,
+            line.tax_ids,
+            "_inverse debe sincronizar tax_ids cuando no hay fiscal_position_id",
+        )
+
+    def test_34_inverse_does_nothing_with_fiscal_position(self):
+        """_inverse NO modifica tax_ids cuando el pedido tiene fiscal_position_id."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        fp = self.env["account.fiscal.position"].create({"name": "FP Inverse Test"})
+        order.write({"fiscal_position_id": fp.id})
+        line = self._add_line(order, self.product)
+        original_tax_ids = set(line.tax_ids.ids)
+
+        # Llamar directamente al inverse con FP activa
+        # La condición `if not line.order_id.fiscal_position_id:` es False → no sincroniza
+        line._inverse_tax_ids_after_fiscal_position()
+
+        self.assertEqual(
+            set(line.tax_ids.ids),
+            original_tax_ids,
+            "_inverse no debe modificar tax_ids cuando hay fiscal_position_id",
+        )
+
+    def test_35_inverse_no_op_when_taxes_already_equal(self):
+        """_inverse es un no-op cuando tax_ids_after_fp ya coincide con tax_ids."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line = self._add_line(order, self.product)
+        original_tax_ids = set(line.tax_ids.ids)
+
+        # Llamar inverse directamente sin cambios → los taxes coinciden → no-op
+        line._inverse_tax_ids_after_fiscal_position()
+
+        self.assertEqual(
+            set(line.tax_ids.ids),
+            original_tax_ids,
+            "_inverse no debe cambiar tax_ids cuando ya coinciden con tax_ids_after_fp",
+        )
+
+    # ── write() en PosOrderLine — ramas de restauración de taxes ──────────
+
+    def test_36_write_restores_tax_ids_when_cleared_for_product_with_taxes(self):
+        """write() restaura tax_ids automáticamente cuando quedan vacíos y el producto tiene taxes.
+
+        Cubre la rama: not line.tax_ids AND product_id AND product_taxes → restaurar.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line = self._add_line(order, self.product)
+        self.assertTrue(line.tax_ids, "La línea debe tener impuestos antes del test")
+        original_taxes = set(line.tax_ids.ids)
+
+        # Intentar borrar tax_ids via write() — nuestro override los restaurará
+        line.write({"tax_ids": [(5,)]})
+
+        # Los impuestos deben haber sido restaurados desde el producto
+        self.assertEqual(
+            set(line.tax_ids.ids),
+            original_taxes,
+            "write() debe restaurar tax_ids desde el producto cuando quedan vacíos",
+        )
+
+    def test_37_write_no_restore_when_product_has_no_taxes(self):
+        """write() no restaura tax_ids cuando el producto no tiene ningún impuesto.
+
+        Cubre la rama: not line.tax_ids AND product_id AND NOT product_taxes → sin restaurar.
+        """
+        product_no_tax = self.env["product.product"].create({
+            "name": "Prod Sin Tax Write Test",
+            "type": "consu",
+            "list_price": 30.0,
+            "taxes_id": [(5,)],
+            "available_in_pos": True,
+        })
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line_vals = {
+            "order_id": order.id,
+            "product_id": product_no_tax.id,
+            "qty": 1.0,
+            "price_unit": 30.0,
+            "price_subtotal": 30.0,
+            "price_subtotal_incl": 30.0,
+            "tax_ids": [(5,)],
+        }
+        line = self.env["pos.order.line"].create(line_vals)
+        self.assertFalse(line.tax_ids, "La línea no debe tener impuestos")
+
+        # write() con producto sin taxes → la rama `if product_taxes:` es False → no restaura
+        line.write({"qty": 2.0})
+
+        self.assertFalse(
+            line.tax_ids,
+            "write() no debe restaurar tax_ids cuando el producto no tiene impuestos",
+        )
+
+    # ── _get_total_cost_for_line — rama de excepción ──────────────────────
+
+    def test_38_get_total_cost_exception_uses_fallback(self):
+        """_get_total_cost_for_line usa qty * standard_price como fallback si _convert falla.
+
+        Cubre la rama `except Exception: total_cost = qty * product.standard_price`.
+        """
+        from unittest.mock import patch
+        product = self._product_with_cost(standard_price=40.0)
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line = self._add_line(order, product, qty=3.0)
+
+        with patch.object(
+            type(product.sudo().cost_currency_id),
+            "_convert",
+            side_effect=Exception("Error de conversión simulado"),
+        ):
+            total_cost, computed = line._get_total_cost_for_line()
+
+        # Fallback: qty * standard_price = 3 * 40 = 120
+        self.assertAlmostEqual(
+            total_cost, 120.0, places=2,
+            msg="El fallback debe devolver qty * standard_price cuando _convert falla",
+        )
+        self.assertTrue(computed, "is_total_cost_computed debe ser True incluso con fallback")
+
 
