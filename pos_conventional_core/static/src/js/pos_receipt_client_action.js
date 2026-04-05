@@ -19,14 +19,6 @@ export class PosReceiptClientAction extends Component {
                 <p class="h5"><t t-esc="state.error"/></p>
                 <button class="btn btn-secondary mt-3" t-on-click="closeAction">Close</button>
             </div>
-            <div t-if="!state.loading and !state.error" class="text-center p-5 rounded shadow-sm bg-surface">
-                <i class="fa fa-check-circle fa-5x text-success mb-4"/>
-                <h2 class="fw-bold mb-3">Document printed successfully</h2>
-                <div class="d-flex gap-2 justify-content-center">
-                    <button class="btn btn-primary btn-lg px-5" t-on-click="closeAction">Close</button>
-                    <button class="btn btn-outline-secondary btn-lg" t-on-click="reprint">Print Again</button>
-                </div>
-            </div>
         </div>
     `;
 
@@ -47,10 +39,12 @@ export class PosReceiptClientAction extends Component {
 
             try {
                 await this._printReport(moveId);
+                // Redirect immediately to the next action (new order) without
+                // showing any intermediate confirmation screen.
+                this.closeAction();
             } catch (error) {
                 console.error("Error printing receipt:", error);
                 this.state.error = error.message || "Unexpected error while printing.";
-            } finally {
                 this.state.loading = false;
             }
         });
@@ -97,16 +91,6 @@ export class PosReceiptClientAction extends Component {
             this.actionService.doAction(params.next_action);
         } else {
             this.actionService.doAction({ type: "ir.actions.act_window_close" });
-        }
-    }
-
-    reprint() {
-        const params = this.props.action.params || {};
-        const moveId = params.move_id;
-        if (moveId) {
-            this._printReport(moveId).catch((e) => {
-                this.notification.add("Error reprinting: " + e.message, { type: "danger" });
-            });
         }
     }
 }

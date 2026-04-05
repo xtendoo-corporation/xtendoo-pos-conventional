@@ -125,6 +125,28 @@ class TestReceiptPrint(PosConventionalTestCommon):
                 "move_id must point to the invoice linked to the order",
             )
 
+    def test_42b_print_action_contains_next_action_for_auto_redirect(self):
+        """
+        With iface_print_auto=True, the action params must include next_action
+        pointing to pos_conventional_new_order so the JS component can redirect
+        automatically after printing — no intermediate confirmation screen.
+        """
+        _order, result = self._make_paid_order(iface_print_auto=True)
+        params = result.get("params", {})
+        next_action = params.get("next_action")
+        self.assertIsNotNone(
+            next_action,
+            "next_action must be present in print action params so the JS can "
+            "redirect automatically to a new order after printing",
+        )
+        self.assertIsInstance(next_action, dict, "next_action must be a dict")
+        self.assertEqual(
+            next_action.get("tag"),
+            "pos_conventional_new_order",
+            "next_action must point to pos_conventional_new_order so that after "
+            "printing the receipt the user lands directly on a new blank order",
+        )
+
     def test_43_print_action_move_id_points_to_correct_record(self):
         """
         The move_id in the action params must refer to an existing account.move
