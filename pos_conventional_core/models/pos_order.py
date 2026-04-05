@@ -27,22 +27,15 @@ class PosOrder(models.Model):
         help="Subtotal excluding taxes, computed from order lines.",
     )
 
-    amount_tax = fields.Monetary(
-        string="Taxes",
-        compute="_compute_amount_tax_total",
-        store=True,
-    )
-
-    amount_total = fields.Monetary(
-        string="Total Amount",
-        compute="_compute_amount_tax_total",
-        store=True,
-    )
-
     @api.depends("lines")
     def _compute_has_order_lines(self):
         for order in self:
             order.has_order_lines = bool(order.lines)
+
+    @api.depends("lines.price_subtotal")
+    def _compute_amount_untaxed(self):
+        for order in self:
+            order.amount_untaxed = sum(line.price_subtotal for line in order.lines)
 
     @api.depends("payment_ids", "state")
     def _compute_payment_method_ribbon(self):
@@ -57,19 +50,6 @@ class PosOrder(models.Model):
                 order.payment_method_ribbon = "MULTIPLE PAYMENT"
             else:
                 order.payment_method_ribbon = methods[0].name.upper()
-
-    @api.depends("lines.price_subtotal")
-    def _compute_amount_untaxed(self):
-        for order in self:
-            order.amount_untaxed = sum(line.price_subtotal for line in order.lines)
-
-    @api.depends("lines.price_subtotal_incl", "lines.price_subtotal")
-    def _compute_amount_tax_total(self):
-        for order in self:
-            total_incl = sum(line.price_subtotal_incl for line in order.lines)
-            total_excl = sum(line.price_subtotal for line in order.lines)
-            order.amount_tax = total_incl - total_excl
-            order.amount_total = total_incl
 
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
@@ -196,40 +176,28 @@ class PosOrder(models.Model):
         Full logic to validate and invoice a POS order from the backend.
         """
         self.ensure_one()
-        print("=" * 60)
-        print(f"[CORE] action_validate_and_invoice called: order={self.id} state={self.state}")
-        if self.state not in ("draft"):
-            print(f"[CORE]   state={self.state} is not 'draft' -> returning False")
+        if self.state not in ("draft",):
             return False
 
         # 1. Mark for invoicing
         self.write({"to_invoice": True})
-        print(f"[CORE]   to_invoice=True, calling action_pos_order_paid()")
 
         # 2. Validate order (transitions to 'paid' state)
         self.action_pos_order_paid()
-        print(f"[CORE]   after action_pos_order_paid: state={self.state}")
 
         # 3. Generate invoice (action_pos_order_paid only sets state='paid',
         #    it does NOT create the account.move; we must call this explicitly)
         if not self.account_move and self.config_id.invoice_journal_id:
-            print(f"[CORE]   generating invoice via _generate_pos_order_invoice()")
             self._generate_pos_order_invoice()
-            print(f"[CORE]   invoice created: account_move={self.account_move.id}")
-        else:
-            print(f"[CORE]   account_move already exists or no invoice_journal_id: {self.account_move}")
 
         # 4. Return action based on configuration (redirect or print)
-        result = self._get_post_validation_action()
-        print(f"[CORE]   _get_post_validation_action returned: {result.get('type')} tag={result.get('tag','')}")
-        return result
+        return self._get_post_validation_action()
 
     def _get_post_validation_action(self):
         """
         Returns the client action to execute after a POS order has been validated.
         """
         self.ensure_one()
-        print(f"[CORE] _get_post_validation_action called: order={self.id}")
 
         # Base action: New Order
         next_action = {
@@ -242,13 +210,12 @@ class PosOrder(models.Model):
         }
 
         # If force employee login after order is enabled, propagate the flag
-        if getattr(self.config_id, 'pos_force_employee_login_after_order', False):
+        if getattr(self.config_id, "pos_force_employee_login_after_order", False):
             next_action["params"]["force_login_after_order"] = True
 
         # Print receipt if iface_print_auto is enabled in the POS config
         # ("Automatic Receipt Printing"). This controls both ticket and invoice printing.
         if self.config_id.iface_print_auto:
-            print(f"[CORE]   iface_print_auto=True -> pos_conventional_print_receipt_client")
             return {
                 "type": "ir.actions.client",
                 "tag": "pos_conventional_print_receipt_client",
@@ -259,7 +226,6 @@ class PosOrder(models.Model):
                 },
             }
 
-        print(f"[CORE]   iface_print_auto=False -> pos_conventional_new_order")
         return next_action
 
     @api.model

@@ -56,25 +56,17 @@ class PosMakePaymentConventional(models.TransientModel):
         Permite forzar el método de pago si se pasa como argumento.
         """
         self.ensure_one()
-        print("=" * 60)
-        print("[MAKE_PAYMENT] check() called")
 
         order = self.env["pos.order"].browse(self.env.context.get("active_id", False))
-        is_card = self.env.context.get("card_payment", False)
-        print(f"[MAKE_PAYMENT]   order={order.id} name={order.name} state={order.state}")
-        print(f"[MAKE_PAYMENT]   is_card={is_card}")
 
         if payment_method_id:
             self.payment_method_id = payment_method_id
-
-        print(f"[MAKE_PAYMENT]   payment_method={self.payment_method_id.name} id={self.payment_method_id.id}")
 
         if self.payment_method_id.split_transactions and not order.partner_id:
             raise UserError(_("Customer is required for %s payment method.", self.payment_method_id.name))
 
         currency = order.currency_id
         is_conventional = order.config_id and order.config_id.pos_non_touch
-        print(f"[MAKE_PAYMENT]   is_conventional={is_conventional}")
 
         init_data = self.read()[0]
         payment_method = self.env["pos.payment.method"].browse(init_data["payment_method_id"][0])
@@ -84,7 +76,6 @@ class PosMakePaymentConventional(models.TransientModel):
                 init_data["amount"],
                 payment_method.is_cash_count or not order.config_id.only_round_cash_method,
             )
-            print(f"[MAKE_PAYMENT]   adding payment: amount={amount} method={payment_method.name}")
             order.add_payment({
                 "pos_order_id": order.id,
                 "amount": amount,
@@ -92,11 +83,9 @@ class PosMakePaymentConventional(models.TransientModel):
                 "payment_method_id": init_data["payment_method_id"][0],
             })
 
-        print(f"[MAKE_PAYMENT]   _is_pos_order_paid={order._is_pos_order_paid()} state={order.state}")
-
         if order.state == "draft" and order._is_pos_order_paid():
-            # Si no hay cliente explícito, asignar el partner por defecto del config
-            # (venta anónima → 'Consumidor Final').  Debe hacerse ANTES de _process_saved_order.
+            # If no explicit customer, assign the default partner from config
+            # (anonymous sale → 'End Consumer'). Must be done BEFORE _process_saved_order.
             if not order.partner_id:
                 fallback_partner = (
                     order.config_id.default_partner_id
@@ -105,31 +94,27 @@ class PosMakePaymentConventional(models.TransientModel):
                 if fallback_partner:
                     order.write({"partner_id": fallback_partner.id})
                     _logger.info(
-                        "POS: partner por defecto asignado (%s) para pedido %s",
+                        "POS: default partner assigned (%s) for order %s",
                         fallback_partner.name, order.name,
                     )
-                    print(f"[MAKE_PAYMENT]   partner por defecto asignado: {fallback_partner.name}")
 
-            # Marcar para facturación automática cuando el pedido tiene cliente asignado.
-            # _process_saved_order de Odoo genera la factura si to_invoice=True y state='paid'.
-            # Esto debe establecerse ANTES de llamar a _process_saved_order.
+            # Mark for automatic invoicing when the order has a customer.
+            # _process_saved_order generates the invoice if to_invoice=True and state='paid'.
+            # This must be set BEFORE calling _process_saved_order.
             if order.partner_id and not order.account_move:
                 order.write({"to_invoice": True})
                 _logger.info(
-                    "POS: to_invoice=True para pedido %s con cliente %s",
+                    "POS: to_invoice=True for order %s with customer %s",
                     order.name, order.partner_id.name,
                 )
-                print(f"[MAKE_PAYMENT]   to_invoke=True para cliente {order.partner_id.name}")
 
             order._process_saved_order(False)
-            print(f"[MAKE_PAYMENT]   after _process_saved_order: state={order.state} account_move={order.account_move.name if order.account_move else 'None'}")
 
             if order.state in {"paid", "done"}:
                 order._send_order()
                 order.config_id.notify_synchronisation(order.config_id.current_session_id.id, 0)
 
             if not is_conventional or order.state not in {"paid", "done"}:
-                print("[MAKE_PAYMENT]   -> act_window_close (not conventional or not paid)")
                 return {"type": "ir.actions.act_window_close"}
 
             next_action = {
@@ -141,11 +126,9 @@ class PosMakePaymentConventional(models.TransientModel):
                 },
             }
 
-            # Imprimir si iface_print_auto está activado ("Impresión automática de recibo")
-            # y hay factura generada. Si el ajuste está desactivado, navegar directamente
-            # al nuevo pedido sin mostrar diálogo de impresión.
+            # Print receipt if iface_print_auto is enabled ("Automatic Receipt Printing")
+            # and an invoice has been generated.
             if order.config_id.iface_print_auto and order.account_move:
-                print(f"[MAKE_PAYMENT]   -> pos_conventional_print_receipt_client (factura {order.account_move.name})")
                 return {
                     "type": "ir.actions.client",
                     "tag": "pos_conventional_print_receipt_client",
@@ -156,11 +139,8 @@ class PosMakePaymentConventional(models.TransientModel):
                     },
                 }
 
-            print("[MAKE_PAYMENT]   -> pos_conventional_new_order")
             return next_action
 
-
-        print("[MAKE_PAYMENT]   -> calling launch_payment() (order not paid)")
         return self.launch_payment()
 
     def action_pay_cash(self):

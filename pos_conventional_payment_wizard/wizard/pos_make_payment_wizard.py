@@ -197,37 +197,27 @@ class PosMakePaymentWizard(models.TransientModel):
 
     def _execute_validation(self, print_invoice=False):
         self.ensure_one()
-        print("=" * 60)
-        print("[WIZARD] _execute_validation called")
-        print(f"[WIZARD]   order={self.order_id.id} state={self.order_id.state} print_invoice={print_invoice}")
-        print(f"[WIZARD]   amount_tendered={self.amount_tendered} amount_paid={self.amount_paid} amount_total={self.amount_total} amount_change={self.amount_change}")
 
         if self.amount_total <= 0:
-            raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos al pedido."))
+            raise UserError(_("Cannot charge an order with zero amount. Please add products."))
 
         total_covered = self.amount_paid + self.amount_tendered
         if total_covered < self.amount_total - 0.01:
-            print(f"[WIZARD]   ERROR: falta importe total_covered={total_covered} amount_total={self.amount_total}")
-            raise UserError(_("Falta importe por pagar."))
+            raise UserError(_("Insufficient amount paid."))
 
         order = self.order_id
         is_conventional = order.config_id and order.config_id.pos_non_touch
-        print(f"[WIZARD]   is_conventional={is_conventional}")
 
         if order.state == "draft":
             cash_method = self.payment_method_id
-            print(f"[WIZARD]   payment_method={cash_method.name} is_cash_count={cash_method.is_cash_count} journal.type={cash_method.journal_id.type}")
             if not cash_method.is_cash_count and cash_method.journal_id.type != "cash":
                 cash_method = order.config_id.payment_method_ids.filtered("is_cash_count")[:1]
                 if not cash_method:
                     cash_method = order.config_id.payment_method_ids.filtered(
                         lambda payment_method: payment_method.journal_id.type == "cash"
                     )[:1]
-                print(f"[WIZARD]   cash_method resolved to: {cash_method.name if cash_method else None}")
 
-            print(f"[WIZARD]   is_cash_payment={self.is_cash_payment} amount_change={self.amount_change}")
             if self.is_cash_payment and self.amount_change > 0.01:
-                print(f"[WIZARD]   -> cash with change: adding tendered={self.amount_tendered} change=-{self.amount_change}")
                 order.add_payment({
                     "pos_order_id": order.id,
                     "amount": self.amount_tendered,
@@ -241,7 +231,6 @@ class PosMakePaymentWizard(models.TransientModel):
                     })
             else:
                 due = order.amount_total - order.amount_paid
-                print(f"[WIZARD]   -> exact payment: due={due}")
                 if due > 0.01:
                     order.add_payment({
                         "pos_order_id": order.id,
@@ -249,8 +238,8 @@ class PosMakePaymentWizard(models.TransientModel):
                         "payment_method_id": self.payment_method_id.id,
                     })
 
-            # Si no hay cliente explícito, asignar el partner por defecto del config
-            # (venta anónima → 'Consumidor Final').  Debe hacerse ANTES de _process_saved_order.
+            # If no explicit customer, assign the default partner from config
+            # (anonymous sale → 'End Consumer'). Must be done BEFORE _process_saved_order.
             if not order.partner_id:
                 fallback_partner = (
                     order.config_id.default_partner_id
@@ -259,31 +248,27 @@ class PosMakePaymentWizard(models.TransientModel):
                 if fallback_partner:
                     order.write({"partner_id": fallback_partner.id})
                     _logger.info(
-                        "POS: partner por defecto asignado (%s) para pedido %s",
+                        "POS: default partner assigned (%s) for order %s",
                         fallback_partner.name, order.name,
                     )
-                    print(f"[WIZARD]   partner por defecto asignado: {fallback_partner.name}")
 
-            # Marcar para facturación automática cuando el pedido tiene cliente asignado.
-            # _process_saved_order de Odoo genera la factura si to_invoice=True y state='paid'.
-            # Esto debe establecerse ANTES de llamar a _process_saved_order.
+            # Mark for automatic invoicing when the order has a customer.
+            # _process_saved_order generates the invoice if to_invoice=True and state='paid'.
+            # This must be set BEFORE calling _process_saved_order.
             if order.partner_id and not order.account_move:
                 order.write({"to_invoice": True})
                 _logger.info(
-                    "POS: to_invoice=True para pedido %s con cliente %s",
+                    "POS: to_invoice=True for order %s with customer %s",
                     order.name, order.partner_id.name,
                 )
-                print(f"[WIZARD]   to_invoice=True para cliente {order.partner_id.name}")
 
             order._process_saved_order(False)
-            print(f"[WIZARD]   after _process_saved_order: state={order.state} account_move={order.account_move.name if order.account_move else 'None'}")
 
             if order.state in {"paid", "done"}:
                 order._send_order()
                 order.config_id.notify_synchronisation(order.config_id.current_session_id.id, 0)
 
             if not is_conventional or order.state not in {"paid", "done"}:
-                print("[WIZARD]   -> act_window_close (not conventional or not paid)")
                 return {"type": "ir.actions.act_window_close"}
 
             next_action = {
@@ -295,12 +280,10 @@ class PosMakePaymentWizard(models.TransientModel):
                 },
             }
 
-            # Imprimir si iface_print_auto está activado (o si se solicitó explícitamente),
-            # y hay factura generada. El campo 'iface_print_auto' corresponde a la opción
-            # "Impresión automática de recibo" de la configuración de la caja.
+            # Print receipt if iface_print_auto is enabled (or explicitly requested)
+            # and an invoice has been generated.
             should_print = print_invoice or order.config_id.iface_print_auto
             if should_print and order.account_move:
-                print(f"[WIZARD]   -> pos_conventional_print_receipt_client (factura {order.account_move.name})")
                 return {
                     "type": "ir.actions.client",
                     "tag": "pos_conventional_print_receipt_client",
@@ -311,10 +294,8 @@ class PosMakePaymentWizard(models.TransientModel):
                     },
                 }
 
-            print("[WIZARD]   -> pos_conventional_new_order")
             return next_action
 
-        print(f"[WIZARD]   -> act_window_close (order not in draft, state={order.state})")
         return {"type": "ir.actions.act_window_close"}
 
     def action_validate(self):
