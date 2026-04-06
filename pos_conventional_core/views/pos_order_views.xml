@@ -77,12 +77,13 @@
                     </group>
                     <group>
                         <field name="amount_untaxed" widget="monetary" string="Importe base"/>
-                        <field name="amount_tax" widget="monetary" string="Impuestos"/>
+                        <field name="amount_tax" widget="monetary" string="Impuestos"
+                               force_save="1"/>
                         <div class="oe_inline o_td_label">
                             <label for="amount_total" class="fw-bold fs-2"/>
                         </div>
                         <field name="amount_total" widget="monetary" nolabel="1"
-                               class="fw-bold fs-2"/>
+                               class="fw-bold fs-2" force_save="1"/>
                     </group>
                 </group>
 

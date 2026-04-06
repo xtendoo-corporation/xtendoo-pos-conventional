@@ -685,7 +685,7 @@ class TestPosOrder(PosConventionalTestCommon):
         # Cleanup
         self.pos_config.write({"receipt_header": False, "receipt_footer": False})
 
-    # ── _onchange_lines_recompute_totals ──────────────────────────────────
+    # ── _onchange_lines_recompute_totals (feedback visual inmediato) ──────
 
     def test_53_onchange_lines_sets_amount_total_from_lines(self):
         """_onchange_lines_recompute_totals calcula amount_total a partir de las líneas."""
@@ -749,5 +749,96 @@ class TestPosOrder(PosConventionalTestCommon):
         expected_total = sum(line.price_subtotal_incl for line in order.lines)
         self.assertAlmostEqual(order.amount_total, expected_total, places=2)
         self.assertEqual(len(order.lines), 2)
+
+    # ── _persist_order_totals / write override (persistencia en BD) ───────
+
+    def test_58_write_with_line_command_persists_amount_total(self):
+        """
+        Al añadir una línea via write (como hace el formulario OWL), amount_total
+        queda persistido en la BD con valor > 0.
+
+        Reproduce el flujo real de la vista backend: OWL no incluye campos readonly
+        del pedido en el payload de guardado, el override write() debe hacerlo.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line_vals = order._prepare_order_line_vals(self.product, 2.0)
+        order.write({"lines": [(0, 0, line_vals)]})
+        # Recargar desde BD para confirmar persistencia real
+        order.invalidate_recordset()
+        self.assertGreater(order.amount_total, 0,
+                           "amount_total debe estar persistido en BD tras write con línea")
+
+    def test_59_write_with_line_command_persists_amount_tax(self):
+        """amount_tax queda persistido correctamente tras write con línea con impuestos."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line_vals = order._prepare_order_line_vals(self.product, 1.0)
+        order.write({"lines": [(0, 0, line_vals)]})
+        order.invalidate_recordset()
+        if self.product.taxes_id:
+            self.assertGreater(order.amount_tax, 0,
+                               "amount_tax debe ser > 0 para producto con impuestos")
+        expected_tax = sum(
+            line.price_subtotal_incl - line.price_subtotal for line in order.lines
+        )
+        self.assertAlmostEqual(order.amount_tax, expected_tax, places=2)
+
+    def test_60_write_with_multiple_lines_accumulates_totals(self):
+        """Varias líneas añadidas via write acumulan amount_total correctamente."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        vals1 = order._prepare_order_line_vals(self.product, 1.0)
+        vals2 = order._prepare_order_line_vals(self.product, 3.0)
+        order.write({"lines": [(0, 0, vals1), (0, 0, vals2)]})
+        order.invalidate_recordset()
+        expected = sum(line.price_subtotal_incl for line in order.lines)
+        self.assertAlmostEqual(order.amount_total, expected, places=2)
+        self.assertEqual(len(order.lines), 2)
+
+    def test_61_write_delete_line_recalculates_total(self):
+        """Al eliminar una línea via write, amount_total se recalcula en BD."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line1 = self._add_line(order, self.product, 2.0)
+        line2 = self._add_line(order, self.product, 1.0)
+        total_before = order.amount_total
+        self.assertGreater(total_before, 0)
+        # Eliminar la primera línea via command (como la vista backend)
+        order.write({"lines": [(2, line1.id, {})]})
+        order.invalidate_recordset()
+        expected = sum(line.price_subtotal_incl for line in order.lines)
+        self.assertAlmostEqual(order.amount_total, expected, places=2)
+        self.assertLess(order.amount_total, total_before,
+                        "El total debe reducirse al eliminar una línea")
+
+    def test_62_persist_order_totals_resets_to_zero_without_lines(self):
+        """_persist_order_totals deja amount_total a 0 si el pedido no tiene líneas."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        # Forzar un valor distinto de cero en BD
+        order.write({"amount_total": 99.0, "amount_tax": 5.0})
+        # Llamar directamente al método sin líneas
+        order._persist_order_totals()
+        order.invalidate_recordset()
+        self.assertEqual(order.amount_total, 0.0)
+        self.assertEqual(order.amount_tax, 0.0)
+
+    def test_63_amount_total_correct_before_validate(self):
+        """
+        El total está correctamente calculado antes de llamar a action_validate_and_invoice,
+        de modo que el cobro puede realizarse sin errores de importes.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line_vals = order._prepare_order_line_vals(self.product, 1.0)
+        order.write({"lines": [(0, 0, line_vals)]})
+        order.invalidate_recordset()
+        # amount_total debe ser > 0 para que el cobro tenga sentido
+        self.assertGreater(order.amount_total, 0,
+                           "amount_total debe ser > 0 antes de cobrar el pedido")
+        # amount_total == suma de price_subtotal_incl de las líneas
+        expected = sum(line.price_subtotal_incl for line in order.lines)
+        self.assertAlmostEqual(order.amount_total, expected, places=2)
 
 
