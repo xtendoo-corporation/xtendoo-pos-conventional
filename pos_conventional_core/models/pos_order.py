@@ -37,6 +37,30 @@ class PosOrder(models.Model):
         for order in self:
             order.amount_untaxed = sum(line.price_subtotal for line in order.lines)
 
+    @api.onchange("lines")
+    def _onchange_lines_recompute_totals(self):
+        """
+        Recalcula amount_total y amount_tax en tiempo real cuando el usuario
+        añade, modifica o elimina líneas en la vista de formulario del backend.
+
+        Necesario porque amount_total y amount_tax son campos store=True del módulo
+        base: en Odoo 19 OWL no se incluyen en la respuesta onchange automáticamente,
+        por lo que el formulario mostraría siempre cero hasta guardar el registro.
+        """
+        for order in self:
+            lines = order.lines
+            tax_total = sum(
+                line.price_subtotal_incl - line.price_subtotal for line in lines
+            )
+            amount_total = sum(line.price_subtotal_incl for line in lines)
+            currency = order.currency_id or self.env.company.currency_id
+            if currency:
+                order.amount_tax = currency.round(tax_total)
+                order.amount_total = currency.round(amount_total)
+            else:
+                order.amount_tax = tax_total
+                order.amount_total = amount_total
+
     @api.depends("payment_ids", "state")
     def _compute_payment_method_ribbon(self):
         for order in self:

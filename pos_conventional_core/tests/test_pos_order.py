@@ -685,3 +685,69 @@ class TestPosOrder(PosConventionalTestCommon):
         # Cleanup
         self.pos_config.write({"receipt_header": False, "receipt_footer": False})
 
+    # ── _onchange_lines_recompute_totals ──────────────────────────────────
+
+    def test_53_onchange_lines_sets_amount_total_from_lines(self):
+        """_onchange_lines_recompute_totals calcula amount_total a partir de las líneas."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order, self.product, 2.0)
+        # Forzar a cero para verificar que el onchange lo recalcula
+        order.write({"amount_total": 0.0, "amount_tax": 0.0})
+        order._onchange_lines_recompute_totals()
+        expected_total = sum(line.price_subtotal_incl for line in order.lines)
+        self.assertAlmostEqual(order.amount_total, expected_total, places=2)
+        self.assertGreater(order.amount_total, 0,
+                           "amount_total debe ser mayor que cero tras el onchange con líneas")
+
+    def test_54_onchange_lines_sets_amount_tax(self):
+        """_onchange_lines_recompute_totals calcula amount_tax correctamente."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order, self.product, 1.0)  # producto con IVA 21%
+        order.write({"amount_total": 0.0, "amount_tax": 0.0})
+        order._onchange_lines_recompute_totals()
+        expected_tax = sum(
+            line.price_subtotal_incl - line.price_subtotal for line in order.lines
+        )
+        self.assertAlmostEqual(order.amount_tax, expected_tax, places=2)
+        if self.product.taxes_id:
+            self.assertGreater(order.amount_tax, 0,
+                               "amount_tax debe ser positivo para producto con impuestos")
+
+    def test_55_onchange_lines_zero_when_no_lines(self):
+        """_onchange_lines_recompute_totals deja los totales a cero si no hay líneas."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        # Sin líneas, los totales deben quedar a cero
+        order._onchange_lines_recompute_totals()
+        self.assertEqual(order.amount_total, 0.0)
+        self.assertEqual(order.amount_tax, 0.0)
+
+    def test_56_onchange_lines_total_equals_untaxed_plus_tax(self):
+        """amount_total == amount_untaxed + amount_tax tras el onchange."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order, self.product, 3.0)
+        order.write({"amount_total": 0.0, "amount_tax": 0.0})
+        order._onchange_lines_recompute_totals()
+        self.assertAlmostEqual(
+            order.amount_total,
+            order.amount_untaxed + order.amount_tax,
+            places=2,
+            msg="amount_total debe ser la suma de amount_untaxed y amount_tax",
+        )
+
+    def test_57_onchange_lines_multiple_lines(self):
+        """_onchange_lines_recompute_totals acumula correctamente múltiples líneas."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order, self.product, 1.0)
+        self._add_line(order, self.product, 2.0)
+        order.write({"amount_total": 0.0, "amount_tax": 0.0})
+        order._onchange_lines_recompute_totals()
+        expected_total = sum(line.price_subtotal_incl for line in order.lines)
+        self.assertAlmostEqual(order.amount_total, expected_total, places=2)
+        self.assertEqual(len(order.lines), 2)
+
+
