@@ -42,8 +42,9 @@ class PosOrder(models.Model):
         """
         Recalcula amount_total y amount_tax en tiempo real en la vista de formulario.
 
-        Proporciona feedback visual inmediato al usuario antes de guardar.
-        La persistencia real en BD la realiza el override de write().
+        En Odoo 19 OWL los campos readonly=True del registro padre no se incluyen
+        en el payload de guardado salvo que la vista declare force_save="1".
+        Este onchange calcula los valores; force_save garantiza su persistencia.
         """
         for order in self:
             lines = order.lines
@@ -59,29 +60,6 @@ class PosOrder(models.Model):
                 order.amount_tax = tax_total
                 order.amount_total = amount_total
 
-    def _persist_order_totals(self):
-        """
-        Persiste amount_total y amount_tax en la base de datos sumando los
-        valores de las líneas guardadas.
-
-        Necesario porque amount_total/amount_tax son readonly=True en la vista:
-        OWL no los incluye en el payload de guardado del registro padre, de modo
-        que el valor almacenado quedaría obsoleto (a cero) aunque las líneas
-        tengan price_subtotal_incl correcto.
-        """
-        for order in self.filtered(lambda o: o.currency_id):
-            lines = order.lines
-            amount_tax = sum(
-                line.price_subtotal_incl - line.price_subtotal for line in lines
-            )
-            amount_total = sum(line.price_subtotal_incl for line in lines)
-            currency = order.currency_id
-            # Escribir directamente para persistir; 'amount_tax'/'amount_total'
-            # no están en las condiciones del override de write(), sin recursión.
-            order.write({
-                "amount_tax": currency.round(amount_tax),
-                "amount_total": currency.round(amount_total),
-            })
 
     @api.depends("payment_ids", "state")
     def _compute_payment_method_ribbon(self):
@@ -156,14 +134,6 @@ class PosOrder(models.Model):
                     vals[_f] = 0.0
         return super().create(vals_list)
 
-    def write(self, vals):
-        result = super().write(vals)
-        # Persist computed totals when lines or payments change.
-        # amount_total/amount_tax are readonly=True, so OWL does not include
-        # them in the save payload; we must recompute and write them ourselves.
-        if "lines" in vals or "payment_ids" in vals:
-            self._persist_order_totals()
-        return result
 
     def _prepare_order_line_vals(self, product, qty=1.0):
         """

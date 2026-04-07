@@ -66,14 +66,31 @@ class PosMakePaymentWizard(models.TransientModel):
                 )
             )
 
-    @api.depends("amount_tendered", "amount_due", "amount_paid", "amount_total", "is_cash_payment")
+    @api.depends("amount_tendered", "amount_paid", "amount_total")
     def _compute_amount_change(self):
+        """
+        Calcula la diferencia entre lo entregado (pagos previos + importe actual)
+        y el total del pedido. Positivo: devolver cambio. Negativo: falta por pagar.
+        """
         for wizard in self:
-            total_with_tendered = wizard.amount_paid + wizard.amount_tendered
-            if wizard.is_cash_payment and total_with_tendered > wizard.amount_total:
-                wizard.amount_change = total_with_tendered - wizard.amount_total
-            else:
-                wizard.amount_change = 0.0
+            wizard.amount_change = (
+                wizard.amount_paid + wizard.amount_tendered - wizard.amount_total
+            )
+
+    @api.onchange("amount_tendered", "payment_ids")
+    def _onchange_amount_tendered(self):
+        """
+        Actualiza amount_change en tiempo real cuando el usuario edita el importe.
+
+        En OWL 17+ @api.depends actualiza computed fields en el contexto ORM,
+        pero para actualizaciones instantáneas en el formulario se requiere
+        @api.onchange explícito sobre los campos que el usuario puede editar.
+        """
+        for wizard in self:
+            paid = sum(wizard.order_id.payment_ids.mapped("amount"))
+            wizard.amount_change = (
+                paid + wizard.amount_tendered - wizard.order_id.amount_total
+            )
 
     @api.depends("order_id.amount_total", "order_id.payment_ids", "order_id.payment_ids.amount")
     def _compute_totals(self):

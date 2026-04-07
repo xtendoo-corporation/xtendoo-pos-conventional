@@ -15,25 +15,25 @@
                     <div class="p-3 bg-light rounded mb-3">
                         <!-- Fila 1: Total del ticket (fijo, nunca baja) -->
                         <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
-                            <span class="fs-4 fw-bold">Total a pagar</span>
+                            <span class="fs-2 fw-bold">Total a pagar</span>
                             <field name="amount_total" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 readonly="1" nolabel="1"
-                                class="fs-4 fw-bolder text-end"/>
+                                class="fs-2 fw-bold text-end"/>
                         </div>
                         <!-- Fila 2: Pagado — rojo si no cubre el total, verde si lo cubre -->
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="fs-4 fw-bold">Pagado</span>
+                            <span class="fs-2 fw-bold">Pagado</span>
                             <div class="text-end">
                                 <field name="amount_paid" widget="monetary"
                                     options="{'currency_field': 'currency_id'}"
                                     readonly="1" nolabel="1"
-                                    class="fs-4 fw-bolder text-danger"
+                                    class="fs-2 fw-bold text-danger"
                                     invisible="amount_paid >= amount_total"/>
                                 <field name="amount_paid" widget="monetary"
                                     options="{'currency_field': 'currency_id'}"
                                     readonly="1" nolabel="1"
-                                    class="fs-4 fw-bolder text-success"
+                                    class="fs-2 fw-bold text-success"
                                     invisible="amount_paid &lt; amount_total"/>
                             </div>
                         </div>
@@ -91,28 +91,35 @@
                     <div class="p-3 bg-light rounded mb-3">
                         <!-- Fila 1: Total del ticket (fijo) -->
                         <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
-                            <span class="fs-4 fw-bold">Total a pagar</span>
+                            <span class="fs-2 fw-bold">Total a pagar</span>
                             <field name="amount_total" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 readonly="1" nolabel="1"
-                                class="fs-4 fw-bolder text-end"/>
+                                class="fs-2 fw-bold text-end"/>
                         </div>
                         <!-- Fila 2: Importe entregado -->
                         <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
-                            <span class="fs-4 fw-bold">Importe entregado</span>
+                            <span class="fs-2 fw-bold">Importe entregado</span>
                             <field name="amount_tendered" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 nolabel="1"
-                                class="fs-4 fw-bolder text-primary text-end"/>
+                                class="fs-2 fw-bold text-primary text-end"/>
                         </div>
-                        <!-- Fila 3: Cambio (solo si es pago en efectivo) -->
-                        <div class="d-flex justify-content-between align-items-center"
-                             invisible="not is_cash_payment">
-                            <span class="fs-4 fw-bold">Cambio a devolver</span>
-                            <field name="amount_change" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                readonly="1" nolabel="1"
-                                class="fs-4 fw-bolder text-warning text-end"/>
+                        <!-- Fila 3: Cambio a devolver — verde si positivo o cero, rojo si negativo -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fs-2 fw-bold">Cambio a devolver</span>
+                            <div class="text-end">
+                                <field name="amount_change" widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    readonly="1" nolabel="1"
+                                    class="fs-2 fw-bold text-success"
+                                    invisible="amount_change &lt; 0"/>
+                                <field name="amount_change" widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    readonly="1" nolabel="1"
+                                    class="fs-2 fw-bold text-danger"
+                                    invisible="amount_change &gt;= 0"/>
+                            </div>
                         </div>
                     </div>
                 </sheet>

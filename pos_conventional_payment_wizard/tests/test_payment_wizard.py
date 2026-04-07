@@ -573,3 +573,106 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         self.assertEqual(order.account_move.state, "posted",
                          "La factura simplificada debe estar publicada")
 
+    # ── amount_change: siempre calculado, con signo ───────────────────────
+
+    def _make_wizard(self, order, amount_tendered):
+        """Crea un wizard de pago con el importe entregado indicado."""
+        return self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+            "amount_tendered": amount_tendered,
+        })
+
+    def test_43_amount_change_zero_when_exact_payment(self):
+        """amount_change es 0 cuando el importe entregado coincide exactamente con el total."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        wizard = self._make_wizard(order, order.amount_total)
+
+        self.assertAlmostEqual(
+            wizard.amount_change, 0.0, places=2,
+            msg="El cambio debe ser 0 cuando se entrega el importe exacto",
+        )
+
+    def test_44_amount_change_positive_when_overpaid(self):
+        """amount_change es positivo cuando el cliente entrega mas del total."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        extra = 10.0
+        wizard = self._make_wizard(order, order.amount_total + extra)
+
+        self.assertAlmostEqual(
+            wizard.amount_change, extra, places=2,
+            msg="El cambio debe ser positivo (devolver al cliente) cuando se entrega de mas",
+        )
+
+    def test_45_amount_change_negative_when_underpaid(self):
+        """amount_change es negativo cuando el importe entregado no cubre el total."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        deficit = 5.0
+        wizard = self._make_wizard(order, max(0.01, order.amount_total - deficit))
+
+        self.assertLess(
+            wizard.amount_change, 0.0,
+            "El cambio debe ser negativo (falta por pagar) cuando el importe es insuficiente",
+        )
+
+    def test_46_amount_change_accounts_for_previous_payments(self):
+        """amount_change refleja pagos previos: paid + tendered - total."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        partial = order.amount_total / 2
+        order.add_payment({
+            "pos_order_id": order.id,
+            "amount": partial,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        # Entregamos exactamente la mitad restante → cambio = 0
+        wizard = self._make_wizard(order, partial)
+
+        self.assertAlmostEqual(
+            wizard.amount_change, 0.0, places=2,
+            msg="Con pago parcial previo, el cambio debe ser 0 al completar el importe restante",
+        )
+
+    def test_47_validate_raises_when_amount_change_negative(self):
+        """action_validate lanza UserError cuando el importe entregado no cubre el total."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        insufficient = max(0.01, order.amount_total - 5.0)
+        wizard = self._make_wizard(order, insufficient)
+
+        self.assertLess(wizard.amount_change, 0.0)
+        with self.assertRaises(UserError, msg="Debe lanzar UserError con importe insuficiente"):
+            wizard.action_validate()
+
+    def test_48_amount_change_updates_when_tendered_changes(self):
+        """amount_change se recalcula al modificar amount_tendered."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        wizard = self._make_wizard(order, order.amount_total)
+        self.assertAlmostEqual(wizard.amount_change, 0.0, places=2)
+
+        # Aumentamos el importe entregado
+        extra = 3.0
+        wizard.amount_tendered = order.amount_total + extra
+        self.assertAlmostEqual(
+            wizard.amount_change, extra, places=2,
+            msg="amount_change debe recalcularse al modificar amount_tendered",
+        )

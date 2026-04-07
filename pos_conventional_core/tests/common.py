@@ -8,8 +8,15 @@ from odoo.tests.common import TransactionCase, tagged
 class PosConventionalTestCommon(TransactionCase):
     """
     Clase base para todos los tests de pos_conventional_*.
-    Crea un entorno mínimo operativo: config POS non-touch, sesión, productos,
+    Crea un entorno mínimo operativo: config POS, sesión, productos,
     partner, métodos de pago (efectivo + tarjeta).
+
+    pos_conventional_core es el módulo AGREGADOR: depende de todos los
+    submódulos, nunca al revés. Por eso los submódulos heredan esta clase
+    sin necesidad de declarar pos_conventional_core en sus depends.
+
+    El campo pos_non_touch se activa sólo cuando está disponible en el
+    registro (es decir, cuando pos_conventional_core está cargado).
     """
 
     @classmethod
@@ -136,16 +143,16 @@ class PosConventionalTestCommon(TransactionCase):
                 }
             )
 
-        # ── Configuración POS (modo no táctil) ─────────────────────────────
-        cls.pos_config = cls.env["pos.config"].create(
-            {
-                "name": "Test POS Non-Touch",
-                "pos_non_touch": True,
-                "payment_method_ids": [(6, 0, [cls.cash_pm.id, cls.card_pm.id])],
-                "invoice_journal_id": cls.invoice_journal.id,
-                "default_partner_id": cls.partner.id,
-            }
-        )
+        # ── Configuración POS (modo no táctil si el campo está disponible) ──
+        config_vals = {
+            "name": "Test POS Non-Touch",
+            "payment_method_ids": [(6, 0, [cls.cash_pm.id, cls.card_pm.id])],
+            "invoice_journal_id": cls.invoice_journal.id,
+            "default_partner_id": cls.partner.id,
+        }
+        if "pos_non_touch" in cls.env["pos.config"]._fields:
+            config_vals["pos_non_touch"] = True
+        cls.pos_config = cls.env["pos.config"].create(config_vals)
 
     # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -238,14 +245,16 @@ class PosConventionalTestCommon(TransactionCase):
         )
 
     def _make_no_cash_control_config(self):
-        """Crea un config POS non-touch SIN control de caja para tests de cierre limpio."""
+        """Crea un config POS SIN control de caja para tests de cierre limpio."""
         pm = self._make_fresh_cash_pm(
             name=f"PM NCC {self.env['ir.sequence'].next_by_code('pos.order') or ''}"
         )
-        return self.env["pos.config"].create({
+        config_vals = {
             "name": "Test POS No Cash Control",
-            "pos_non_touch": True,
             "cash_control": False,
             "payment_method_ids": [(6, 0, [pm.id])],
-        })
+        }
+        if "pos_non_touch" in self.env["pos.config"]._fields:
+            config_vals["pos_non_touch"] = True
+        return self.env["pos.config"].create(config_vals)
 
