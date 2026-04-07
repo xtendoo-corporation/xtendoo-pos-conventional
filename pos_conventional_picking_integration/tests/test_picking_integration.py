@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestPickingIntegration(PosConventionalTestCommon):
     """Tests para pos_conventional_picking_integration."""
 
@@ -160,9 +160,23 @@ class TestPickingIntegration(PosConventionalTestCommon):
 
     # ── res.config.settings — pos_enable_albaran ─────────────────────────
 
+    def _create_config_settings(self, extra_vals=None):
+        """Crea res.config.settings con todos los campos requeridos inicializados.
+
+        En Odoo 19, campos como default_picking_policy (de sale_stock) usan
+        ir.default y no tienen default Python aplicable durante create(). Es
+        necesario obtener los valores por defecto con default_get antes de crear.
+        """
+        Settings = self.env["res.config.settings"]
+        defaults = Settings.default_get(list(Settings._fields.keys()))
+        defaults.setdefault("default_picking_policy", "direct")
+        if extra_vals:
+            defaults.update(extra_vals)
+        return Settings.create(defaults)
+
     def test_15_settings_pos_enable_albaran_reflected(self):
         """pos_enable_albaran en settings refleja el valor del config."""
-        settings = self.env["res.config.settings"].create(
+        settings = self._create_config_settings(
             {"pos_config_id": self.pos_config.id}
         )
         self.assertTrue(settings.pos_enable_albaran)
@@ -176,7 +190,7 @@ class TestPickingIntegration(PosConventionalTestCommon):
                 "payment_method_ids": [(6, 0, [self.card_pm.id])],
             }
         )
-        settings = self.env["res.config.settings"].create(
+        settings = self._create_config_settings(
             {"pos_config_id": config.id}
         )
         self.assertFalse(settings.pos_enable_albaran)

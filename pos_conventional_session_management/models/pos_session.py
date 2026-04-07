@@ -105,7 +105,7 @@ class PosSession(models.Model):
         for vals in vals_list:
             if "config_id" in vals and "cash_register_balance_start" not in vals:
                 config = self.env["pos.config"].browse(vals["config_id"])
-                if config.pos_non_touch:
+                if getattr(config, "pos_non_touch", False):
                     last_session = self.search(
                         [("config_id", "=", config.id), ("state", "=", "closed")],
                         order="id desc",
@@ -125,7 +125,7 @@ class PosSession(models.Model):
             return True
 
         non_touch_sessions = self.filtered(
-            lambda s: s.config_id.pos_non_touch and s.state == "opening_control"
+            lambda s: getattr(s.config_id, "pos_non_touch", False) and s.state == "opening_control"
         )
 
         if non_touch_sessions:

@@ -26,7 +26,7 @@ from odoo.tests.common import tagged
 from .common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestPosOrderLineCostMargin(PosConventionalTestCommon):
     """Cobertura de los campos total_cost, is_total_cost_computed, margin y margin_percent."""
 

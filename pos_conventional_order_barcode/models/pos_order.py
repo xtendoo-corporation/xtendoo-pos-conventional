@@ -39,7 +39,7 @@ class PosOrder(models.Model):
             price_unit = pricelist._get_product_price(
                 product, 1.0, partner=partner, uom=product.uom_id
             )
-            
+
             if public_price > price_unit and public_price > 0:
                 discount = (public_price - price_unit) / public_price * 100
                 price_unit = public_price
@@ -102,18 +102,36 @@ class PosOrder(models.Model):
 
         # Crear nueva línea
         try:
-            # Note: We rely on _prepare_order_line_vals from core or redefined here if needed
-            # In this modular version, we might need to redefine it or ensure it's in core
             if hasattr(self, '_prepare_order_line_vals'):
                 vals = self._prepare_order_line_vals(product)
             else:
-                 # Fallback if core doesn't have it yet (it should if I migrated it)
-                 vals = {
-                     'order_id': self.id,
-                     'product_id': product.id,
-                     'qty': 1.0,
-                     'price_unit': product.lst_price,
-                 }
+                price_unit = product.lst_price
+                taxes = product.taxes_id.filtered(
+                    lambda t: t.company_id == self.env.company
+                )
+                if taxes:
+                    tax_results = taxes.compute_all(
+                        price_unit,
+                        currency=self.currency_id or self.env.company.currency_id,
+                        quantity=1.0,
+                        product=product,
+                    )
+                    price_subtotal = tax_results["total_excluded"]
+                    price_subtotal_incl = tax_results["total_included"]
+                else:
+                    price_subtotal = price_unit
+                    price_subtotal_incl = price_unit
+                vals = {
+                    'order_id': self.id,
+                    'product_id': product.id,
+                    'full_product_name': product.display_name,
+                    'qty': 1.0,
+                    'price_unit': price_unit,
+                    'discount': 0.0,
+                    'price_subtotal': price_subtotal,
+                    'price_subtotal_incl': price_subtotal_incl,
+                    'tax_ids': [(6, 0, taxes.ids)],
+                }
             self.env["pos.order.line"].create(vals)
             return {"success": True, "message": _("Añadido: %s") % product.display_name}
         except Exception as e:

@@ -66,7 +66,9 @@ class PosMakePaymentConventional(models.TransientModel):
             raise UserError(_("Customer is required for %s payment method.", self.payment_method_id.name))
 
         currency = order.currency_id
-        is_conventional = order.config_id and order.config_id.pos_non_touch
+        is_conventional = bool(
+            order.config_id and getattr(order.config_id, "pos_non_touch", False)
+        )
 
         init_data = self.read()[0]
         payment_method = self.env["pos.payment.method"].browse(init_data["payment_method_id"][0])
@@ -88,7 +90,7 @@ class PosMakePaymentConventional(models.TransientModel):
             # (anonymous sale → 'End Consumer'). Must be done BEFORE _process_saved_order.
             if not order.partner_id:
                 fallback_partner = (
-                    order.config_id.default_partner_id
+                    getattr(order.config_id, "default_partner_id", False)
                     or order.company_id.partner_id
                 )
                 if fallback_partner:

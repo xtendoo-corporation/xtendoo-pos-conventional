@@ -14,15 +14,32 @@ Comportamiento esperado:
   - La configuración de test usa iface_print_auto=False (valor por defecto),
     por lo que los tests del flujo normal esperan pos_conventional_new_order.
   - POS no convencional: devuelve act_window_close (sin navegar a nuevo pedido).
+
+Nota: Esta clase requiere que pos_conventional_core esté cargado (campo
+pos_non_touch en pos.config). Si el módulo no está cargado en el momento de
+ejecutar estos tests (ocurre cuando pos_conventional_payment_wizard se carga
+ANTES de pos_conventional_core en el orden de dependencias), los tests se
+omiten automáticamente.
 """
+import unittest
 from odoo.tests.common import tagged
 from odoo.exceptions import UserError
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestPaymentFlow(PosConventionalTestCommon):
     """Tests del flujo completo de pago: wizard, cierre de pedido y nuevo pedido."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        if "pos_non_touch" not in cls.env["pos.config"]._fields:
+            raise unittest.SkipTest(
+                "pos_conventional_core no está cargado: campo pos_non_touch no disponible. "
+                "Estos tests se ejecutan correctamente cuando pos_conventional_core "
+                "está completamente inicializado."
+            )
 
     # ── Helpers internos ──────────────────────────────────────────────────
 

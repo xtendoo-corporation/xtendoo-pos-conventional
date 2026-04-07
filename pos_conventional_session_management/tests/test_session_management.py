@@ -6,7 +6,7 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestSessionManagement(PosConventionalTestCommon):
     """Tests para pos_conventional_session_management — sesión y wizards."""
 
@@ -1088,7 +1088,7 @@ class TestSessionManagement(PosConventionalTestCommon):
         )
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestClosingPopupDataStructure(PosConventionalTestCommon):
     """
     Tests que verifican la estructura de datos que consume el componente JS

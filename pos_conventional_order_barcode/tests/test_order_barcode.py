@@ -4,7 +4,7 @@ from odoo.tests.common import tagged
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestPosOrderBarcode(PosConventionalTestCommon):
     """Tests para get_product_line_data_by_barcode / add_product_by_barcode."""
 

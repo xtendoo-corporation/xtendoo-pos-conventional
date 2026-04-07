@@ -148,10 +148,15 @@ class PosConventionalTestCommon(TransactionCase):
             "name": "Test POS Non-Touch",
             "payment_method_ids": [(6, 0, [cls.cash_pm.id, cls.card_pm.id])],
             "invoice_journal_id": cls.invoice_journal.id,
-            "default_partner_id": cls.partner.id,
         }
-        if "pos_non_touch" in cls.env["pos.config"]._fields:
+        # Campos definidos por pos_conventional_core — sólo se añaden si están disponibles
+        # para que common.py funcione aunque se ejecute en el contexto de un submódulo
+        # cuyo módulo agregador todavía no ha registrado sus extensiones de modelo.
+        pos_config_fields = cls.env["pos.config"]._fields
+        if "pos_non_touch" in pos_config_fields:
             config_vals["pos_non_touch"] = True
+        if "default_partner_id" in pos_config_fields:
+            config_vals["default_partner_id"] = cls.partner.id
         cls.pos_config = cls.env["pos.config"].create(config_vals)
 
     # ── Helpers ────────────────────────────────────────────────────────────
@@ -210,9 +215,43 @@ class PosConventionalTestCommon(TransactionCase):
         return self.env["pos.order"].create(vals)
 
     def _add_line(self, order, product=None, qty=1.0):
-        """Añade una línea de pedido usando el helper del core."""
+        """Añade una línea de pedido.
+
+        Usa _prepare_order_line_vals si está disponible (pos_conventional_core cargado).
+        Si no, calcula los valores mínimos requeridos directamente para evitar
+        violaciones NOT NULL (price_subtotal, price_subtotal_incl).
+        """
         product = product or self.product
-        vals = order._prepare_order_line_vals(product, qty)
+        if hasattr(order, "_prepare_order_line_vals"):
+            vals = order._prepare_order_line_vals(product, qty)
+        else:
+            price_unit = product.list_price
+            taxes = product.taxes_id.filtered(
+                lambda t: t.company_id == (order.company_id or self.env.company)
+            )
+            if taxes:
+                tax_results = taxes.compute_all(
+                    price_unit,
+                    currency=order.currency_id or self.env.company.currency_id,
+                    quantity=qty,
+                    product=product,
+                )
+                price_subtotal = tax_results["total_excluded"]
+                price_subtotal_incl = tax_results["total_included"]
+            else:
+                price_subtotal = price_unit * qty
+                price_subtotal_incl = price_unit * qty
+            vals = {
+                "order_id": order.id,
+                "product_id": product.id,
+                "full_product_name": product.display_name,
+                "qty": qty,
+                "price_unit": price_unit,
+                "discount": 0.0,
+                "price_subtotal": price_subtotal,
+                "price_subtotal_incl": price_subtotal_incl,
+                "tax_ids": [(6, 0, taxes.ids)],
+            }
         line = self.env["pos.order.line"].create(vals)
         # En Odoo 19, _compute_prices usa @api.onchange, no @api.depends.
         # Hay que llamarlo manualmente para actualizar amount_total.

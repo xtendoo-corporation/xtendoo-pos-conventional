@@ -77,6 +77,7 @@ class PosOrder(models.Model):
             "order_line": sale_order_lines,
             "origin": self.name,
             "note": _("Creado desde pedido POS: %s") % self.name,
+            "picking_policy": "direct",
         }
 
         if self.company_id:
@@ -109,15 +110,20 @@ class PosOrder(models.Model):
             _logger.exception("Error al crear sale.order desde POS: %s", str(e))
             raise UserError(_("Error al crear el albarán: %s") % str(e))
 
+        # Acción de navegación post-pago: usa pos_conventional_core si está disponible
+        _get_post_action = getattr(self, "_get_post_validation_action", None)
+
         if created_picking:
             report_url = f"/report/html/pos_conventional_picking_integration.report_albaran_80mm/{created_picking.id}"
+            params = {"url": report_url}
+            if _get_post_action:
+                params["next_action"] = _get_post_action()
             return {
                 "type": "ir.actions.client",
                 "tag": "pos_conventional_print_iframe",
-                "params": {
-                    "url": report_url,
-                    "next_action": self._get_post_validation_action(),
-                },
+                "params": params,
             }
 
-        return self._get_post_validation_action()
+        if _get_post_action:
+            return _get_post_action()
+        return {"type": "ir.actions.act_window_close"}

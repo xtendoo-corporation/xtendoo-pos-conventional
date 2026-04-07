@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestReceiptCustom(PosConventionalTestCommon):
     """Tests para pos_conventional_receipt_custom — pos.order."""
 

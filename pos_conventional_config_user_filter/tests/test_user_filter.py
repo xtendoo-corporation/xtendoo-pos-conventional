@@ -4,7 +4,7 @@ from odoo.tests.common import tagged
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestResUsersFilter(PosConventionalTestCommon):
     """Tests para res.users — campo allowed_pos_config_ids (pos_conventional_config_user_filter)."""
 

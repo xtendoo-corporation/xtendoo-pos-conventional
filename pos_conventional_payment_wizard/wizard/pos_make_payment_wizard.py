@@ -66,31 +66,37 @@ class PosMakePaymentWizard(models.TransientModel):
                 )
             )
 
-    @api.depends("amount_tendered", "amount_paid", "amount_total")
+    @api.depends("amount_tendered", "amount_paid", "amount_total", "is_cash_payment")
     def _compute_amount_change(self):
         """
         Calcula la diferencia entre lo entregado (pagos previos + importe actual)
         y el total del pedido. Positivo: devolver cambio. Negativo: falta por pagar.
+        Solo aplica para pagos en efectivo; para otros métodos devuelve 0.
         """
         for wizard in self:
-            wizard.amount_change = (
-                wizard.amount_paid + wizard.amount_tendered - wizard.amount_total
-            )
+            if wizard.is_cash_payment:
+                wizard.amount_change = (
+                    wizard.amount_paid + wizard.amount_tendered - wizard.amount_total
+                )
+            else:
+                wizard.amount_change = 0.0
 
-    @api.onchange("amount_tendered", "payment_ids")
+    @api.onchange("amount_tendered", "payment_ids", "payment_method_id")
     def _onchange_amount_tendered(self):
         """
-        Actualiza amount_change en tiempo real cuando el usuario edita el importe.
+        Actualiza amount_change en tiempo real cuando el usuario edita el importe
+        o cambia el método de pago.
 
-        En OWL 17+ @api.depends actualiza computed fields en el contexto ORM,
-        pero para actualizaciones instantáneas en el formulario se requiere
-        @api.onchange explícito sobre los campos que el usuario puede editar.
+        Solo aplica para efectivo; para otros métodos amount_change es 0.
         """
         for wizard in self:
-            paid = sum(wizard.order_id.payment_ids.mapped("amount"))
-            wizard.amount_change = (
-                paid + wizard.amount_tendered - wizard.order_id.amount_total
-            )
+            if wizard.is_cash_payment:
+                paid = sum(wizard.order_id.payment_ids.mapped("amount"))
+                wizard.amount_change = (
+                    paid + wizard.amount_tendered - wizard.order_id.amount_total
+                )
+            else:
+                wizard.amount_change = 0.0
 
     @api.depends("order_id.amount_total", "order_id.payment_ids", "order_id.payment_ids.amount")
     def _compute_totals(self):
@@ -216,14 +222,16 @@ class PosMakePaymentWizard(models.TransientModel):
         self.ensure_one()
 
         if self.amount_total <= 0:
-            raise UserError(_("Cannot charge an order with zero amount. Please add products."))
+            raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos."))
 
         total_covered = self.amount_paid + self.amount_tendered
         if total_covered < self.amount_total - 0.01:
-            raise UserError(_("Insufficient amount paid."))
+            raise UserError(_("Importe insuficiente para completar el pago."))
 
         order = self.order_id
-        is_conventional = order.config_id and order.config_id.pos_non_touch
+        is_conventional = bool(
+            order.config_id and getattr(order.config_id, "pos_non_touch", False)
+        )
 
         if order.state == "draft":
             cash_method = self.payment_method_id
@@ -233,6 +241,13 @@ class PosMakePaymentWizard(models.TransientModel):
                     cash_method = order.config_id.payment_method_ids.filtered(
                         lambda payment_method: payment_method.journal_id.type == "cash"
                     )[:1]
+
+            # Capture change amount before adding payments (avoids recompute issues)
+            cash_change_for_banner = (
+                self.amount_change
+                if self.is_cash_payment and self.amount_change > 0.01
+                else 0.0
+            )
 
             if self.is_cash_payment and self.amount_change > 0.01:
                 order.add_payment({
@@ -259,7 +274,7 @@ class PosMakePaymentWizard(models.TransientModel):
             # (anonymous sale → 'End Consumer'). Must be done BEFORE _process_saved_order.
             if not order.partner_id:
                 fallback_partner = (
-                    order.config_id.default_partner_id
+                    getattr(order.config_id, "default_partner_id", False)
                     or order.company_id.partner_id
                 )
                 if fallback_partner:

@@ -201,18 +201,28 @@ class PosOrder(models.Model):
         if self.state not in ("draft",):
             return False
 
-        # 1. Mark for invoicing
+        # 1. Assign default partner if missing (mirrors check() behavior)
+        if not self.partner_id:
+            fallback_partner = (
+                getattr(self.config_id, "default_partner_id", False)
+                or self.company_id.partner_id
+            )
+            if fallback_partner:
+                self.write({"partner_id": fallback_partner.id})
+
+        # 2. Mark for invoicing
         self.write({"to_invoice": True})
 
-        # 2. Validate order (transitions to 'paid' state)
+        # 3. Validate order (transitions to 'paid' state)
         self.action_pos_order_paid()
 
-        # 3. Generate invoice (action_pos_order_paid only sets state='paid',
+        # 4. Generate invoice only when a customer is set
+        #    (action_pos_order_paid only sets state='paid',
         #    it does NOT create the account.move; we must call this explicitly)
-        if not self.account_move and self.config_id.invoice_journal_id:
+        if not self.account_move and self.config_id.invoice_journal_id and self.partner_id:
             self._generate_pos_order_invoice()
 
-        # 4. Return action based on configuration (redirect or print)
+        # 5. Return action based on configuration (redirect or print)
         return self._get_post_validation_action()
 
     def _get_post_validation_action(self):
@@ -255,6 +265,11 @@ class PosOrder(models.Model):
         """
         Returns the data required to print a receipt from JS.
         Format compatible with what the frontend expects (MockOrder/MockOrderLine).
+
+        Sub-modules that extend this method (e.g. pos_conventional_receipt_custom)
+        are called via super() and may return additional fields to be merged.
+        Since pos_conventional_core loads AFTER sub-modules (as the aggregator),
+        core is higher in the MRO and must call super() to invoke sub-module extensions.
         """
         order = self.browse(order_id)
         if not order.exists():
@@ -266,7 +281,7 @@ class PosOrder(models.Model):
         config = session.config_id if session else self.env["pos.config"].browse()
         partner = order.partner_id
 
-        return {
+        result = {
             "name": order.name,
             "pos_reference": order.pos_reference,
             "ticket_code": order.ticket_code,
@@ -329,3 +344,19 @@ class PosOrder(models.Model):
                 "tax_ids": [t.name for t in line.tax_ids_after_fiscal_position],
             } for line in order.lines],
         }
+
+        # Allow sub-modules loaded before core (receipt_custom, etc.) to enrich
+        # the result via the super() chain. Since core is higher in MRO, calling
+        # super() here invokes those sub-module extensions.
+        parent = super()
+        if hasattr(parent, "get_order_receipt_data"):
+            enrichments = parent.get_order_receipt_data(order_id)
+            if isinstance(enrichments, dict):
+                for key, val in enrichments.items():
+                    if key == "company" and isinstance(val, dict):
+                        result.setdefault("company", {}).update(val)
+                    elif val is not False:
+                        result[key] = val
+
+        return result
+

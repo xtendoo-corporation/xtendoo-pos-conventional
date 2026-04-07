@@ -5,7 +5,7 @@ from odoo.tests.common import tagged
 from .common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestPosOrder(PosConventionalTestCommon):
     """Tests para pos.order (pos_conventional_core)."""
 

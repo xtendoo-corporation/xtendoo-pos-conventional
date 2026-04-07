@@ -7,7 +7,7 @@ from .common import PosConventionalTestCommon
 REPORT_XMLID = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestReceiptPrint(PosConventionalTestCommon):
     """
     Tests that verify the receipt printing flow after paying a POS order

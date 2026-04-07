@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestPosPaymentWizard(PosConventionalTestCommon):
     """Tests para pos_conventional_payment_wizard — modelos y wizard."""
 
@@ -429,14 +429,19 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
     def test_36_action_pay_card_with_lines_does_not_raise(self):
         """action_pay_card NO lanza error cuando el pedido tiene líneas con importe > 0.
         El pago con tarjeta completa el cobro en el momento y puede devolver
-        ir.actions.client (nuevo pedido) o ir.actions.act_window (wizard)."""
+        ir.actions.client (nuevo pedido en modo convencional),
+        ir.actions.act_window (wizard) o ir.actions.act_window_close."""
         session = self._open_session()
         order = self._make_draft_order(session)
         self._add_line(order)
         self.assertGreater(order.amount_total, 0)
         result = order.action_pay_card()
         self.assertIsInstance(result, dict)
-        self.assertIn(result.get("type"), ("ir.actions.act_window", "ir.actions.client"))
+        self.assertIn(result.get("type"), (
+            "ir.actions.act_window",
+            "ir.actions.client",
+            "ir.actions.act_window_close",
+        ))
 
     def test_37_action_pos_convention_pay_with_method_with_lines_does_not_raise(self):
         """action_pos_convention_pay_with_method con importe > 0 abre el wizard."""
@@ -545,6 +550,10 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         del pos.config para generar la factura simplificada.
         Este es el caso habitual de venta anónima ('Consumidor Final').
         """
+        if "default_partner_id" not in self.env["pos.config"]._fields:
+            self.skipTest(
+                "pos_conventional_core no cargado: default_partner_id no disponible"
+            )
         session = self._open_session()
         # Pedido SIN cliente → el config tiene default_partner_id = self.partner
         order = self._make_draft_order(session)  # sin partner

@@ -13,7 +13,7 @@ class PosOrder(models.Model):
         self.ensure_one()
         if self.amount_total <= 0:
             raise UserError(
-                _("Cannot charge an order with zero amount. Please add products.")
+                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
             )
 
         cash_method = self.config_id.payment_method_ids.filtered("is_cash_count")[:1]
@@ -22,7 +22,7 @@ class PosOrder(models.Model):
                 lambda p: p.journal_id.type == "cash"
             )[:1]
         if not cash_method:
-            raise UserError(_("No cash payment method found for this POS."))
+            raise UserError(_("No se encontró método de pago en efectivo para este TPV."))
 
         view = self.env.ref(
             "pos_conventional_payment_wizard.view_pos_make_payment_wizard_cash_form",
@@ -46,14 +46,14 @@ class PosOrder(models.Model):
         self.ensure_one()
         if self.amount_total <= 0:
             raise UserError(
-                _("Cannot charge an order with zero amount. Please add products.")
+                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
             )
 
         card_method = self.config_id.payment_method_ids.filtered(
             lambda p: p.journal_id.type == "bank"
         )[:1]
         if not card_method:
-            raise UserError(_("No card payment method found for this POS."))
+            raise UserError(_("No se encontró método de pago bancario para este TPV."))
 
         return self.action_pos_convention_pay_with_method(card_method)
 
@@ -61,7 +61,7 @@ class PosOrder(models.Model):
         self.ensure_one()
         if self.amount_total <= 0:
             raise UserError(
-                _("Cannot charge an order with zero amount. Please add products.")
+                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
             )
 
         payment_method = payment_method_id
@@ -133,7 +133,7 @@ class PosOrder(models.Model):
         self.ensure_one()
         if self.amount_total <= 0:
             raise UserError(
-                _("Cannot charge an order with zero amount. Please add products.")
+                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
             )
 
         view = self.env.ref(

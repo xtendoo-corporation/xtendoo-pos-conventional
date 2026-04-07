@@ -73,22 +73,40 @@ class PosOrderLine(models.Model):
         product = self.product_id
         if not product:
             return 0.0, False
-        cost_currency = product.sudo().cost_currency_id
         order = self.order_id
         currency = order.currency_id or self.env.company.currency_id
         company = order.company_id or self.env.company
         date = (order.date_order.date() if order.date_order else None) or fields.Date.today()
+        standard_price = product.sudo().standard_price
+        cost_currency = product.sudo().cost_currency_id
         try:
-            total_cost = self.qty * cost_currency._convert(
-                from_amount=product.standard_price,
-                to_currency=currency,
-                company=company,
-                date=date,
-                round=False,
-            )
+            if cost_currency and cost_currency != currency:
+                total_cost = self.qty * cost_currency._convert(
+                    from_amount=standard_price,
+                    to_currency=currency,
+                    company=company,
+                    date=date,
+                    round=False,
+                )
+            else:
+                # Misma moneda o sin moneda de coste: usar el precio directamente
+                total_cost = self.qty * standard_price
         except Exception:
-            total_cost = self.qty * product.standard_price
+            total_cost = self.qty * standard_price
         return total_cost, True
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Re-run cost compute after creation.
+
+        In Odoo 19, stored computed fields triggered by @api.depends may run
+        before all Many2one fields are fully resolved in the ORM cache, causing
+        product_id to appear empty. Re-running the compute after super().create()
+        guarantees correct values are stored in the DB.
+        """
+        lines = super().create(vals_list)
+        lines._compute_total_cost_conventional()
+        return lines
 
     @api.depends(
         "product_id",

@@ -6,7 +6,7 @@ from odoo.exceptions import UserError
 from .common import PosConventionalTestCommon
 
 
-@tagged("pos_conventional_core", "-standard")
+@tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
 class TestResConfigSettings(PosConventionalTestCommon):
     """Tests para res.config.settings (pos_conventional_core)."""
 

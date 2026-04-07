@@ -56,32 +56,25 @@ class PosOrder(models.Model):
     @api.model
     def get_order_receipt_data(self, order_id):
         """
-        Versión extendida con datos de empresa y detalles de impuestos para el ticket 80mm.
+        Extensión del ticket 80mm con datos adicionales de empresa y detalles de impuestos.
+
+        Este método es invocado por pos_conventional_core.get_order_receipt_data a través
+        de la cadena super(). Devuelve ÚNICAMENTE los campos adicionales que core mergeará
+        sobre los datos base que ya construye. No se llama a super() aquí porque el siguiente
+        en la cadena sería el pos.order base, que no define este método.
         """
         order = self.browse(order_id)
         if not order.exists():
             return {}
 
-        res = super().get_order_receipt_data(order_id)
-
-        # Enriquecer con datos adicionales de empresa y detalles de impuestos
-        order = self.browse(order_id)
-        if not order.exists():
-            return res
-
-        res["company"].update({
-            "phone": order.company_id.phone or "",
-            "email": order.company_id.email or "",
-            "address": order.company_id.partner_id._display_address(without_company=True),
-        })
-        res.update({
-            "partner": {
-                "name": order.partner_id.name,
-                "vat": order.partner_id.vat or "",
-            } if order.partner_id else False,
+        return {
+            "company": {
+                "phone": order.company_id.phone or "",
+                "email": order.company_id.email or "",
+                "address": order.company_id.partner_id._display_address(without_company=True),
+            },
             "tax_details": order._get_receipt_tax_details(),
-        })
-        return res
+        }
 
     def _get_receipt_tax_details(self):
         self.ensure_one()
