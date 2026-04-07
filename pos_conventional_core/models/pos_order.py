@@ -137,42 +137,52 @@ class PosOrder(models.Model):
 
     def _prepare_order_line_vals(self, product, qty=1.0):
         """
-        Prepares the values for creating a POS order line.
+        Prepara los valores para crear/actualizar una línea de pedido POS.
+
+        Aplica la tarifa activa del pedido para determinar el precio unitario y
+        el descuento. Los subtotales se calculan siempre sobre el precio efectivo
+        (precio de tarifa), no sobre el precio de lista, para que los totales
+        del pedido sean correctos.
         """
         self.ensure_one()
 
-        # Get price from pricelist
+        # Precio de lista (precio público para mostrar al cliente)
         public_price = product.lst_price
         pricelist = self.pricelist_id or self.config_id.pricelist_id
         discount = 0.0
+
         if pricelist:
-            price_unit = pricelist._get_product_price(
+            pricelist_price = pricelist._get_product_price(
                 product, qty, partner=self.partner_id, uom=product.uom_id
             )
-            if public_price > price_unit and public_price > 0:
-                discount = (public_price - price_unit) / public_price * 100
+            if public_price > pricelist_price and public_price > 0:
+                # Mostrar precio de lista con descuento explícito
+                discount = (public_price - pricelist_price) / public_price * 100
                 price_unit = public_price
+            else:
+                price_unit = pricelist_price
         else:
             price_unit = public_price
 
-        # Get applicable taxes for the product
+        # Impuestos aplicables al producto
         product_taxes = product.taxes_id.filtered(
             lambda t: t.company_id == self.company_id
         )
 
-        # Apply fiscal position if defined
+        # Aplicar posición fiscal si está definida
         taxes_after_fp = product_taxes
         if self.fiscal_position_id:
             taxes_after_fp = self.fiscal_position_id.map_tax(product_taxes)
 
-        # Calculate subtotals
-        price = price_unit
-        price_subtotal = price * qty
-        price_subtotal_incl = price * qty
+        # Precio efectivo neto = precio unitario menos descuento
+        # Los subtotales siempre se calculan sobre el precio real que paga el cliente
+        effective_price = price_unit * (1.0 - discount / 100.0)
+        price_subtotal = effective_price * qty
+        price_subtotal_incl = effective_price * qty
 
         if taxes_after_fp:
             tax_results = taxes_after_fp.compute_all(
-                price,
+                effective_price,
                 currency=self.currency_id,
                 quantity=qty,
                 product=product,
@@ -192,6 +202,71 @@ class PosOrder(models.Model):
             "price_subtotal_incl": price_subtotal_incl,
             "tax_ids": [(6, 0, product_taxes.ids)],
         }
+
+    @api.onchange("partner_id")
+    def _onchange_partner_id_update_pricelist(self):
+        """
+        Actualiza la tarifa de precios al cambiar el cliente y recalcula líneas.
+
+        Cuando se selecciona un cliente con tarifa asignada distinta a la activa,
+        la tarifa del pedido se actualiza automáticamente y los precios de todas
+        las líneas se recalculan. Si el cliente no tiene tarifa o no hay cliente,
+        se restaura la tarifa por defecto de la sesión.
+
+        Este comportamiento es equivalente al de un pedido de ventas convencional.
+        """
+        for order in self:
+            if order.state != "draft":
+                continue
+
+            # Tarifa de respaldo: la que está configurada en la sesión/config
+            config_pricelist = (
+                order.config_id.pricelist_id
+                or order.session_id.config_id.pricelist_id
+            )
+
+            if order.partner_id:
+                partner_pricelist = order.partner_id.property_product_pricelist
+                new_pricelist = partner_pricelist or config_pricelist
+            else:
+                # Sin cliente → tarifa por defecto de la sesión
+                new_pricelist = config_pricelist
+
+            if not new_pricelist or new_pricelist == order.pricelist_id:
+                continue
+
+            order.pricelist_id = new_pricelist
+            if order.lines:
+                order._recompute_lines_with_pricelist()
+
+
+    def _recompute_lines_with_pricelist(self):
+        """
+        Recalcula price_unit, discount y subtotales de todas las líneas del pedido
+        aplicando la tarifa activa (self.pricelist_id).
+
+        Este método puede llamarse tanto desde un @api.onchange (registros virtuales)
+        como sobre registros guardados. En ambos casos, asigna directamente los
+        campos de la línea con los nuevos valores calculados por _prepare_order_line_vals.
+
+        Los impuestos de la línea no se modifican: sólo dependen del producto
+        y de la posición fiscal, no de la tarifa.
+        """
+        self.ensure_one()
+        if not self.pricelist_id or not self.lines:
+            return
+        for line in self.lines:
+            product = line.product_id
+            if not product:
+                continue
+            qty = line.qty or 1.0
+            new_vals = self._prepare_order_line_vals(product, qty)
+            line.price_unit = new_vals["price_unit"]
+            line.discount = new_vals["discount"]
+            line.price_subtotal = new_vals["price_subtotal"]
+            line.price_subtotal_incl = new_vals["price_subtotal_incl"]
+        # Recalcular totales del pedido tras actualizar todas las líneas
+        self._onchange_lines_recompute_totals()
 
     def action_validate_and_invoice(self):
         """
