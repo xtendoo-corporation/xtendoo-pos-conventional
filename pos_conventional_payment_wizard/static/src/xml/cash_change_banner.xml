@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!--
+        Banner de cambio a devolver.
+        Se muestra en el formulario del nuevo pedido tras un cobro en efectivo con cambio.
+        Desaparece automáticamente cuando el cajero añade la primera línea de venta.
+    -->
+    <t t-name="pos_conventional_payment_wizard.CashChangeBanner">
+        <div t-if="visible"
+             class="pos-cash-change-banner d-flex align-items-center justify-content-between
+                    px-4 py-3 mb-3 rounded shadow-sm"
+             style="background: linear-gradient(135deg, #1e7e34 0%, #28a745 100%);
+                    border-left: 6px solid #155724;">
+
+            <!-- Icono + importe -->
+            <div class="d-flex align-items-center gap-4">
+                <i class="fa fa-money text-white" style="font-size: 2.8rem; opacity: 0.9;"/>
+                <div class="text-white">
+                    <div style="font-size: 0.8rem; font-weight: 600; letter-spacing: 0.12em;
+                                text-transform: uppercase; opacity: 0.85;">
+                        Cambio a devolver al cliente
+                    </div>
+                    <div style="font-size: 3rem; font-weight: 800; line-height: 1.1;">
+                        <t t-esc="formattedChange"/>&#160;<t t-esc="state.currencySymbol"/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botón descartar -->
+            <button class="btn btn-link text-white p-2 ms-2"
+                    title="Descartar (también desaparece al añadir una línea)"
+                    t-on-click="onDismiss">
+                <i class="fa fa-times-circle" style="font-size: 2rem; opacity: 0.8;"/>
+            </button>
+        </div>
+    </t>
+
+</templates>
+

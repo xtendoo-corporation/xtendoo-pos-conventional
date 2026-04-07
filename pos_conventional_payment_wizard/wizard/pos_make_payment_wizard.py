@@ -312,6 +312,14 @@ class PosMakePaymentWizard(models.TransientModel):
                 },
             }
 
+            # Pass change amount to the next order form so the cashier sees a
+            # prominent banner reminding them how much to return to the customer.
+            if cash_change_for_banner > 0.005:
+                next_action["params"]["cash_change"] = round(cash_change_for_banner, 2)
+                next_action["params"]["cash_change_currency"] = (
+                    order.currency_id.symbol if order.currency_id else "€"
+                )
+
             # Print receipt if iface_print_auto is enabled (or explicitly requested)
             # and an invoice has been generated.
             should_print = print_invoice or order.config_id.iface_print_auto

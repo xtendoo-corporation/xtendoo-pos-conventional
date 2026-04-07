@@ -584,3 +584,113 @@ class TestPaymentFlow(PosConventionalTestCommon):
             next_action.get("tag"), "pos_conventional_new_order",
             f"next_action debe ser pos_conventional_new_order. next_action={next_action}",
         )
+
+    # ══════════════════════════════════════════════════════════════════════
+    # BLOQUE 7 — Banner de cambio: cash_change en params de next_action
+    # ══════════════════════════════════════════════════════════════════════
+
+    def test_33_cash_with_change_includes_cash_change_in_params(self):
+        """Con cambio a devolver, next_action incluye cash_change en params.
+
+        Valida que al pagar en efectivo con importe mayor al total, la acción de
+        navegación al nuevo pedido lleva el importe de cambio para que el frontend
+        muestre el banner al cajero.
+        """
+        order = self._order_with_line()
+        total = order.amount_total
+        if total <= 0:
+            self.skipTest("Pedido sin importe")
+        change = 5.0
+        _wizard, action = self._pay_cash_wizard_validate(order, tendered=total + change)
+        params = self._get_final_params(action)
+        self.assertIn(
+            "cash_change", params,
+            f"Debe existir 'cash_change' en params cuando hay cambio. params={params}",
+        )
+        self.assertAlmostEqual(
+            params["cash_change"],
+            change,
+            places=2,
+            msg=f"El valor de cash_change debe ser {change}. obtenido={params['cash_change']}",
+        )
+
+    def test_34_cash_with_change_includes_currency_symbol_in_params(self):
+        """Con cambio a devolver, next_action incluye cash_change_currency en params."""
+        order = self._order_with_line()
+        total = order.amount_total
+        if total <= 0:
+            self.skipTest("Pedido sin importe")
+        _wizard, action = self._pay_cash_wizard_validate(order, tendered=total + 3.0)
+        params = self._get_final_params(action)
+        self.assertIn(
+            "cash_change_currency", params,
+            f"Debe incluir 'cash_change_currency' cuando hay cambio. params={params}",
+        )
+        currency_symbol = order.currency_id.symbol or "€"
+        self.assertEqual(
+            params["cash_change_currency"],
+            currency_symbol,
+            f"Símbolo de moneda incorrecto. esperado={currency_symbol}, "
+            f"obtenido={params.get('cash_change_currency')}",
+        )
+
+    def test_35_cash_exact_amount_no_cash_change_in_params(self):
+        """Con importe exacto (sin cambio), next_action NO incluye cash_change en params.
+
+        Cuando el cliente paga exactamente, no hay cambio que mostrar en el banner.
+        """
+        order = self._order_with_line()
+        total = order.amount_total
+        if total <= 0:
+            self.skipTest("Pedido sin importe")
+        _wizard, action = self._pay_cash_wizard_validate(order, tendered=total)
+        params = self._get_final_params(action)
+        self.assertNotIn(
+            "cash_change", params,
+            f"Sin cambio NO debe incluir 'cash_change' en params. params={params}",
+        )
+
+    def test_36_cash_with_change_in_print_receipt_next_action_params(self):
+        """Con iface_print_auto=True y cambio, el cash_change está en next_action.params
+        dentro de la acción pos_conventional_print_receipt_client.
+        """
+        fresh_cash = self._make_fresh_cash_pm()
+        config_print = self.env["pos.config"].create({
+            "name": "POS Print Auto + Change Banner Test",
+            "pos_non_touch": True,
+            "iface_print_auto": True,
+            "payment_method_ids": [(6, 0, [fresh_cash.id])],
+            "invoice_journal_id": self.invoice_journal.id,
+            "default_partner_id": self.partner.id,
+        })
+        session = self._open_session(config_print)
+        order = self._order_with_line(session)
+        total = order.amount_total
+        if total <= 0:
+            self.skipTest("Pedido sin importe")
+        change = 7.0
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": fresh_cash.id,
+            "amount_tendered": total + change,
+        })
+        action = wizard.action_validate()
+        self.assertEqual(
+            action.get("tag"), "pos_conventional_print_receipt_client",
+            f"Con iface_print_auto=True debe devolver print_receipt_client. tag={action.get('tag')}",
+        )
+        # cash_change debe estar en next_action.params (donde lo leerá pos_new_order_action.js)
+        next_action_params = action.get("params", {}).get("next_action", {}).get("params", {})
+        self.assertIn(
+            "cash_change", next_action_params,
+            f"cash_change debe estar en next_action.params. next_action_params={next_action_params}",
+        )
+        self.assertAlmostEqual(
+            next_action_params["cash_change"],
+            change,
+            places=2,
+            msg=f"cash_change incorrecto. esperado={change}, obtenido={next_action_params.get('cash_change')}",
+        )
+

@@ -16,6 +16,8 @@
         "web.assets_backend": [
             "pos_conventional_payment_wizard/static/src/js/pos_payment_buttons.js",
             "pos_conventional_payment_wizard/static/src/xml/pos_payment_buttons.xml",
+            "pos_conventional_payment_wizard/static/src/js/cash_change_banner.js",
+            "pos_conventional_payment_wizard/static/src/xml/cash_change_banner.xml",
         ],
     },
     "installable": True,

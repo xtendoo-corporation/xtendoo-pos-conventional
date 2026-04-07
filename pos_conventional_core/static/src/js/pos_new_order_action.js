@@ -11,6 +11,22 @@ async function posConventionalNewOrder(env, action) {
     const context = action.params || {};
 
     console.log("[NEW_ORDER] posConventionalNewOrder called, params:", context);
+
+    // If the previous payment was cash with change, store it in sessionStorage so the
+    // order form can display a prominent banner reminding the cashier how much to return.
+    const cashChange = parseFloat(context.cash_change || 0);
+    if (cashChange > 0.005) {
+        try {
+            sessionStorage.setItem("pos_conventional_cash_change", cashChange.toFixed(2));
+            sessionStorage.setItem(
+                "pos_conventional_cash_change_currency",
+                context.cash_change_currency || "€"
+            );
+        } catch (e) {
+            // sessionStorage may not be available (private browsing, etc.)
+        }
+    }
+
     await _navigateToNewOrder(actionService, context);
 }
 

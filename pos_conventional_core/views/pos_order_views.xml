@@ -35,6 +35,9 @@
             <!-- Reemplazar el grupo de campos del pedido con layout de dos columnas -->
             <xpath expr="//group[@name='order_fields']" position="replace">
 
+                <!-- Banner de cambio de la operación anterior (se oculta al añadir líneas) -->
+                <widget name="pos_cash_change_banner"/>
+
                 <!-- Título principal -->
                 <div class="oe_title">
                     <h1>
