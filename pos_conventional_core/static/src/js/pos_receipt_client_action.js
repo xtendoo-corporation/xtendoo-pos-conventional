@@ -1,88 +1,73 @@
 /** @odoo-module **/
 
 import { registry } from "@web/core/registry";
-import { Component, onMounted, useState, xml } from "@odoo/owl";
+import { Component, onMounted, xml } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 
 const REPORT_XMLID = "pos_conventional_receipt_custom.report_factura_simplificada_80mm";
 
 export class PosReceiptClientAction extends Component {
     static components = {};
-    static template = xml`
-        <div class="o_pos_receipt_client_action h-100 w-100 d-flex flex-column align-items-center justify-content-center bg-view">
-            <div t-if="state.loading" class="text-center">
-                <i class="fa fa-spinner fa-spin fa-3x mb-3 text-primary"/>
-                <p class="h4">Generating receipt...</p>
-            </div>
-            <div t-if="state.error" class="text-center text-danger p-5">
-                <i class="fa fa-exclamation-circle fa-3x mb-3"/>
-                <p class="h5"><t t-esc="state.error"/></p>
-                <button class="btn btn-secondary mt-3" t-on-click="closeAction">Close</button>
-            </div>
-        </div>
-    `;
+    // Transparent placeholder: navigates away before any content is visible.
+    static template = xml`<div class="o_pos_receipt_client_action"/>`;
 
     setup() {
         this.actionService = useService("action");
-        this.notification = useService("notification");
-        this.state = useState({ loading: true, error: "" });
 
-        onMounted(async () => {
+        onMounted(() => {
             const params = this.props.action.params || {};
             const moveId = params.move_id;
 
-            if (!moveId) {
-                this.state.error = "No invoice found for this order. Cannot print receipt.";
-                this.state.loading = false;
-                return;
+            if (moveId) {
+                // Fire the print in the background — the iframe loads and calls
+                // window.print() on its own without blocking navigation.
+                this._printReportBackground(moveId);
+            } else {
+                console.warn(
+                    "[PosReceiptClientAction] No move_id provided — skipping print."
+                );
             }
 
-            try {
-                await this._printReport(moveId);
-                // Redirect immediately to the next action (new order) without
-                // showing any intermediate confirmation screen.
-                this.closeAction();
-            } catch (error) {
-                console.error("Error printing receipt:", error);
-                this.state.error = error.message || "Unexpected error while printing.";
-                this.state.loading = false;
-            }
+            // Navigate immediately to the next action (new order).
+            // The print dialog will appear on top once the report is ready.
+            this.closeAction();
         });
     }
 
-    _printReport(moveId) {
-        return new Promise((resolve, reject) => {
-            const url = `/report/html/${REPORT_XMLID}/${moveId}`;
+    /**
+     * Loads the receipt report inside a hidden iframe and triggers window.print()
+     * once the document is ready. Runs entirely in the background — the caller
+     * does not need to await this method.
+     *
+     * @param {number} moveId - ID of the account.move to print.
+     */
+    _printReportBackground(moveId) {
+        const url = `/report/html/${REPORT_XMLID}/${moveId}`;
+        const iframe = document.createElement("iframe");
+        iframe.style.cssText = "position:fixed;left:-2000px;width:1px;height:1px;";
+        document.body.appendChild(iframe);
 
-            const iframe = document.createElement("iframe");
-            iframe.style.cssText = "position:fixed;left:-2000px;width:1px;height:1px;";
-            document.body.appendChild(iframe);
-
-            iframe.onload = () => {
-                try {
-                    // Wait for sub-resources (images, fonts) then print
-                    const iframeWin = iframe.contentWindow;
-                    const doprint = () => {
-                        iframeWin.focus();
-                        iframeWin.print();
-                        setTimeout(() => iframe.remove(), 8000);
-                        resolve();
-                    };
-                    // Give the browser a tick to render before printing
-                    setTimeout(doprint, 600);
-                } catch (e) {
-                    iframe.remove();
-                    reject(e);
-                }
-            };
-
-            iframe.onerror = () => {
+        iframe.onload = () => {
+            try {
+                const iframeWin = iframe.contentWindow;
+                // Give the browser a tick to render sub-resources before printing.
+                setTimeout(() => {
+                    iframeWin.focus();
+                    iframeWin.print();
+                    setTimeout(() => iframe.remove(), 8000);
+                }, 600);
+            } catch (error) {
+                console.error("[PosReceiptClientAction] Error printing receipt:", error);
                 iframe.remove();
-                reject(new Error("Failed to load the receipt report."));
-            };
+            }
+        };
 
-            iframe.src = url;
-        });
+        iframe.onerror = () => {
+            console.error("[PosReceiptClientAction] Failed to load receipt report.");
+            iframe.remove();
+        };
+
+        iframe.src = url;
     }
 
     closeAction() {
