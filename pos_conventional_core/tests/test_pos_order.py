@@ -885,11 +885,89 @@ class TestPosOrder(PosConventionalTestCommon):
         session = self._open_session()
         order = self._make_draft_order(session)
         order_id = order.id
-        # Simular acceso con otro usuario que no tiene la compañía del pedido
-        # usando with_user del usuario demo (sin privilegios de admin)
         order_as_sudo = self.env["pos.order"].sudo().browse(order_id)
         order_as_sudo.unlink()
         self.assertFalse(
             self.env["pos.order"].sudo().search([("id", "=", order_id)]),
             "El pedido debe haberse eliminado aunque el contexto de compañía no coincida",
         )
+
+    def test_unlink_from_within_session_restricted_company_context(self):
+        """
+        Simula el escenario real del cliente: el usuario accede a los pedidos
+        desde /point-of-sale/{config_id}/pos-orders/ y Odoo restringe
+        allowed_company_ids a la compañía del pos.config.
+
+        Si el pedido tiene una company_id distinta a la de la sesión activa
+        (caso de registros legados o multi-compañía), la regla ORM estándar
+        [('company_id', 'in', allowed_company_ids)] bloquearía el acceso
+        y el unlink lanzaría MissingError sin el fix.
+
+        Con el fix (sudo() en unlink) el borrado debe completarse sin error.
+        """
+        from odoo.exceptions import UserError
+
+        # Crear una segunda compañía que simula la compañía de la sesión POS
+        company_session = self.env["res.company"].sudo().create(
+            {"name": "Compañía Sesión POS Test"}
+        )
+
+        # El pedido se crea en la compañía principal del test (company A)
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order_id = order.id
+        order_company_id = order.company_id.id
+
+        # La compañía de la sesión simulada es diferente a la del pedido
+        self.assertNotEqual(
+            order_company_id,
+            company_session.id,
+            "Las compañías deben ser distintas para que la regla ORM las bloquee",
+        )
+
+        # Simular el contexto "inside POS session": allowed_company_ids solo
+        # incluye la compañía de la sesión (distinta a la del pedido).
+        # Esto replica exactamente lo que Odoo hace al cargar
+        # /point-of-sale/{config_id}/pos-orders/
+        env_inside_session = self.env["pos.order"].with_context(
+            allowed_company_ids=[company_session.id]
+        )
+        order_in_restricted_ctx = env_inside_session.browse(order_id)
+
+        # Sin el fix, esto lanzaría MissingError porque el registro no es accesible
+        # con el contexto de compañía restringido.
+        # Con el fix (sudo() en unlink), debe completarse sin error.
+        order_in_restricted_ctx.unlink()
+
+        self.assertFalse(
+            self.env["pos.order"].sudo().search([("id", "=", order_id)]),
+            "El pedido debe eliminarse aunque allowed_company_ids esté restringido "
+            "a una compañía diferente a la del pedido (contexto dentro de sesión POS)",
+        )
+
+    def test_unlink_from_within_session_non_draft_still_raises(self):
+        """
+        Incluso desde el contexto restringido de una sesión POS, no se permite
+        borrar un pedido que ya está pagado. El UserError debe propagarse.
+        """
+        from odoo.exceptions import UserError
+
+        company_session = self.env["res.company"].sudo().create(
+            {"name": "Compañía Sesión POS Test 2"}
+        )
+
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        self._add_payment(order, self.cash_pm, order.amount_total)
+        order.with_context(skip_completeness_check=True).action_pos_order_paid()
+        self.assertEqual(order.state, "paid")
+
+        env_inside_session = self.env["pos.order"].with_context(
+            allowed_company_ids=[company_session.id]
+        )
+        order_in_restricted_ctx = env_inside_session.browse(order.id)
+
+        with self.assertRaises(UserError, msg="No se puede borrar un pedido pagado"):
+            order_in_restricted_ctx.unlink()
+
