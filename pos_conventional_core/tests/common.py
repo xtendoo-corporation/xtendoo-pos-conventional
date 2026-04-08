@@ -196,7 +196,12 @@ class PosConventionalTestCommon(TransactionCase):
         )
 
     def _make_draft_order(self, session=None, partner=None):
-        """Crea un pedido POS en estado borrador."""
+        """Crea un pedido POS en estado borrador.
+
+        Usa skip_completeness_check=True en el contexto para permitir crear
+        pedidos incompletos durante los tests (sin líneas aún). La validación
+        de completitud se verifica explícitamente en test_pos_order_completeness.
+        """
         if session is None:
             session = self._open_session()
         pricelist = session.config_id.pricelist_id
@@ -212,7 +217,9 @@ class PosConventionalTestCommon(TransactionCase):
         }
         if partner:
             vals["partner_id"] = partner.id
-        return self.env["pos.order"].create(vals)
+        return self.env["pos.order"].with_context(
+            skip_completeness_check=True
+        ).create(vals)
 
     def _add_line(self, order, product=None, qty=1.0):
         """Añade una línea de pedido.

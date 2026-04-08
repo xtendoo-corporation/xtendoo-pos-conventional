@@ -72,6 +72,7 @@
                             widget="res_partner_many2one"
                             context="{'res_partner_search_mode': 'customer', 'show_address': False, 'show_vat': False}"
                             placeholder="Escriba para buscar un cliente..."
+                            required="state == 'draft'"
                             readonly="state != 'draft'" />
                         <field name="date_order" string="Fecha" readonly="state != 'draft'" />
                         <field string="Usuario" name="user_id" readonly="1" force_save="1" />

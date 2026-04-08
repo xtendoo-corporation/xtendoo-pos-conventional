@@ -1,6 +1,6 @@
 import logging
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -74,6 +74,40 @@ class PosOrder(models.Model):
                 order.payment_method_ribbon = "MULTIPLE PAYMENT"
             else:
                 order.payment_method_ribbon = methods[0].name.upper()
+
+    @api.constrains("partner_id", "pricelist_id", "lines")
+    def _check_order_completeness(self):
+        """
+        Impide guardar pedidos POS del modo backend incompletos.
+
+        Se exige que todo pedido en borrador de una configuración no táctil
+        (backend) tenga:
+          - Un cliente asignado
+          - Una tarifa de precios
+          - Al menos una línea de producto
+
+        El contexto 'skip_completeness_check' permite omitir esta validación
+        en operaciones programáticas (migraciones, tests, imports).
+        """
+        if self.env.context.get("skip_completeness_check"):
+            return
+        for order in self:
+            if order.state != "draft":
+                continue
+            if not getattr(order.config_id, "pos_non_touch", False):
+                continue
+            if not order.partner_id:
+                raise ValidationError(
+                    _("El pedido «%s» debe tener un cliente asignado.", order.name or "/")
+                )
+            if not order.pricelist_id:
+                raise ValidationError(
+                    _("El pedido «%s» debe tener una tarifa de precios.", order.name or "/")
+                )
+            if not order.lines:
+                raise ValidationError(
+                    _("El pedido «%s» debe tener al menos una línea de producto.", order.name or "/")
+                )
 
     def default_get(self, fields_list):
         res = super().default_get(fields_list)

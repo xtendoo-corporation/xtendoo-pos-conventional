@@ -105,7 +105,7 @@ class TestPosOrder(PosConventionalTestCommon):
     def test_11_create_auto_assigns_session_for_non_touch(self):
         """Al crear sin session_id, se asigna la sesión non-touch activa."""
         session = self._open_session()
-        order = self.env["pos.order"].create(
+        order = self.env["pos.order"].with_context(skip_completeness_check=True).create(
             {
                 "config_id": self.pos_config.id,
                 "pricelist_id": self.pos_config.pricelist_id.id,
@@ -549,7 +549,7 @@ class TestPosOrder(PosConventionalTestCommon):
         Cubre la rama `if not vals.get("currency_id"): vals["currency_id"] = ...`
         """
         session = self._open_session()
-        order = self.env["pos.order"].create({
+        order = self.env["pos.order"].with_context(skip_completeness_check=True).create({
             "config_id": self.pos_config.id,
             "session_id": session.id,
             # currency_id NOT provided → debe auto-asignarse desde la sesión
@@ -571,7 +571,7 @@ class TestPosOrder(PosConventionalTestCommon):
             "name": "Custom Pricelist Test",
             "currency_id": session.currency_id.id,
         })
-        order = self.env["pos.order"].create({
+        order = self.env["pos.order"].with_context(skip_completeness_check=True).create({
             "session_id": session.id,
             "config_id": self.pos_config.id,
             "pricelist_id": custom_pricelist.id,
