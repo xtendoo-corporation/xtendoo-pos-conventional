@@ -27,18 +27,20 @@
                         .bold { font-weight: bold; }
                         .dashed-line {
                             border: none;
-                            border-bottom: 1px dashed #000;
+                            border-bottom: 1px solid #000;
                             margin: 6px 0;
                             width: 100%;
                         }
                         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                        tr { border: none !important; }
                         th {
                             font-weight: bold;
                             font-size: 12px;
-                            border-bottom: 1px dashed #000;
+                            border: none !important;
+                            border-bottom: 1px solid #000 !important;
                             padding: 3px 0;
                         }
-                        td { vertical-align: top; padding: 3px 0; font-size: 13px; }
+                        td { vertical-align: top; padding: 3px 0; font-size: 13px; border: none !important; }
                         .col-name { width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                         .col-ud { width: 10%; text-align: center; }
                         .col-total { width: 22%; text-align: right; }
