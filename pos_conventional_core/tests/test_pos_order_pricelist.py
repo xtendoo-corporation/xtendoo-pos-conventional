@@ -208,7 +208,7 @@ class TestPosOrderPricelist(PosConventionalTestCommon):
         )
 
     def test_08_partner_with_same_pricelist_no_change(self):
-        """Si el cliente tiene la misma tarifa que el pedido, no cambia nada."""
+        """Si el cliente tiene la misma tarifa que el pedido, la tarifa no varía."""
         session, order = self._order_with_session_pricelist()
         original_pricelist = order.pricelist_id
 
@@ -220,6 +220,39 @@ class TestPosOrderPricelist(PosConventionalTestCommon):
             order.pricelist_id,
             original_pricelist,
             "Con la misma tarifa, el pedido no debe cambiar",
+        )
+
+    def test_21_native_onchange_presets_pricelist_lines_still_recalculated(self):
+        """Simula que el handler nativo ya actualizó pricelist_id antes que el nuestro.
+
+        En Odoo 19, _onchange_partner_id (nativo) y _onchange_partner_id_update_pricelist
+        (nuestro) comparten el mismo trigger 'partner_id'. El orden de ejecución puede
+        variar. Si el nativo se ejecuta primero, ya setea pricelist_id con la tarifa
+        del cliente. Nuestro método no debe omitir el recálculo de líneas por ver
+        que pricelist_id ya coincide con new_pricelist.
+        """
+        session, order = self._order_with_session_pricelist()
+        self._add_line(order, self.product, 1.0)
+        original_total = order.amount_total
+
+        # Simular que el handler nativo corrió primero: ya cambió pricelist_id
+        order.pricelist_id = self.pricelist_20pct
+
+        # Ahora nuestro handler corre: partner_id tiene pricelist_20pct,
+        # igual a la ya asignada. Sin la fix, el método saltaba el recálculo.
+        order.partner_id = self.partner_vip
+        order._onchange_partner_id_update_pricelist()
+
+        # Las líneas DEBEN haberse recalculado con la nueva tarifa (-20%)
+        line = order.lines[0]
+        self.assertAlmostEqual(
+            line.discount, 20.0, places=2,
+            msg="Las líneas deben recalcularse aunque pricelist_id ya estuviera seteado",
+        )
+        self.assertLess(
+            order.amount_total,
+            original_total,
+            "amount_total debe reducirse con el descuento del 20%",
         )
 
     # ══════════════════════════════════════════════════════════════════════════

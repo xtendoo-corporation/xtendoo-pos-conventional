@@ -98,15 +98,15 @@ class PosOrder(models.Model):
                 continue
             if not order.partner_id:
                 raise ValidationError(
-                    _("El pedido «%s» debe tener un cliente asignado.", order.name or "/")
+                    _("El pedido «%s» debe tener un cliente asignado.", order.name or "")
                 )
             if not order.pricelist_id:
                 raise ValidationError(
-                    _("El pedido «%s» debe tener una tarifa de precios.", order.name or "/")
+                    _("El pedido «%s» debe tener una tarifa de precios.", order.name or "")
                 )
             if not order.lines:
                 raise ValidationError(
-                    _("El pedido «%s» debe tener al menos una línea de producto.", order.name or "/")
+                    _("El pedido «%s» debe tener al menos una línea de producto.", order.name or "")
                 )
 
     def default_get(self, fields_list):
@@ -248,6 +248,12 @@ class PosOrder(models.Model):
         se restaura la tarifa por defecto de la sesión.
 
         Este comportamiento es equivalente al de un pedido de ventas convencional.
+
+        Nota: se fuerza siempre el seteo de pricelist_id y el recálculo de líneas
+        porque el handler nativo _onchange_partner_id (pos.order) puede haber
+        modificado ya pricelist_id antes de que este método se ejecute, lo que
+        hacía que la comparación `new_pricelist == order.pricelist_id` saltara el
+        recálculo aunque los precios no se hubieran actualizado.
         """
         for order in self:
             if order.state != "draft":
@@ -266,10 +272,16 @@ class PosOrder(models.Model):
                 # Sin cliente → tarifa por defecto de la sesión
                 new_pricelist = config_pricelist
 
-            if not new_pricelist or new_pricelist == order.pricelist_id:
+            if not new_pricelist:
                 continue
 
+            # Setear siempre para cubrir el caso "sin cliente" que el handler
+            # nativo no gestiona, y garantizar la consistencia de pricelist_id.
             order.pricelist_id = new_pricelist
+
+            # Recalcular siempre las líneas: el handler nativo puede haber ya
+            # actualizado pricelist_id, por lo que comparar con order.pricelist_id
+            # no es fiable para detectar si el recálculo es necesario.
             if order.lines:
                 order._recompute_lines_with_pricelist()
 
