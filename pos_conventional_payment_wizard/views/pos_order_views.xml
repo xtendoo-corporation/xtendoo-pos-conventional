@@ -14,14 +14,14 @@
                 <button name="action_open_payment_popup"
                         string="Pago"
                         type="object"
-                        class="btn-primary"
+                        class="btn-primary me-1"
                         invisible="state != 'draft'"/>
 
                 <field name="available_payment_method_ids"
                        widget="pos_payment_buttons"
                        nolabel="1"
                        invisible="state != 'draft'"
-                       class="oe_inline"/>
+                       class="oe_inline d-inline-flex align-items-center gap-1"/>
             </xpath>
         </field>
     </record>

@@ -1,0 +1,16 @@
+/* Alinear los botones de pago rápido junto al botón "Pago" en el header */
+.o_form_view .o_form_statusbar .o_field_pos_payment_buttons,
+.o_form_view .o_form_statusbar [name="available_payment_method_ids"] {
+    display: inline-flex !important;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0;
+    padding: 0;
+}
+
+.o_form_view .o_form_statusbar [name="available_payment_method_ids"] > div {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
