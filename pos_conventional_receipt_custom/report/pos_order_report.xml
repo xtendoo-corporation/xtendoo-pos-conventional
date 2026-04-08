@@ -12,6 +12,10 @@
                             width: 100% !important;
                             max-width: 100% !important;
                         }
+                        *, *::before, *::after { box-sizing: border-box; }
+                        table, thead, tbody, tfoot, tr, th, td {
+                            border-color: transparent;
+                        }
                         .page {
                             font-family: Arial, Helvetica, sans-serif;
                             font-size: 13px;
@@ -31,16 +35,19 @@
                             margin: 6px 0;
                             width: 100%;
                         }
-                        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-                        tr { border: none !important; }
+                        table { width: 100%; border-collapse: collapse; table-layout: fixed; border: none !important; }
+                        tr { border: none !important; outline: none !important; }
                         th {
                             font-weight: bold;
                             font-size: 12px;
                             border: none !important;
                             border-bottom: 1px solid #000 !important;
+                            outline: none !important;
                             padding: 3px 0;
                         }
-                        td { vertical-align: top; padding: 3px 0; font-size: 13px; border: none !important; }
+                        td { vertical-align: top; padding: 3px 0; font-size: 13px; border: none !important; outline: none !important; }
+                        tbody tr { border: none !important; }
+                        tbody td { border: none !important; }
                         .col-name { width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                         .col-ud { width: 10%; text-align: center; }
                         .col-total { width: 22%; text-align: right; }
