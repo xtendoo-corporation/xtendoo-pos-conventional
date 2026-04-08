@@ -29,6 +29,12 @@
             <xpath expr="//header" position="inside">
                 <field name="payment_method_ribbon" invisible="1"/>
                 <field name="has_order_lines" invisible="1"/>
+                <button name="action_print_factura_simplificada"
+                        string="Imprimir"
+                        type="object"
+                        icon="fa-print"
+                        class="btn-secondary"
+                        invisible="state not in ('paid', 'done', 'invoiced')"/>
             </xpath>
 
 
