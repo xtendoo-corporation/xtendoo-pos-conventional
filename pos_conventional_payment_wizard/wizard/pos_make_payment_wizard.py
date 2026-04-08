@@ -1,7 +1,7 @@
 import logging
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, MissingError
 
 _logger = logging.getLogger(__name__)
 
@@ -10,13 +10,43 @@ class PosMakePaymentWizard(models.TransientModel):
     _name = "pos.make.payment.wizard"
     _description = "Asistente de Pago POS"
 
-    order_id = fields.Many2one("pos.order", string="Pedido", required=True, ondelete="cascade")
-    currency_id = fields.Many2one(related="order_id.currency_id", depends=["order_id"])
-    amount_total = fields.Monetary(related="order_id.amount_total", string="Total Pedido", readonly=True)
-    amount_paid = fields.Monetary(string="Pagado", compute="_compute_totals")
-    amount_due = fields.Monetary(string="Total a Pagar", compute="_compute_totals")
-    amount_tendered = fields.Monetary(string="Importe Entregado", default=0.0)
-    amount_change = fields.Monetary(string="Cambio a Devolver", compute="_compute_amount_change")
+    # check_company=False: el wizard puede operar sobre pedidos de cualquier
+    # compañía activa del usuario. La regla multi-compañía estándar de pos.order
+    # ([('company_id', 'in', company_ids)]) excluiría el pedido si el contexto
+    # de compañía del usuario no coincide exactamente, provocando un MissingError
+    # al crear/escribir el wizard. El acceso real se controla en _execute_validation.
+    order_id = fields.Many2one(
+        "pos.order",
+        string="Pedido",
+        required=True,
+        ondelete="cascade",
+        check_company=False,
+    )
+    # Los campos relacionados se computan manualmente con sudo() para evitar
+    # que la regla multi-compañía de pos.order bloquee el acceso al leer los datos.
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Moneda",
+        compute="_compute_order_fields",
+        store=False,
+    )
+    amount_total = fields.Monetary(
+        string="Total Pedido",
+        compute="_compute_order_fields",
+        currency_field="currency_id",
+        store=False,
+        readonly=True,
+    )
+    config_id = fields.Many2one(
+        "pos.config",
+        string="Configuración",
+        compute="_compute_order_fields",
+        store=False,
+    )
+    amount_paid = fields.Monetary(string="Pagado", compute="_compute_totals", currency_field="currency_id")
+    amount_due = fields.Monetary(string="Total a Pagar", compute="_compute_totals", currency_field="currency_id")
+    amount_tendered = fields.Monetary(string="Importe Entregado", default=0.0, currency_field="currency_id")
+    amount_change = fields.Monetary(string="Cambio a Devolver", compute="_compute_amount_change", currency_field="currency_id")
     is_cash_payment = fields.Boolean(compute="_compute_is_cash_payment")
     payment_ids = fields.Many2many(
         comodel_name="pos.payment",
@@ -29,21 +59,30 @@ class PosMakePaymentWizard(models.TransientModel):
         string="Diario",
         domain="[('id', 'in', available_payment_method_ids)]",
     )
-    config_id = fields.Many2one(related="order_id.config_id")
     available_payment_method_ids = fields.Many2many(
         "pos.payment.method",
         compute="_compute_available_payment_methods",
     )
 
+    @api.depends("order_id")
+    def _compute_order_fields(self):
+        """Lee currency_id, amount_total y config_id directamente via sudo()
+        para evitar MissingError cuando la compañía del contexto no coincide."""
+        for wizard in self:
+            order = wizard.order_id.sudo()
+            wizard.currency_id = order.currency_id
+            wizard.amount_total = order.amount_total
+            wizard.config_id = order.config_id
+
     @api.depends("order_id.payment_ids")
     def _compute_payment_ids(self):
         for wizard in self:
-            wizard.payment_ids = wizard.order_id.payment_ids
+            wizard.payment_ids = wizard.order_id.sudo().payment_ids
 
     def _inverse_payment_ids(self):
         """Elimina del pedido los pagos que el usuario quitó de la lista."""
         for wizard in self:
-            to_remove = wizard.order_id.payment_ids - wizard.payment_ids
+            to_remove = wizard.order_id.sudo().payment_ids - wizard.payment_ids
             to_remove.unlink()
 
     @api.onchange("payment_ids")
@@ -52,7 +91,7 @@ class PosMakePaymentWizard(models.TransientModel):
         for wizard in self:
             paid = sum(wizard.payment_ids.mapped("amount"))
             wizard.amount_paid = paid
-            due = wizard.order_id.amount_total - paid
+            due = wizard.order_id.sudo().amount_total - paid
             wizard.amount_due = due if due > 0 else 0.0
 
     @api.depends("payment_method_id")
@@ -91,9 +130,9 @@ class PosMakePaymentWizard(models.TransientModel):
         """
         for wizard in self:
             if wizard.is_cash_payment:
-                paid = sum(wizard.order_id.payment_ids.mapped("amount"))
+                paid = sum(wizard.order_id.sudo().payment_ids.mapped("amount"))
                 wizard.amount_change = (
-                    paid + wizard.amount_tendered - wizard.order_id.amount_total
+                    paid + wizard.amount_tendered - wizard.order_id.sudo().amount_total
                 )
             else:
                 wizard.amount_change = 0.0
@@ -101,9 +140,10 @@ class PosMakePaymentWizard(models.TransientModel):
     @api.depends("order_id.amount_total", "order_id.payment_ids", "order_id.payment_ids.amount")
     def _compute_totals(self):
         for wizard in self:
-            paid = sum(wizard.order_id.payment_ids.mapped("amount"))
+            order = wizard.order_id.sudo()
+            paid = sum(order.payment_ids.mapped("amount"))
             wizard.amount_paid = paid
-            due = wizard.order_id.amount_total - paid
+            due = order.amount_total - paid
             wizard.amount_due = due if due > 0 else 0.0
 
     @api.depends("config_id")
@@ -120,32 +160,48 @@ class PosMakePaymentWizard(models.TransientModel):
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
         active_id = self._context.get("active_id")
-        if active_id:
-            order = self.env["pos.order"].browse(active_id)
-            if order.exists():
-                res["order_id"] = order.id
-                try:
-                    order._compute_prices()
-                except Exception:
-                    order.amount_total = sum(order.lines.mapped("price_subtotal_incl"))
+        if not active_id:
+            return res
 
-                due = order.amount_total - order.amount_paid
-                res["amount_tendered"] = due if due > 0 else 0.0
+        # sudo() necesario para evitar MissingError en entornos multi-compañía
+        # cuando el contexto de compañía del usuario no coincide con la del pedido.
+        order = self.env["pos.order"].sudo().browse(active_id)
+        if not order.exists():
+            _logger.warning(
+                "PosMakePaymentWizard.default_get: pos.order(%s) no encontrado "
+                "para el usuario %s",
+                active_id,
+                self.env.user.id,
+            )
+            return res
 
-                payment_methods = order.config_id.payment_method_ids
-                if self._context.get("cash_only"):
-                    payment_methods = payment_methods.filtered(
-                        lambda payment_method: payment_method.is_cash_count or payment_method.journal_id.type == "cash"
-                    )
+        res["order_id"] = order.id
+        try:
+            order._compute_prices()
+        except Exception:
+            order.amount_total = sum(order.lines.mapped("price_subtotal_incl"))
 
-                default_payment_method = self._context.get("default_payment_method_id")
-                if default_payment_method:
-                    res["payment_method_id"] = default_payment_method
-                elif payment_methods:
-                    cash_payment_method = payment_methods.filtered(
-                        lambda payment_method: payment_method.is_cash_count or payment_method.journal_id.type == "cash"
-                    )[:1]
-                    res["payment_method_id"] = cash_payment_method.id if cash_payment_method else payment_methods[0].id
+        due = order.amount_total - order.amount_paid
+        res["amount_tendered"] = due if due > 0 else 0.0
+
+        payment_methods = order.config_id.payment_method_ids
+        if self._context.get("cash_only"):
+            payment_methods = payment_methods.filtered(
+                lambda payment_method: payment_method.is_cash_count
+                or payment_method.journal_id.type == "cash"
+            )
+
+        default_payment_method = self._context.get("default_payment_method_id")
+        if default_payment_method:
+            res["payment_method_id"] = default_payment_method
+        elif payment_methods:
+            cash_payment_method = payment_methods.filtered(
+                lambda payment_method: payment_method.is_cash_count
+                or payment_method.journal_id.type == "cash"
+            )[:1]
+            res["payment_method_id"] = (
+                cash_payment_method.id if cash_payment_method else payment_methods[0].id
+            )
         return res
 
     def _get_wizard_view_id(self):
@@ -162,15 +218,16 @@ class PosMakePaymentWizard(models.TransientModel):
         if not payment_method.exists():
             raise UserError(_("Método de pago no válido."))
 
-        self.order_id.add_payment(
+        order = self.order_id.sudo()
+        order.add_payment(
             {
-                "pos_order_id": self.order_id.id,
+                "pos_order_id": order.id,
                 "amount": self.amount_tendered,
                 "payment_method_id": payment_method.id,
             }
         )
 
-        due = self.order_id.amount_total - self.order_id.amount_paid
+        due = order.amount_total - order.amount_paid
         self.amount_tendered = due if due > 0 else 0.0
 
         return {
@@ -206,8 +263,9 @@ class PosMakePaymentWizard(models.TransientModel):
 
     def action_clear_payments(self):
         self.ensure_one()
-        if self.order_id.payment_ids:
-            self.order_id.payment_ids.unlink()
+        order = self.order_id.sudo()
+        if order.payment_ids:
+            order.payment_ids.unlink()
         return {
             "type": "ir.actions.act_window",
             "res_model": "pos.make.payment.wizard",
@@ -221,6 +279,17 @@ class PosMakePaymentWizard(models.TransientModel):
     def _execute_validation(self, print_invoice=False):
         self.ensure_one()
 
+        # Verificar existencia del pedido antes de operar (guard contra MissingError
+        # en entornos multi-compañía o si el pedido fue eliminado concurrentemente).
+        try:
+            order = self.order_id.sudo()
+            if not order.exists():
+                raise UserError(_("El pedido asociado ya no existe o ha sido eliminado."))
+        except MissingError as exc:
+            raise UserError(
+                _("El pedido no es accesible. Compruebe que tiene los permisos necesarios.")
+            ) from exc
+
         if self.amount_total <= 0:
             raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos."))
 
@@ -228,7 +297,6 @@ class PosMakePaymentWizard(models.TransientModel):
         if total_covered < self.amount_total - 0.01:
             raise UserError(_("Importe insuficiente para completar el pago."))
 
-        order = self.order_id
         is_conventional = bool(
             order.config_id and getattr(order.config_id, "pos_non_touch", False)
         )
@@ -278,7 +346,9 @@ class PosMakePaymentWizard(models.TransientModel):
                     or order.company_id.partner_id
                 )
                 if fallback_partner:
-                    order.write({"partner_id": fallback_partner.id})
+                    order.with_context(skip_completeness_check=True).write(
+                        {"partner_id": fallback_partner.id}
+                    )
                     _logger.info(
                         "POS: default partner assigned (%s) for order %s",
                         fallback_partner.name, order.name,
@@ -288,7 +358,7 @@ class PosMakePaymentWizard(models.TransientModel):
             # _process_saved_order generates the invoice if to_invoice=True and state='paid'.
             # This must be set BEFORE calling _process_saved_order.
             if order.partner_id and not order.account_move:
-                order.write({"to_invoice": True})
+                order.with_context(skip_completeness_check=True).write({"to_invoice": True})
                 _logger.info(
                     "POS: to_invoice=True for order %s with customer %s",
                     order.name, order.partner_id.name,
@@ -298,7 +368,9 @@ class PosMakePaymentWizard(models.TransientModel):
 
             if order.state in {"paid", "done"}:
                 order._send_order()
-                order.config_id.notify_synchronisation(order.config_id.current_session_id.id, 0)
+                order.config_id.notify_synchronisation(
+                    order.config_id.current_session_id.id, 0
+                )
 
             if not is_conventional or order.state not in {"paid", "done"}:
                 return {"type": "ir.actions.act_window_close"}

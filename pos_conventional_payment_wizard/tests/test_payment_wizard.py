@@ -685,3 +685,107 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             wizard.amount_change, extra, places=2,
             msg="amount_change debe recalcularse al modificar amount_tendered",
         )
+
+    # ── Robustez: acceso sudo() y MissingError ─────────────────────────────
+
+    def test_49_wizard_compute_order_fields_reads_currency_and_total(self):
+        """
+        _compute_order_fields carga currency_id, amount_total y config_id
+        correctamente desde el pedido usando sudo(). Valida que los campos
+        están disponibles aunque el acceso se haga por compañía diferente.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        self.assertTrue(wizard.currency_id, "currency_id debe estar establecido")
+        self.assertGreater(wizard.amount_total, 0, "amount_total debe ser > 0")
+        self.assertTrue(wizard.config_id, "config_id debe estar establecido")
+
+    def test_50_default_get_returns_empty_when_order_not_found(self):
+        """
+        default_get con active_id de pedido inexistente retorna valores por defecto
+        sin lanzar MissingError (comportamiento defensivo con sudo().exists()).
+        """
+        res = self.env["pos.make.payment.wizard"].with_context(
+            active_id=99999999
+        ).default_get(["order_id", "amount_tendered"])
+
+        # No debe contener order_id si el pedido no existe
+        self.assertNotIn(
+            "order_id", res,
+            "default_get no debe incluir order_id para un pedido inexistente",
+        )
+
+    def test_51_execute_validation_raises_user_error_for_deleted_order(self):
+        """
+        _execute_validation convierte el MissingError en UserError cuando
+        order_id.sudo() no existe, evitando exponer la excepción técnica al usuario.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+            "amount_tendered": order.amount_total,
+        })
+
+        # Eliminamos el pedido para simular el caso de acceso a registro borrado.
+        # Solo los pedidos en 'draft' se pueden eliminar en Odoo.
+        self.assertEqual(order.state, "draft", "El pedido debe estar en draft para eliminarse")
+        order_id = order.id
+        order.unlink()
+
+        # El wizard sigue en memoria con order_id = order_id (ya eliminado).
+        # Al intentar validar, debe lanzar UserError (no MissingError técnico).
+        wizard_sudo = self.env["pos.make.payment.wizard"].sudo().browse(wizard.id)
+        with self.assertRaises(Exception) as ctx:
+            wizard_sudo.action_validate()
+
+        # La excepción debe ser UserError o su subclase (no MissingError sin capturar)
+        self.assertIsInstance(
+            ctx.exception,
+            UserError,
+            f"Debe ser UserError, pero fue: {type(ctx.exception).__name__}",
+        )
+
+    def test_52_wizard_totals_computed_via_sudo(self):
+        """
+        _compute_totals usa sudo() internamente: amount_paid y amount_due
+        se calculan correctamente aunque el contexto de compañía sea distinto.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        # Añadimos un pago parcial directo
+        partial = order.amount_total / 2
+        order.add_payment({
+            "pos_order_id": order.id,
+            "amount": partial,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        self.assertAlmostEqual(wizard.amount_paid, partial, places=2,
+                               msg="amount_paid debe reflejar el pago parcial")
+        self.assertAlmostEqual(wizard.amount_due, order.amount_total - partial, places=2,
+                               msg="amount_due debe reflejar el pendiente")
+

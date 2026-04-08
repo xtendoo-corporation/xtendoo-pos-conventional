@@ -94,7 +94,9 @@ class PosMakePaymentConventional(models.TransientModel):
                     or order.company_id.partner_id
                 )
                 if fallback_partner:
-                    order.write({"partner_id": fallback_partner.id})
+                    order.with_context(skip_completeness_check=True).write(
+                        {"partner_id": fallback_partner.id}
+                    )
                     _logger.info(
                         "POS: default partner assigned (%s) for order %s",
                         fallback_partner.name, order.name,
@@ -104,7 +106,7 @@ class PosMakePaymentConventional(models.TransientModel):
             # _process_saved_order generates the invoice if to_invoice=True and state='paid'.
             # This must be set BEFORE calling _process_saved_order.
             if order.partner_id and not order.account_move:
-                order.write({"to_invoice": True})
+                order.with_context(skip_completeness_check=True).write({"to_invoice": True})
                 _logger.info(
                     "POS: to_invoice=True for order %s with customer %s",
                     order.name, order.partner_id.name,

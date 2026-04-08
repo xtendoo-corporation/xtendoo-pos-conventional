@@ -329,10 +329,14 @@ class PosOrder(models.Model):
                 or self.company_id.partner_id
             )
             if fallback_partner:
-                self.write({"partner_id": fallback_partner.id})
+                # skip_completeness_check: evita que la constrainta de completitud
+                # bloquee el write de partner_id cuando la tarifa aún no está asignada.
+                self.with_context(skip_completeness_check=True).write(
+                    {"partner_id": fallback_partner.id}
+                )
 
         # 2. Mark for invoicing
-        self.write({"to_invoice": True})
+        self.with_context(skip_completeness_check=True).write({"to_invoice": True})
 
         # 3. Validate order (transitions to 'paid' state)
         self.action_pos_order_paid()
