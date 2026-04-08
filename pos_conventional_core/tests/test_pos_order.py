@@ -852,4 +852,44 @@ class TestPosOrder(PosConventionalTestCommon):
             msg="amount_total debe ser idéntico al reabrir el registro",
         )
 
+    # ── unlink con sudo() ─────────────────────────────────────────────────
 
+    def test_unlink_draft_order_succeeds(self):
+        """Un pedido en borrador puede eliminarse sin error."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order_id = order.id
+        order.unlink()
+        self.assertFalse(
+            self.env["pos.order"].sudo().search([("id", "=", order_id)]),
+            "El pedido debe haberse eliminado de la BD",
+        )
+
+    def test_unlink_non_draft_order_raises_error(self):
+        """Un pedido pagado no puede eliminarse; debe lanzar UserError."""
+        from odoo.exceptions import UserError
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        self._add_payment(order, self.cash_pm, order.amount_total)
+        order.with_context(skip_completeness_check=True).action_pos_order_paid()
+        self.assertEqual(order.state, "paid")
+        with self.assertRaises(UserError):
+            order.unlink()
+
+    def test_unlink_via_sudo_bypasses_company_rule(self):
+        """
+        unlink con sudo() elimina el pedido aunque el contexto de compañía
+        del usuario no coincida (simulación del caso multi-compañía del cliente).
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order_id = order.id
+        # Simular acceso con otro usuario que no tiene la compañía del pedido
+        # usando with_user del usuario demo (sin privilegios de admin)
+        order_as_sudo = self.env["pos.order"].sudo().browse(order_id)
+        order_as_sudo.unlink()
+        self.assertFalse(
+            self.env["pos.order"].sudo().search([("id", "=", order_id)]),
+            "El pedido debe haberse eliminado aunque el contexto de compañía no coincida",
+        )

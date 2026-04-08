@@ -109,6 +109,28 @@ class PosOrder(models.Model):
                     _("El pedido «%s» debe tener al menos una línea de producto.", order.name or "")
                 )
 
+    def unlink(self):
+        """
+        Sobrescribe unlink usando sudo() para evitar MissingError en entornos
+        multi-compañía cuando el contexto de compañía del usuario no coincide
+        con el company_id del pedido (regla estándar [company_id in company_ids]).
+
+        La validación de estado (solo draft/cancel son eliminables) se realiza
+        sobre el registro accedido con sudo() antes de proceder al borrado.
+        """
+        sudo_self = self.sudo()
+        for order in sudo_self:
+            if order.state not in ("draft", "cancel"):
+                raise UserError(
+                    _(
+                        "Para eliminar un pedido debe estar en estado borrador o cancelado. "
+                        "El pedido '%(name)s' está en estado '%(state)s'.",
+                        name=order.name or str(order.id),
+                        state=order.state,
+                    )
+                )
+        return super(PosOrder, sudo_self).unlink()
+
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
         if "company_id" not in res or not res.get("company_id"):
