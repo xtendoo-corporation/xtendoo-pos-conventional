@@ -90,6 +90,15 @@ class PosMakePaymentWizard(models.TransientModel):
             wizard.amount_total = order.amount_total
             wizard.config_id = order.config_id
 
+    @api.depends("order_id.amount_total", "order_id.payment_ids", "order_id.payment_ids.amount")
+    def _compute_totals(self):
+        for wizard in self:
+            order = wizard.order_id.sudo()
+            paid = sum(order.payment_ids.mapped("amount"))
+            wizard.amount_paid = paid
+            due = order.amount_total - paid
+            wizard.amount_due = due if due > 0 else 0.0
+
     @api.depends("order_id.payment_ids")
     def _compute_payment_ids(self):
         for wizard in self:
@@ -159,14 +168,6 @@ class PosMakePaymentWizard(models.TransientModel):
             else:
                 wizard.amount_change = 0.0
 
-    @api.depends("order_id.amount_total", "order_id.payment_ids", "order_id.payment_ids.amount")
-    def _compute_totals(self):
-        for wizard in self:
-            order = wizard.order_id.sudo()
-            paid = sum(order.payment_ids.mapped("amount"))
-            wizard.amount_paid = paid
-            due = order.amount_total - paid
-            wizard.amount_due = due if due > 0 else 0.0
 
     @api.depends("config_id")
     def _compute_available_payment_methods(self):

@@ -788,3 +788,147 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         self.assertAlmostEqual(wizard.amount_due, order.amount_total - partial, places=2,
                                msg="amount_due debe reflejar el pendiente")
 
+    def test_53_amount_tendered_defaults_to_amount_due(self):
+        """
+        Al abrir el wizard, amount_tendered se inicializa con el importe pendiente
+        (amount_due) para que el cajero no tenga que introducirlo manualmente.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        self.assertGreater(order.amount_total, 0, "El pedido debe tener importe > 0")
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        self.assertAlmostEqual(
+            wizard.amount_tendered,
+            wizard.amount_due,
+            places=2,
+            msg=(
+                f"amount_tendered ({wizard.amount_tendered}) debe ser igual "
+                f"a amount_due ({wizard.amount_due}) al abrir el wizard"
+            ),
+        )
+
+    def test_54_amount_tendered_defaults_to_amount_due_after_partial_payment(self):
+        """
+        Con un pago parcial previo, amount_tendered se inicializa con el importe
+        pendiente restante (amount_due = total - pagado).
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        partial = order.amount_total / 2
+        order.add_payment({
+            "pos_order_id": order.id,
+            "amount": partial,
+            "payment_method_id": self.cash_pm.id,
+        })
+        expected_due = order.amount_total - partial
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        self.assertAlmostEqual(
+            wizard.amount_tendered,
+            expected_due,
+            places=2,
+            msg=(
+                f"amount_tendered ({wizard.amount_tendered}) debe coincidir con "
+                f"el pendiente restante ({expected_due}) tras un pago parcial"
+            ),
+        )
+
+    def test_55_amount_change_equals_amount_due_minus_amount_tendered(self):
+        """
+        amount_change = amount_due - amount_tendered:
+          - > 0 si falta dinero (se mostrará en rojo)
+          - = 0 si el pago es exacto
+          - < 0 si hay cambio a devolver (se mostrará en verde)
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        total = order.amount_total
+        self.assertGreater(total, 0, "El pedido debe tener importe > 0")
+
+        # Pago exacto → amount_change = 0
+        wizard_exact = self._make_wizard(order, total)
+        self.assertAlmostEqual(
+            wizard_exact.amount_change,
+            wizard_exact.amount_due - wizard_exact.amount_tendered,
+            places=2,
+            msg="amount_change debe ser amount_due - amount_tendered (pago exacto)",
+        )
+
+        # Sobrepago → amount_change < 0
+        extra = 7.0
+        wizard_over = self._make_wizard(order, total + extra)
+        self.assertAlmostEqual(
+            wizard_over.amount_change,
+            wizard_over.amount_due - wizard_over.amount_tendered,
+            places=2,
+            msg="amount_change debe ser amount_due - amount_tendered (sobrepago)",
+        )
+        self.assertLess(wizard_over.amount_change, 0,
+                        "Con sobrepago amount_change debe ser negativo")
+
+        # Pago insuficiente → amount_change > 0
+        deficit = 3.0
+        wizard_under = self._make_wizard(order, max(0.01, total - deficit))
+        self.assertAlmostEqual(
+            wizard_under.amount_change,
+            wizard_under.amount_due - wizard_under.amount_tendered,
+            places=2,
+            msg="amount_change debe ser amount_due - amount_tendered (pago insuficiente)",
+        )
+        self.assertGreater(wizard_under.amount_change, 0,
+                           "Con pago insuficiente amount_change debe ser positivo")
+
+    def test_56_compute_order_fields_sets_currency_total_config(self):
+        """
+        _compute_order_fields establece currency_id, amount_total y config_id
+        correctamente sin lanzar MissingError, incluso en contextos multi-compañía.
+        Este test verifica que el método existe y funciona correctamente
+        (anteriormente estaba fusionado de forma incorrecta con _compute_totals).
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        # currency_id debe coincidir con la del pedido
+        self.assertEqual(
+            wizard.currency_id,
+            order.currency_id,
+            "currency_id del wizard debe coincidir con la del pedido",
+        )
+        # amount_total del wizard debe coincidir con el del pedido
+        self.assertAlmostEqual(
+            wizard.amount_total,
+            order.amount_total,
+            places=2,
+            msg="amount_total del wizard debe coincidir con el del pedido",
+        )
+        # config_id debe coincidir
+        self.assertEqual(
+            wizard.config_id,
+            order.config_id,
+            "config_id del wizard debe coincidir con el del pedido",
+        )
+
