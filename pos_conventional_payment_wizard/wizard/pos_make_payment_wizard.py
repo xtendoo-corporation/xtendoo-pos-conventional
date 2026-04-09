@@ -64,6 +64,22 @@ class PosMakePaymentWizard(models.TransientModel):
         compute="_compute_available_payment_methods",
     )
 
+    @api.onchange("order_id")
+    def _onchange_order_id_set_amount_tendered(self):
+        """
+        Inicializa amount_tendered con el importe pendiente cuando se carga
+        el pedido en el wizard. Actúa como red de seguridad si default_get
+        no pudo calcular el valor correcto (p.ej. amount_total aún no persistido).
+        """
+        for wizard in self:
+            if not wizard.order_id:
+                continue
+            order = wizard.order_id.sudo()
+            total = sum(order.lines.mapped("price_subtotal_incl")) or order.amount_total
+            paid = sum(order.payment_ids.mapped("amount"))
+            due = total - paid
+            wizard.amount_tendered = due if due > 0 else 0.0
+
     @api.depends("order_id")
     def _compute_order_fields(self):
         """Lee currency_id, amount_total y config_id directamente via sudo()
@@ -176,12 +192,24 @@ class PosMakePaymentWizard(models.TransientModel):
             return res
 
         res["order_id"] = order.id
-        try:
-            order._compute_prices()
-        except Exception:
-            order.amount_total = sum(order.lines.mapped("price_subtotal_incl"))
 
-        due = order.amount_total - order.amount_paid
+        # Calcular el total directamente desde las líneas del pedido.
+        # El campo almacenado amount_total puede estar desactualizado si el usuario
+        # no ha guardado el formulario antes de pulsar el botón de pago (el onchange
+        # de lines actualiza amount_total en memoria pero force_save solo persiste
+        # al guardar). Usar las líneas garantiza el valor correcto en cualquier caso.
+        total_from_lines = sum(order.lines.mapped("price_subtotal_incl"))
+        if total_from_lines > 0:
+            amount_total = total_from_lines
+        else:
+            try:
+                order._compute_prices()
+            except Exception:
+                pass
+            amount_total = order.amount_total
+
+        paid = sum(order.payment_ids.mapped("amount"))
+        due = amount_total - paid
         res["amount_tendered"] = due if due > 0 else 0.0
 
         payment_methods = order.config_id.payment_method_ids
