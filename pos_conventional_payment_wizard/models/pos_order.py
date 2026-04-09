@@ -28,6 +28,7 @@ class PosOrder(models.Model):
             "pos_conventional_payment_wizard.view_pos_make_payment_wizard_cash_form",
             False,
         )
+        amount_due = max(0.0, self.amount_total - sum(self.payment_ids.mapped("amount")))
         return {
             "type": "ir.actions.act_window",
             "res_model": "pos.make.payment.wizard",
@@ -38,6 +39,7 @@ class PosOrder(models.Model):
             "context": {
                 "active_id": self.id,
                 "default_payment_method_id": cash_method.id,
+                "default_amount_tendered": amount_due,
                 "cash_only": True,
             },
         }
@@ -91,6 +93,7 @@ class PosOrder(models.Model):
                 "pos_conventional_payment_wizard.view_pos_make_payment_wizard_cash_form",
                 False,
             )
+            amount_due = max(0.0, self.amount_total - sum(self.payment_ids.mapped("amount")))
             return {
                 "type": "ir.actions.act_window",
                 "res_model": "pos.make.payment.wizard",
@@ -101,6 +104,7 @@ class PosOrder(models.Model):
                 "context": {
                     "active_id": self.id,
                     "default_payment_method_id": payment_method.id,
+                    "default_amount_tendered": amount_due,
                     "cash_only": True,
                 },
             }

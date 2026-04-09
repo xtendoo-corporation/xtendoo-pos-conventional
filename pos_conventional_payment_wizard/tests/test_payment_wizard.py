@@ -792,12 +792,16 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         """
         Al abrir el wizard, amount_tendered se inicializa con el importe pendiente
         (amount_due) para que el cajero no tenga que introducirlo manualmente.
+        Se valida tanto via default_get (active_id en contexto) como via el
+        mecanismo default_fieldname del contexto (que usa action_pay_cash).
         """
         session = self._open_session()
         order = self._make_draft_order(session)
         self._add_line(order)
         self.assertGreater(order.amount_total, 0, "El pedido debe tener importe > 0")
+        amount_due = order.amount_total - sum(order.payment_ids.mapped("amount"))
 
+        # Via default_get (active_id en contexto, igual que action_pay_cash)
         wizard = self.env["pos.make.payment.wizard"].with_context(
             active_id=order.id
         ).create({
@@ -807,11 +811,48 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
 
         self.assertAlmostEqual(
             wizard.amount_tendered,
-            wizard.amount_due,
+            amount_due,
             places=2,
             msg=(
                 f"amount_tendered ({wizard.amount_tendered}) debe ser igual "
-                f"a amount_due ({wizard.amount_due}) al abrir el wizard"
+                f"a amount_due ({amount_due}) al abrir el wizard"
+            ),
+        )
+
+    def test_57_amount_tendered_via_default_context_key(self):
+        """
+        action_pay_cash pasa 'default_amount_tendered' en el contexto.
+        Odoo lo aplica automáticamente como valor inicial del campo,
+        garantizando que el cajero vea el importe correcto sin tener que
+        escribirlo. Este test simula exactamente ese flujo.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        amount_due = max(
+            0.0,
+            order.amount_total - sum(order.payment_ids.mapped("amount"))
+        )
+        self.assertGreater(amount_due, 0, "El pedido debe tener importe pendiente > 0")
+
+        # Simular el contexto que genera action_pay_cash
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id,
+            default_amount_tendered=amount_due,
+            cash_only=True,
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        self.assertAlmostEqual(
+            wizard.amount_tendered,
+            amount_due,
+            places=2,
+            msg=(
+                f"amount_tendered ({wizard.amount_tendered}) debe coincidir con "
+                f"el importe pendiente ({amount_due}) cuando se pasa default_amount_tendered "
+                f"en el contexto (simulando action_pay_cash)"
             ),
         )
 

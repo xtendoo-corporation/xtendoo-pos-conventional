@@ -64,21 +64,6 @@ class PosMakePaymentWizard(models.TransientModel):
         compute="_compute_available_payment_methods",
     )
 
-    @api.onchange("order_id")
-    def _onchange_order_id_set_amount_tendered(self):
-        """
-        Inicializa amount_tendered con el importe pendiente cuando se carga
-        el pedido en el wizard. Actúa como red de seguridad si default_get
-        no pudo calcular el valor correcto (p.ej. amount_total aún no persistido).
-        """
-        for wizard in self:
-            if not wizard.order_id:
-                continue
-            order = wizard.order_id.sudo()
-            total = sum(order.lines.mapped("price_subtotal_incl")) or order.amount_total
-            paid = sum(order.payment_ids.mapped("amount"))
-            due = total - paid
-            wizard.amount_tendered = due if due > 0 else 0.0
 
     @api.depends("order_id")
     def _compute_order_fields(self):
