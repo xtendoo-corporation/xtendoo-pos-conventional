@@ -10,6 +10,23 @@ class PosMakePaymentWizard(models.TransientModel):
     _name = "pos.make.payment.wizard"
     _description = "Asistente de Pago POS"
 
+    def _is_cash_quick_mode(self):
+        """Popup rápido de efectivo: cobra el ticket completo en un solo paso.
+
+        En este modo no se reutilizan pagos borrador previos; el cajero ve el
+        total actual del ticket como importe sugerido y, al validar, dichos pagos
+        temporales se sustituyen por el cobro final.
+        """
+        return bool(self.env.context.get("cash_quick_mode"))
+
+    def _get_order_amounts(self, order, ignore_existing_payments=False):
+        """Devuelve total, pagado y pendiente recalculados desde el pedido."""
+        order = order.sudo()
+        total = sum(order.lines.mapped("price_subtotal_incl")) or order.amount_total
+        paid = 0.0 if ignore_existing_payments else sum(order.payment_ids.mapped("amount"))
+        due = total - paid
+        return total, paid, due if due > 0 else 0.0
+
     # check_company=False: el wizard puede operar sobre pedidos de cualquier
     # compañía activa del usuario. La regla multi-compañía estándar de pos.order
     # ([('company_id', 'in', company_ids)]) excluiría el pedido si el contexto
@@ -71,18 +88,21 @@ class PosMakePaymentWizard(models.TransientModel):
         para evitar MissingError cuando la compañía del contexto no coincide."""
         for wizard in self:
             order = wizard.order_id.sudo()
+            total, _paid, _due = wizard._get_order_amounts(order)
             wizard.currency_id = order.currency_id
-            wizard.amount_total = order.amount_total
+            wizard.amount_total = total
             wizard.config_id = order.config_id
 
     @api.depends("order_id.amount_total", "order_id.payment_ids", "order_id.payment_ids.amount")
     def _compute_totals(self):
         for wizard in self:
             order = wizard.order_id.sudo()
-            paid = sum(order.payment_ids.mapped("amount"))
+            _total, paid, due = wizard._get_order_amounts(
+                order,
+                ignore_existing_payments=wizard._is_cash_quick_mode(),
+            )
             wizard.amount_paid = paid
-            due = order.amount_total - paid
-            wizard.amount_due = due if due > 0 else 0.0
+            wizard.amount_due = due
 
     @api.depends("order_id.payment_ids")
     def _compute_payment_ids(self):
@@ -99,9 +119,13 @@ class PosMakePaymentWizard(models.TransientModel):
     def _onchange_payment_ids_totals(self):
         """Actualiza importes en tiempo real cuando el usuario elimina una fila."""
         for wizard in self:
+            if wizard._is_cash_quick_mode():
+                wizard.amount_paid = 0.0
+                wizard.amount_due = wizard.amount_total
+                continue
             paid = sum(wizard.payment_ids.mapped("amount"))
             wizard.amount_paid = paid
-            due = wizard.order_id.sudo().amount_total - paid
+            due = wizard.amount_total - paid
             wizard.amount_due = due if due > 0 else 0.0
 
     @api.depends("payment_method_id")
@@ -145,10 +169,10 @@ class PosMakePaymentWizard(models.TransientModel):
         """
         for wizard in self:
             if wizard.is_cash_payment:
-                order = wizard.order_id.sudo()
-                total = sum(order.lines.mapped("price_subtotal_incl")) or order.amount_total
-                paid = sum(order.payment_ids.mapped("amount"))
-                due = max(0.0, total - paid)
+                _total, _paid, due = wizard._get_order_amounts(
+                    wizard.order_id,
+                    ignore_existing_payments=wizard._is_cash_quick_mode(),
+                )
                 wizard.amount_change = due - wizard.amount_tendered
             else:
                 wizard.amount_change = 0.0
@@ -167,7 +191,7 @@ class PosMakePaymentWizard(models.TransientModel):
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
-        active_id = self._context.get("active_id")
+        active_id = self.env.context.get("active_id")
         if not active_id:
             return res
 
@@ -190,28 +214,25 @@ class PosMakePaymentWizard(models.TransientModel):
         # no ha guardado el formulario antes de pulsar el botón de pago (el onchange
         # de lines actualiza amount_total en memoria pero force_save solo persiste
         # al guardar). Usar las líneas garantiza el valor correcto en cualquier caso.
-        total_from_lines = sum(order.lines.mapped("price_subtotal_incl"))
-        if total_from_lines > 0:
-            amount_total = total_from_lines
-        else:
-            try:
-                order._compute_prices()
-            except Exception:
-                pass
-            amount_total = order.amount_total
+        ignore_existing_payments = bool(self.env.context.get("cash_quick_mode"))
+        amount_total, _paid, due = self._get_order_amounts(
+            order,
+            ignore_existing_payments=ignore_existing_payments,
+        )
 
-        paid = sum(order.payment_ids.mapped("amount"))
-        due = amount_total - paid
-        res["amount_tendered"] = due if due > 0 else 0.0
+        res["amount_tendered"] = self.env.context.get(
+            "default_amount_tendered",
+            amount_total if ignore_existing_payments else due,
+        )
 
         payment_methods = order.config_id.payment_method_ids
-        if self._context.get("cash_only"):
+        if self.env.context.get("cash_only"):
             payment_methods = payment_methods.filtered(
                 lambda payment_method: payment_method.is_cash_count
                 or payment_method.journal_id.type == "cash"
             )
 
-        default_payment_method = self._context.get("default_payment_method_id")
+        default_payment_method = self.env.context.get("default_payment_method_id")
         if default_payment_method:
             res["payment_method_id"] = default_payment_method
         elif payment_methods:
@@ -225,9 +246,23 @@ class PosMakePaymentWizard(models.TransientModel):
         return res
 
     def _get_wizard_view_id(self):
-        if self._context.get("cash_only"):
+        if self.env.context.get("cash_only"):
             return self.env.ref("pos_conventional_payment_wizard.view_pos_make_payment_wizard_cash_form").id
         return self.env.ref("pos_conventional_payment_wizard.view_pos_make_payment_wizard_form").id
+
+    def _warning_notification_action(self, message, title=None):
+        """Muestra un banner warning sin cerrar el wizard."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": title or _("Aviso"),
+                "message": message,
+                "type": "warning",
+                "sticky": True,
+            },
+        }
 
     def _add_payment(self, payment_method_id):
         self.ensure_one()
@@ -257,7 +292,7 @@ class PosMakePaymentWizard(models.TransientModel):
             "view_mode": "form",
             "view_id": self._get_wizard_view_id(),
             "target": "new",
-            "context": self._context,
+            "context": self.env.context,
         }
 
     def action_pay_cash(self):
@@ -293,7 +328,7 @@ class PosMakePaymentWizard(models.TransientModel):
             "view_mode": "form",
             "view_id": self._get_wizard_view_id(),
             "target": "new",
-            "context": self._context,
+            "context": self.env.context,
         }
 
     def _execute_validation(self, print_invoice=False):
@@ -318,17 +353,25 @@ class PosMakePaymentWizard(models.TransientModel):
         #   < -0.01 → hay cambio que devolver al cliente
         if self.is_cash_payment:
             if self.amount_change > 0.01:
-                raise UserError(_("Importe insuficiente para completar el pago."))
+                return self._warning_notification_action(
+                    _("Importe insuficiente para completar el pago.")
+                )
         else:
             total_covered = self.amount_paid + self.amount_tendered
             if total_covered < self.amount_total - 0.01:
-                raise UserError(_("Importe insuficiente para completar el pago."))
+                return self._warning_notification_action(
+                    _("Importe insuficiente para completar el pago.")
+                )
 
         is_conventional = bool(
             order.config_id and getattr(order.config_id, "pos_non_touch", False)
         )
 
         if order.state == "draft":
+            if self._is_cash_quick_mode() and order.payment_ids:
+                order.payment_ids.unlink()
+                order.invalidate_recordset(["payment_ids", "amount_paid"])
+
             cash_method = self.payment_method_id
             if not cash_method.is_cash_count and cash_method.journal_id.type != "cash":
                 cash_method = order.config_id.payment_method_ids.filtered("is_cash_count")[:1]
@@ -359,7 +402,7 @@ class PosMakePaymentWizard(models.TransientModel):
                         "payment_method_id": cash_method.id,
                     })
             else:
-                due = order.amount_total - order.amount_paid
+                _total, _paid, due = self._get_order_amounts(order)
                 if due > 0.01:
                     order.add_payment({
                         "pos_order_id": order.id,

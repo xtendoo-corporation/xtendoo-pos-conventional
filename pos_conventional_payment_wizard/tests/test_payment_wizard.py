@@ -655,8 +655,8 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             msg="Con pago parcial previo, el cambio debe ser 0 al completar el importe restante",
         )
 
-    def test_47_validate_raises_when_amount_change_positive(self):
-        """action_validate lanza UserError cuando amount_change > 0 (importe insuficiente)."""
+    def test_47_validate_returns_warning_when_amount_change_positive(self):
+        """action_validate devuelve un banner warning cuando el importe es insuficiente."""
         session = self._open_session()
         order = self._make_draft_order(session)
         self._add_line(order)
@@ -665,10 +665,35 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         wizard = self._make_wizard(order, insufficient)
 
         self.assertGreater(wizard.amount_change, 0.0)
-        with self.assertRaises(UserError, msg="Debe lanzar UserError con importe insuficiente"):
-            wizard.action_validate()
+        action = wizard.action_validate()
+        self.assertEqual(action.get("type"), "ir.actions.client")
+        self.assertEqual(action.get("tag"), "display_notification")
+        self.assertEqual(action.get("params", {}).get("type"), "warning")
+        self.assertIn("insuficiente", action.get("params", {}).get("message", "").lower())
+        self.assertEqual(order.state, "draft", "Con importe insuficiente el pedido debe seguir en draft")
 
-    def test_48_amount_change_updates_when_tendered_changes(self):
+    def test_48_validate_returns_warning_for_non_cash_when_total_not_covered(self):
+        """El wizard general también devuelve banner warning si el total no queda cubierto."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            active_id=order.id
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.card_pm.id,
+            "amount_tendered": max(0.01, order.amount_total - 10.0),
+        })
+
+        action = wizard.action_validate()
+        self.assertEqual(action.get("type"), "ir.actions.client")
+        self.assertEqual(action.get("tag"), "display_notification")
+        self.assertEqual(action.get("params", {}).get("type"), "warning")
+        self.assertIn("insuficiente", action.get("params", {}).get("message", "").lower())
+        self.assertEqual(order.state, "draft")
+
+    def test_49_amount_change_updates_when_tendered_changes(self):
         """amount_change se recalcula al modificar amount_tendered."""
         session = self._open_session()
         order = self._make_draft_order(session)
@@ -687,7 +712,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
 
     # ── Robustez: acceso sudo() y MissingError ─────────────────────────────
 
-    def test_49_wizard_compute_order_fields_reads_currency_and_total(self):
+    def test_50_wizard_compute_order_fields_reads_currency_and_total(self):
         """
         _compute_order_fields carga currency_id, amount_total y config_id
         correctamente desde el pedido usando sudo(). Valida que los campos
@@ -708,7 +733,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         self.assertGreater(wizard.amount_total, 0, "amount_total debe ser > 0")
         self.assertTrue(wizard.config_id, "config_id debe estar establecido")
 
-    def test_50_default_get_returns_empty_when_order_not_found(self):
+    def test_51_default_get_returns_empty_when_order_not_found(self):
         """
         default_get con active_id de pedido inexistente retorna valores por defecto
         sin lanzar MissingError (comportamiento defensivo con sudo().exists()).
@@ -723,7 +748,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             "default_get no debe incluir order_id para un pedido inexistente",
         )
 
-    def test_51_execute_validation_raises_user_error_for_deleted_order(self):
+    def test_52_execute_validation_raises_user_error_for_deleted_order(self):
         """
         _execute_validation convierte el MissingError en UserError cuando
         order_id.sudo() no existe, evitando exponer la excepción técnica al usuario.
@@ -759,7 +784,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             f"Debe ser UserError, pero fue: {type(ctx.exception).__name__}",
         )
 
-    def test_52_wizard_totals_computed_via_sudo(self):
+    def test_53_wizard_totals_computed_via_sudo(self):
         """
         _compute_totals usa sudo() internamente: amount_paid y amount_due
         se calculan correctamente aunque el contexto de compañía sea distinto.
@@ -788,7 +813,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         self.assertAlmostEqual(wizard.amount_due, order.amount_total - partial, places=2,
                                msg="amount_due debe reflejar el pendiente")
 
-    def test_53_amount_tendered_defaults_to_amount_due(self):
+    def test_54_amount_tendered_defaults_to_amount_due(self):
         """
         Al abrir el wizard, amount_tendered se inicializa con el importe pendiente
         (amount_due) para que el cajero no tenga que introducirlo manualmente.
@@ -819,7 +844,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             ),
         )
 
-    def test_57_amount_tendered_via_default_context_key(self):
+    def test_58_amount_tendered_via_default_context_key(self):
         """
         action_pay_cash pasa 'default_amount_tendered' en el contexto.
         Odoo lo aplica automáticamente como valor inicial del campo,
@@ -856,7 +881,101 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             ),
         )
 
-    def test_54_amount_tendered_defaults_to_amount_due_after_partial_payment(self):
+    def test_59_action_pay_cash_prefills_total_in_quick_mode(self):
+        """
+        El popup rápido de efectivo siempre arranca con el total actual del ticket,
+        no con pagos borrador previos. El contexto de la acción debe marcar el
+        modo rápido e inyectar default_amount_tendered = amount_total.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        partial = order.amount_total / 2
+        order.add_payment({
+            "pos_order_id": order.id,
+            "amount": partial,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        action = order.action_pay_cash()
+
+        self.assertTrue(
+            action["context"].get("cash_quick_mode"),
+            "action_pay_cash debe activar cash_quick_mode en el contexto",
+        )
+        self.assertAlmostEqual(
+            action["context"]["default_amount_tendered"],
+            order.amount_total,
+            places=2,
+            msg="El popup rápido de efectivo debe precargar el total del ticket",
+        )
+
+    def test_60_cash_quick_mode_ignores_existing_draft_payments_in_totals(self):
+        """
+        En modo rápido de efectivo, el wizard debe ignorar pagos borrador ya
+        registrados: amount_paid = 0, amount_due = amount_total y el importe
+        entregado inicial debe ser el total del ticket.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        partial = order.amount_total / 2
+        order.add_payment({
+            "pos_order_id": order.id,
+            "amount": partial,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        action = order.action_pay_cash()
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            **action["context"]
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+        })
+
+        self.assertAlmostEqual(wizard.amount_paid, 0.0, places=2)
+        self.assertAlmostEqual(wizard.amount_due, order.amount_total, places=2)
+        self.assertAlmostEqual(wizard.amount_tendered, order.amount_total, places=2)
+
+    def test_61_cash_quick_mode_validation_replaces_existing_draft_payments(self):
+        """
+        Al validar en modo rápido de efectivo, los pagos borrador existentes se
+        sustituyen por el cobro final del ticket para evitar dobles cobros o
+        reabrir el popup con pendiente 0 por pagos temporales anteriores.
+        """
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+        self._add_line(order)
+        old_payment = order.add_payment({
+            "pos_order_id": order.id,
+            "amount": order.amount_total / 2,
+            "payment_method_id": self.cash_pm.id,
+        })
+        old_payment_ids = order.payment_ids.ids
+
+        action = order.action_pay_cash()
+        wizard = self.env["pos.make.payment.wizard"].with_context(
+            **action["context"]
+        ).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+        })
+        wizard.action_validate()
+
+        self.assertFalse(
+            order.payment_ids.filtered(lambda payment: payment.id in old_payment_ids),
+            "Los pagos borrador anteriores deben eliminarse al validar en modo rápido",
+        )
+        self.assertAlmostEqual(
+            sum(order.payment_ids.filtered(lambda payment: payment.amount > 0).mapped("amount")),
+            order.amount_total,
+            places=2,
+            msg="Tras reemplazar pagos borrador, el cobro positivo debe igualar el total del ticket",
+        )
+        self.assertIn(order.state, ("paid", "done"))
+
+    def test_55_amount_tendered_defaults_to_amount_due_after_partial_payment(self):
         """
         Con un pago parcial previo, amount_tendered se inicializa con el importe
         pendiente restante (amount_due = total - pagado).
@@ -889,7 +1008,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             ),
         )
 
-    def test_55_amount_change_equals_amount_due_minus_amount_tendered(self):
+    def test_56_amount_change_equals_amount_due_minus_amount_tendered(self):
         """
         amount_change = amount_due - amount_tendered:
           - > 0 si falta dinero (se mostrará en rojo)
@@ -935,7 +1054,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         self.assertGreater(wizard_under.amount_change, 0,
                            "Con pago insuficiente amount_change debe ser positivo")
 
-    def test_56_compute_order_fields_sets_currency_total_config(self):
+    def test_57_compute_order_fields_sets_currency_total_config(self):
         """
         _compute_order_fields establece currency_id, amount_total y config_id
         correctamente sin lanzar MissingError, incluso en contextos multi-compañía.

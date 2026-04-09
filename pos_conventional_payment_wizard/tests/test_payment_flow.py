@@ -293,14 +293,18 @@ class TestPaymentFlow(PosConventionalTestCommon):
                 msg="El pago negativo debe coincidir con el cambio calculado",
             )
 
-    def test_17_cash_wizard_insufficient_payment_raises_user_error(self):
-        """action_validate() con importe insuficiente lanza UserError."""
+    def test_17_cash_wizard_insufficient_payment_returns_warning(self):
+        """action_validate() con importe insuficiente devuelve un banner warning."""
         order = self._order_with_line()
         total = order.amount_total
         if total <= 0:
             self.skipTest("Pedido sin importe")
-        with self.assertRaises(UserError):
-            self._pay_cash_wizard_validate(order, tendered=total / 2)
+        _wizard, action = self._pay_cash_wizard_validate(order, tendered=total / 2)
+        self.assertEqual(action.get("type"), "ir.actions.client")
+        self.assertEqual(action.get("tag"), "display_notification")
+        self.assertEqual(action.get("params", {}).get("type"), "warning")
+        self.assertIn("insuficiente", action.get("params", {}).get("message", "").lower())
+        self.assertEqual(order.state, "draft")
 
     def test_18_cash_wizard_non_conventional_returns_window_close(self):
         """action_validate() en POS no convencional devuelve act_window_close."""
