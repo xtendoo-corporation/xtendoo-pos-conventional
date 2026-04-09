@@ -106,7 +106,7 @@
                                 nolabel="1"
                                 class="fs-2 fw-bold text-primary text-end"/>
                         </div>
-                        <!-- Fila 3: Cambio a devolver — verde si positivo o cero, rojo si negativo -->
+                        <!-- Fila 3: Cambio a devolver — verde si ≤ 0 (hay cambio), rojo si > 0 (falta por pagar) -->
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="fs-2 fw-bold">Cambio</span>
                             <div class="text-end">
@@ -114,12 +114,12 @@
                                     options="{'currency_field': 'currency_id'}"
                                     readonly="1" nolabel="1"
                                     class="fs-2 fw-bold text-success"
-                                    invisible="amount_change &lt; 0"/>
+                                    invisible="amount_change &gt; 0"/>
                                 <field name="amount_change" widget="monetary"
                                     options="{'currency_field': 'currency_id'}"
                                     readonly="1" nolabel="1"
                                     class="fs-2 fw-bold text-danger"
-                                    invisible="amount_change &gt;= 0"/>
+                                    invisible="amount_change &lt;= 0"/>
                             </div>
                         </div>
                     </div>

@@ -121,18 +121,22 @@ class PosMakePaymentWizard(models.TransientModel):
                 )
             )
 
-    @api.depends("amount_tendered", "amount_paid", "amount_total", "is_cash_payment")
+    @api.depends("amount_tendered", "amount_due", "is_cash_payment")
     def _compute_amount_change(self):
         """
-        Calcula la diferencia entre lo entregado (pagos previos + importe actual)
-        y el total del pedido. Positivo: devolver cambio. Negativo: falta por pagar.
+        Cambio = Total a pagar (amount_due) - Importe entregado (amount_tendered).
+
+        Interpretación:
+          > 0  → el cliente aún debe pagar esa cantidad (se muestra en ROJO).
+          = 0  → pago exacto.
+          < 0  → hay cambio que devolver al cliente (se muestra en VERDE,
+                 el importe es el valor absoluto).
+
         Solo aplica para pagos en efectivo; para otros métodos devuelve 0.
         """
         for wizard in self:
             if wizard.is_cash_payment:
-                wizard.amount_change = (
-                    wizard.amount_paid + wizard.amount_tendered - wizard.amount_total
-                )
+                wizard.amount_change = wizard.amount_due - wizard.amount_tendered
             else:
                 wizard.amount_change = 0.0
 
@@ -142,14 +146,16 @@ class PosMakePaymentWizard(models.TransientModel):
         Actualiza amount_change en tiempo real cuando el usuario edita el importe
         o cambia el método de pago.
 
+        amount_change = amount_due - amount_tendered.
         Solo aplica para efectivo; para otros métodos amount_change es 0.
         """
         for wizard in self:
             if wizard.is_cash_payment:
-                paid = sum(wizard.order_id.sudo().payment_ids.mapped("amount"))
-                wizard.amount_change = (
-                    paid + wizard.amount_tendered - wizard.order_id.sudo().amount_total
-                )
+                order = wizard.order_id.sudo()
+                total = sum(order.lines.mapped("price_subtotal_incl")) or order.amount_total
+                paid = sum(order.payment_ids.mapped("amount"))
+                due = max(0.0, total - paid)
+                wizard.amount_change = due - wizard.amount_tendered
             else:
                 wizard.amount_change = 0.0
 
@@ -321,9 +327,16 @@ class PosMakePaymentWizard(models.TransientModel):
         if self.amount_total <= 0:
             raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos."))
 
-        total_covered = self.amount_paid + self.amount_tendered
-        if total_covered < self.amount_total - 0.01:
-            raise UserError(_("Importe insuficiente para completar el pago."))
+        # amount_change = amount_due - amount_tendered:
+        #   > 0.01  → importe insuficiente (falta por pagar)
+        #   < -0.01 → hay cambio que devolver al cliente
+        if self.is_cash_payment:
+            if self.amount_change > 0.01:
+                raise UserError(_("Importe insuficiente para completar el pago."))
+        else:
+            total_covered = self.amount_paid + self.amount_tendered
+            if total_covered < self.amount_total - 0.01:
+                raise UserError(_("Importe insuficiente para completar el pago."))
 
         is_conventional = bool(
             order.config_id and getattr(order.config_id, "pos_non_touch", False)
@@ -338,14 +351,16 @@ class PosMakePaymentWizard(models.TransientModel):
                         lambda payment_method: payment_method.journal_id.type == "cash"
                     )[:1]
 
-            # Capture change amount before adding payments (avoids recompute issues)
+            # amount_change = amount_due - amount_tendered:
+            #   < -0.01 → cliente entregó más → hay cambio que devolver
+            # cash_change_for_banner: valor positivo del cambio a devolver
             cash_change_for_banner = (
-                self.amount_change
-                if self.is_cash_payment and self.amount_change > 0.01
+                -self.amount_change
+                if self.is_cash_payment and self.amount_change < -0.01
                 else 0.0
             )
 
-            if self.is_cash_payment and self.amount_change > 0.01:
+            if self.is_cash_payment and self.amount_change < -0.01:
                 order.add_payment({
                     "pos_order_id": order.id,
                     "amount": self.amount_tendered,
@@ -354,7 +369,7 @@ class PosMakePaymentWizard(models.TransientModel):
                 if cash_method:
                     order.add_payment({
                         "pos_order_id": order.id,
-                        "amount": -self.amount_change,
+                        "amount": self.amount_change,  # ya es negativo → pago de vuelta
                         "payment_method_id": cash_method.id,
                     })
             else:

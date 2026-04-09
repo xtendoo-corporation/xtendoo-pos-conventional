@@ -231,7 +231,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
     # ── PosMakePaymentWizard — amount_change ──────────────────────────────
 
     def test_21_wizard_amount_change_cash_overpayment(self):
-        """El cambio se calcula cuando el importe entregado supera el total."""
+        """El cambio es negativo cuando el importe entregado supera el total (amount_due - amount_tendered < 0)."""
         session = self._open_session()
         order = self._make_draft_order(session)
         self._add_line(order)
@@ -245,10 +245,9 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
                 "amount_tendered": total + 50.0,
             }
         )
-        # amount_change = (amount_paid + amount_tendered) - amount_total cuando es efectivo
-        # amount_paid=0, amount_tendered=total+50 => change=50 si total>0
+        # amount_change = amount_due - amount_tendered → negativo cuando se entrega más
         if total > 0:
-            self.assertAlmostEqual(wizard.amount_change, 50.0, places=2)
+            self.assertAlmostEqual(wizard.amount_change, -50.0, places=2)
         else:
             self.skipTest("El pedido no tiene líneas con precio > 0")
 
@@ -607,8 +606,8 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             msg="El cambio debe ser 0 cuando se entrega el importe exacto",
         )
 
-    def test_44_amount_change_positive_when_overpaid(self):
-        """amount_change es positivo cuando el cliente entrega mas del total."""
+    def test_44_amount_change_negative_when_overpaid(self):
+        """amount_change es negativo cuando el cliente entrega más del total (hay cambio que devolver)."""
         session = self._open_session()
         order = self._make_draft_order(session)
         self._add_line(order)
@@ -617,12 +616,12 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         wizard = self._make_wizard(order, order.amount_total + extra)
 
         self.assertAlmostEqual(
-            wizard.amount_change, extra, places=2,
-            msg="El cambio debe ser positivo (devolver al cliente) cuando se entrega de mas",
+            wizard.amount_change, -extra, places=2,
+            msg="amount_change debe ser negativo (devolver cambio) cuando se entrega de más",
         )
 
-    def test_45_amount_change_negative_when_underpaid(self):
-        """amount_change es negativo cuando el importe entregado no cubre el total."""
+    def test_45_amount_change_positive_when_underpaid(self):
+        """amount_change es positivo cuando el importe entregado no cubre el total (falta por pagar)."""
         session = self._open_session()
         order = self._make_draft_order(session)
         self._add_line(order)
@@ -630,9 +629,9 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         deficit = 5.0
         wizard = self._make_wizard(order, max(0.01, order.amount_total - deficit))
 
-        self.assertLess(
+        self.assertGreater(
             wizard.amount_change, 0.0,
-            "El cambio debe ser negativo (falta por pagar) cuando el importe es insuficiente",
+            "amount_change debe ser positivo (falta por pagar) cuando el importe es insuficiente",
         )
 
     def test_46_amount_change_accounts_for_previous_payments(self):
@@ -656,8 +655,8 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
             msg="Con pago parcial previo, el cambio debe ser 0 al completar el importe restante",
         )
 
-    def test_47_validate_raises_when_amount_change_negative(self):
-        """action_validate lanza UserError cuando el importe entregado no cubre el total."""
+    def test_47_validate_raises_when_amount_change_positive(self):
+        """action_validate lanza UserError cuando amount_change > 0 (importe insuficiente)."""
         session = self._open_session()
         order = self._make_draft_order(session)
         self._add_line(order)
@@ -665,7 +664,7 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         insufficient = max(0.01, order.amount_total - 5.0)
         wizard = self._make_wizard(order, insufficient)
 
-        self.assertLess(wizard.amount_change, 0.0)
+        self.assertGreater(wizard.amount_change, 0.0)
         with self.assertRaises(UserError, msg="Debe lanzar UserError con importe insuficiente"):
             wizard.action_validate()
 
@@ -678,12 +677,12 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         wizard = self._make_wizard(order, order.amount_total)
         self.assertAlmostEqual(wizard.amount_change, 0.0, places=2)
 
-        # Aumentamos el importe entregado
+        # Aumentamos el importe entregado → amount_change se vuelve negativo
         extra = 3.0
         wizard.amount_tendered = order.amount_total + extra
         self.assertAlmostEqual(
-            wizard.amount_change, extra, places=2,
-            msg="amount_change debe recalcularse al modificar amount_tendered",
+            wizard.amount_change, -extra, places=2,
+            msg="amount_change debe ser negativo al entregar más (amount_due - amount_tendered < 0)",
         )
 
     # ── Robustez: acceso sudo() y MissingError ─────────────────────────────
