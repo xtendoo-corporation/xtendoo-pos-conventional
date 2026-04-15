@@ -68,7 +68,7 @@
                     <!-- amount_due sigue controlando si queda saldo pendiente -->
                     <button name="action_validate" type="object"
                         string="Confirmar Pago"
-                        class="btn-primary btn-lg px-4 py-2 fw-bold"
+                        class="btn-primary"
                         icon="fa-check"
                         invisible="amount_due &gt; 0.01" />
                     <button string="Descartar" special="cancel" />
