@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_pos_order_search_inherit_pos_conventional_returns" model="ir.ui.view">
+        <field name="name">pos.order.search.inherit.pos.conventional.returns</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Con devolución pendiente"
+                        name="returnable"
+                        domain="[('state', 'not in', ['draft', 'cancel'])]"
+                        invisible="not context.get('conventional_returns_mode')"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+

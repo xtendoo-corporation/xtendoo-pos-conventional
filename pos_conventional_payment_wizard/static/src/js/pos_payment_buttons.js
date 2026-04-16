@@ -56,7 +56,8 @@ export class PosPaymentButtons extends Component {
     }
 
     async onPaymentMethodClick(methodId) {
-        // Validar que el pedido tiene importe > 0 antes de cobrar
+        // Validar que el pedido tiene importe distinto de cero antes de cobrar.
+        // Los pedidos negativos corresponden a devoluciones/reembolsos y deben poder pagarse.
         const amountTotal = this.props.record.data.amount_total || 0;
         const linesCount = (this.props.record.data.lines && this.props.record.data.lines.currentIds)
             ? this.props.record.data.lines.currentIds.length
@@ -71,10 +72,10 @@ export class PosPaymentButtons extends Component {
             return;
         }
 
-        if (amountTotal <= 0) {
+        if (Math.abs(amountTotal) < 0.00001) {
             this._playErrorBeep();
             this.notification.add(
-                _t("No se puede cobrar un pedido con importe cero o negativo."),
+                _t("No se puede cobrar un pedido con importe cero."),
                 { type: "warning", title: _t("Importe inválido"), sticky: false }
             );
             return;

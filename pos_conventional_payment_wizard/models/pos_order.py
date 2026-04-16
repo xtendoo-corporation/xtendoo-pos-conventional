@@ -1,7 +1,9 @@
 import logging
 
-from odoo import _, models
+from odoo import models
 from odoo.exceptions import UserError
+from odoo.tools import float_is_zero
+from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
 
@@ -9,9 +11,23 @@ _logger = logging.getLogger(__name__)
 class PosOrder(models.Model):
     _inherit = "pos.order"
 
+    def _is_negative_payment_flow(self):
+        self.ensure_one()
+        return self.amount_total < 0 or bool(getattr(self, "is_refund", False))
+
+    def _action_standard_payment_wizard(self, payment_method=None):
+        self.ensure_one()
+        wizard_vals = {}
+        if payment_method:
+            wizard_vals["payment_method_id"] = payment_method.id
+        wizard = self.env["pos.make.payment"].with_context(
+            **dict(self.env.context, active_id=self.id)
+        ).create(wizard_vals)
+        return wizard.check()
+
     def action_pay_cash(self):
         self.ensure_one()
-        if self.amount_total <= 0:
+        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
             raise UserError(
                 _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
             )
@@ -23,6 +39,9 @@ class PosOrder(models.Model):
             )[:1]
         if not cash_method:
             raise UserError(_("No se encontró método de pago en efectivo para este TPV."))
+
+        if self._is_negative_payment_flow():
+            return self._action_standard_payment_wizard(cash_method)
 
         view = self.env.ref(
             "pos_conventional_payment_wizard.view_pos_make_payment_wizard_cash_form",
@@ -46,7 +65,7 @@ class PosOrder(models.Model):
 
     def action_pay_card(self):
         self.ensure_one()
-        if self.amount_total <= 0:
+        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
             raise UserError(
                 _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
             )
@@ -61,7 +80,7 @@ class PosOrder(models.Model):
 
     def action_pos_convention_pay_with_method(self, payment_method_id):
         self.ensure_one()
-        if self.amount_total <= 0:
+        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
             raise UserError(
                 _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
             )
@@ -77,6 +96,9 @@ class PosOrder(models.Model):
 
         if not payment_method or not payment_method.exists():
             return False
+
+        if self._is_negative_payment_flow():
+            return self._action_standard_payment_wizard(payment_method)
 
         name_lower = (payment_method.name or "").lower()
         is_cash = (
@@ -135,10 +157,25 @@ class PosOrder(models.Model):
 
     def action_open_payment_popup(self):
         self.ensure_one()
-        if self.amount_total <= 0:
+        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
             raise UserError(
                 _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
             )
+
+        if self._is_negative_payment_flow():
+            return {
+                "type": "ir.actions.act_window",
+                "res_model": "pos.make.payment",
+                "name": _("Make Payment"),
+                "view_mode": "form",
+                "view_id": False,
+                "target": "new",
+                "views": False,
+                "context": {
+                    **self.env.context,
+                    "active_id": self.id,
+                },
+            }
 
         view = self.env.ref(
             "pos_conventional_payment_wizard.view_pos_make_payment_wizard_form", False

@@ -9,6 +9,7 @@
                     <field name="order_id" invisible="1" />
                     <field name="config_id" invisible="1" />
                     <field name="currency_id" invisible="1" />
+                    <field name="currency_symbol" invisible="1" />
                     <field name="available_payment_method_ids" invisible="1" />
 
                     <!-- Resumen del ticket: filas apiladas, etiqueta e importe del mismo tamaño -->
@@ -46,7 +47,16 @@
                         <field name="payment_method_id"
                             options="{'no_create': True, 'no_open': True}"
                             required="1" />
-                        <field name="amount_tendered" />
+                        <label for="amount_tendered" />
+                        <div class="o_row o_pos_cash_amount_input_row">
+                            <field name="amount_tendered" widget="monetary"
+                                options="{'currency_field': 'currency_id', 'no_symbol': True}"
+                                nolabel="1"
+                                class="text-end o_pos_cash_amount_input"/>
+                            <field name="currency_symbol"
+                                readonly="1" nolabel="1"
+                                class="oe_inline o_pos_cash_currency_symbol"/>
+                        </div>
                         <field name="amount_change"
                             invisible="not is_cash_payment"
                             readonly="1" />
@@ -85,6 +95,7 @@
                 <sheet>
                     <field name="is_cash_payment" invisible="1" />
                     <field name="currency_id" invisible="1" />
+                    <field name="currency_symbol" invisible="1" />
                     <field name="order_id" invisible="1" />
                     <field name="payment_method_id" invisible="1" />
 
@@ -101,10 +112,15 @@
                         <!-- Fila 2: Importe entregado -->
                         <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
                             <span class="fs-2 fw-bold">Entregado</span>
-                            <field name="amount_tendered" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                nolabel="1"
-                                class="fs-2 fw-bold text-primary text-end"/>
+                            <div class="d-flex justify-content-end align-items-center gap-2 o_pos_cash_amount_input_row">
+                                <field name="amount_tendered" widget="monetary"
+                                    options="{'currency_field': 'currency_id', 'no_symbol': True}"
+                                    nolabel="1"
+                                    class="fs-2 fw-bold text-primary text-end o_pos_cash_amount_input"/>
+                                <field name="currency_symbol"
+                                    readonly="1" nolabel="1"
+                                    class="fs-2 fw-bold text-primary oe_inline o_pos_cash_currency_symbol"/>
+                            </div>
                         </div>
                         <!-- Fila 3: Cambio a devolver — verde si ≤ 0 (hay cambio), rojo si > 0 (falta por pagar) -->
                         <div class="d-flex justify-content-between align-items-center">

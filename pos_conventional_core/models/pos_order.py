@@ -1,6 +1,7 @@
 import logging
-from odoo import api, fields, models, _
+from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
 
@@ -35,7 +36,8 @@ class PosOrder(models.Model):
     @api.depends("lines.price_subtotal")
     def _compute_amount_untaxed(self):
         for order in self:
-            order.amount_untaxed = sum(line.price_subtotal for line in order.lines)
+            refund_factor = -1 if order.is_refund else 1
+            order.amount_untaxed = refund_factor * sum(line.price_subtotal for line in order.lines)
 
     @api.onchange("lines")
     def _onchange_lines_recompute_totals(self):
@@ -48,10 +50,11 @@ class PosOrder(models.Model):
         """
         for order in self:
             lines = order.lines
-            tax_total = sum(
+            refund_factor = -1 if order.is_refund else 1
+            tax_total = refund_factor * sum(
                 line.price_subtotal_incl - line.price_subtotal for line in lines
             )
-            amount_total = sum(line.price_subtotal_incl for line in lines)
+            amount_total = refund_factor * sum(line.price_subtotal_incl for line in lines)
             currency = order.currency_id or self.env.company.currency_id
             if currency:
                 order.amount_tax = currency.round(tax_total)

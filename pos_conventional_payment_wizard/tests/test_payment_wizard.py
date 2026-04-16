@@ -451,6 +451,73 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         result = order.action_pos_convention_pay_with_method(self.cash_pm.id)
         self.assertIsNotNone(result)
 
+    def test_37b_action_pay_cash_allows_negative_amount(self):
+        """Un pedido negativo usa el flujo estándar y permite registrar pago negativo."""
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+        self._add_line(order, self.product, -1.0)
+        self.assertLess(order.amount_total, 0)
+
+        result = order.action_pay_cash()
+
+        self.assertIsInstance(result, dict)
+        self.assertIn(result.get("type"), (
+            "ir.actions.client",
+            "ir.actions.act_window_close",
+            "ir.actions.act_window",
+        ))
+        self.assertTrue(any(payment.amount < 0 for payment in order.payment_ids))
+
+    def test_37c_action_open_payment_popup_negative_uses_standard_wizard(self):
+        """El popup general de un pedido negativo debe abrir pos.make.payment estándar."""
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+        self._add_line(order, self.product, -1.0)
+        self.assertLess(order.amount_total, 0)
+
+        result = order.action_open_payment_popup()
+
+        self.assertEqual(result.get("type"), "ir.actions.act_window")
+        self.assertEqual(result.get("res_model"), "pos.make.payment")
+
+    def test_37d_action_pos_convention_pay_with_method_allows_negative_amount(self):
+        """El enrutado por método debe aceptar pedidos negativos y registrar pago negativo."""
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+        self._add_line(order, self.product, -1.0)
+        self.assertLess(order.amount_total, 0)
+
+        result = order.action_pos_convention_pay_with_method(self.cash_pm.id)
+
+        self.assertIsInstance(result, dict)
+        self.assertTrue(any(payment.amount < 0 for payment in order.payment_ids))
+
+    def test_37e_partial_refund_keeps_negative_total_after_removing_a_line(self):
+        """Una devolución parcial editada debe seguir teniendo total negativo y cobrarse como reembolso."""
+        session = self._open_session()
+        original = self._make_draft_order(session, partner=self.partner)
+        self._add_line(original, self.product, 1.0)
+        self._add_line(original, self.product_barcode, 1.0)
+        self._add_payment(original, self.cash_pm, original.amount_total)
+        original.action_pos_order_paid()
+
+        refund_action = original.refund()
+        refund = self.env["pos.order"].browse(refund_action["res_id"])
+        self.assertTrue(refund.is_refund)
+        self.assertEqual(len(refund.lines), 2)
+
+        refund.lines[0].unlink()
+        refund._onchange_lines_recompute_totals()
+
+        self.assertLess(refund.amount_total, 0, "La devolución parcial debe mantener importe negativo")
+
+        popup_action = refund.action_open_payment_popup()
+        self.assertEqual(popup_action.get("res_model"), "pos.make.payment")
+
+        result = refund.action_pos_convention_pay_with_method(self.cash_pm.id)
+        self.assertIsInstance(result, dict)
+        self.assertTrue(any(payment.amount < 0 for payment in refund.payment_ids))
+
     def test_38_zero_amount_error_message_is_informative(self):
         """El mensaje de error de importe cero es informativo y menciona 'productos'."""
         session = self._open_session()

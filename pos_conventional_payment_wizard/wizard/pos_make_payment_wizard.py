@@ -47,6 +47,12 @@ class PosMakePaymentWizard(models.TransientModel):
         compute="_compute_order_fields",
         store=False,
     )
+    currency_symbol = fields.Char(
+        string="Símbolo moneda",
+        compute="_compute_order_fields",
+        store=False,
+        readonly=True,
+    )
     amount_total = fields.Monetary(
         string="Total Pedido",
         compute="_compute_order_fields",
@@ -90,6 +96,7 @@ class PosMakePaymentWizard(models.TransientModel):
             order = wizard.order_id.sudo()
             total, _paid, _due = wizard._get_order_amounts(order)
             wizard.currency_id = order.currency_id
+            wizard.currency_symbol = order.currency_id.symbol or ""
             wizard.amount_total = total
             wizard.config_id = order.config_id
 

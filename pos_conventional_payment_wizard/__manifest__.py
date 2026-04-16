@@ -14,6 +14,7 @@
     ],
     "assets": {
         "web.assets_backend": [
+            "pos_conventional_payment_wizard/static/src/css/pos_conventional_wizard.css",
             "pos_conventional_payment_wizard/static/src/css/payment_buttons.css",
             "pos_conventional_payment_wizard/static/src/js/pos_payment_buttons.js",
             "pos_conventional_payment_wizard/static/src/xml/pos_payment_buttons.xml",

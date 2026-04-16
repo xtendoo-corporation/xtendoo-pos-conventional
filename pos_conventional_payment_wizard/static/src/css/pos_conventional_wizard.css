@@ -17,3 +17,33 @@
 .modal-dialog .modal-footer .btn {
     border-radius: 0.25rem;
 }
+
+/* Mantener el importe editable y el símbolo de moneda en una sola línea */
+.modal-dialog .o_pos_cash_amount_input_row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    width: 100%;
+}
+
+.modal-dialog .o_pos_cash_amount_input {
+    flex: 0 1 auto;
+    min-width: 7rem;
+}
+
+.modal-dialog .o_pos_cash_amount_input .o_field_monetary,
+.modal-dialog .o_pos_cash_amount_input.o_field_monetary {
+    width: 100%;
+}
+
+.modal-dialog .o_pos_cash_amount_input .o_input,
+.modal-dialog .o_pos_cash_amount_input.o_field_monetary .o_input {
+    text-align: right;
+}
+
+.modal-dialog .o_pos_cash_currency_symbol {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+

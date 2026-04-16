@@ -9,6 +9,11 @@ from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCo
 class TestReceiptCustom(PosConventionalTestCommon):
     """Tests para pos_conventional_receipt_custom — pos.order."""
 
+    def _render_factura_simplificada_html(self, move):
+        report = self.env.ref("pos_conventional_receipt_custom.action_factura_simplificada_80mm")
+        content, _report_type = report._render_qweb_html(move.ids)
+        return content.decode() if isinstance(content, bytes) else content
+
     # ── get_factura_report_url ────────────────────────────────────────────
 
     def test_01_get_factura_report_url_no_invoice_returns_false(self):
@@ -171,4 +176,43 @@ class TestReceiptCustom(PosConventionalTestCommon):
         company_data = result.get("company", {})
         self.assertIn("phone", company_data)
         self.assertIn("email", company_data)
+
+    def test_16_report_shows_standard_title_for_regular_invoice(self):
+        """Una factura normal debe mantener el título estándar."""
+        session = self._open_session()
+        order = self._make_draft_order(session, self.partner)
+        self._add_line(order)
+        order.write({"to_invoice": True})
+        self._add_payment(order)
+        order.action_pos_order_paid()
+
+        self.assertTrue(order.account_move)
+        self.assertEqual(order.account_move.move_type, "out_invoice")
+
+        html = self._render_factura_simplificada_html(order.account_move)
+
+        self.assertIn("FACTURA SIMPLIFICADA:", html)
+        self.assertNotIn("FACTURA SIMPLIFICADA RECTIFICATIVA", html)
+
+    def test_17_report_shows_rectificativa_title_for_refund_invoice(self):
+        """Una factura rectificativa debe mostrar el título específico."""
+        session = self._open_session()
+        order = self._make_draft_order(session, self.partner)
+        self._add_line(order)
+        order.write({"to_invoice": True})
+        self._add_payment(order)
+        order.action_pos_order_paid()
+
+        self.assertTrue(order.account_move)
+        refund_move = order.account_move.copy(
+            default={
+                "move_type": "out_refund",
+                "name": "RINV/TEST/0001",
+            }
+        )
+
+        html = self._render_factura_simplificada_html(refund_move)
+
+        self.assertEqual(refund_move.move_type, "out_refund")
+        self.assertIn("FACTURA SIMPLIFICADA RECTIFICATIVA:", html)
 
