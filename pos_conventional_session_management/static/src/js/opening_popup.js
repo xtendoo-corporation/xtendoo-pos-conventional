@@ -5,6 +5,7 @@ import { Component, useState, onWillStart, useRef, onMounted } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
+import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 export class OpeningPopup extends Component {
     static template = "pos_conventional_session_management.OpeningPopup";
@@ -71,7 +72,7 @@ export class OpeningPopup extends Component {
             await this.orm.call("pos.session", "set_opening_control", [this.sessionId, amount, this.state.notes]);
             this.notification.add(_t("Caja abierta"), { type: "success" });
             if (this.props.onOpened) this.props.onOpened();
-            if (this.props.close) this.props.close();
+            if (this.props.close) await this.props.close();
 
             await this.action.doAction("point_of_sale.action_pos_pos_form", {
                 viewType: 'list',
@@ -81,6 +82,71 @@ export class OpeningPopup extends Component {
             this.notification.add(_t("Error al abrir caja"), { type: "danger" });
         }
     }
+
+    async cancel() {
+        if (this.props.close) {
+            await this.props.close();
+        }
+        await this.action.doAction("point_of_sale.action_pos_config_kanban");
+    }
 }
 
-registry.category("actions").add("pos_conventional_opening_popup", OpeningPopup);
+class OpeningPopupAction extends Component {
+    static template = "pos_conventional_session_management.OpeningPopupAction";
+    static props = { ...standardActionServiceProps };
+
+    setup() {
+        this.dialog = useService("dialog");
+        this.notification = useService("notification");
+        this.orm = useService("orm");
+        this.action = useService("action");
+
+        onMounted(async () => {
+            await this.openPopup();
+        });
+    }
+
+    async openPopup() {
+        try {
+            const context = this.props.action?.context || {};
+            let sessionId = context.session_id || context.default_session_id;
+            const configId = context.config_id || context.default_config_id;
+
+            if (!sessionId && configId) {
+                const sessions = await this.orm.searchRead(
+                    "pos.session",
+                    [["config_id", "=", configId], ["state", "=", "opening_control"]],
+                    ["id"],
+                    { limit: 1, order: "id desc" }
+                );
+                if (sessions.length > 0) {
+                    sessionId = sessions[0].id;
+                }
+            }
+
+            if (!sessionId) {
+                this.notification.add(_t("No se encontró ninguna sesión pendiente de apertura."), { type: "danger" });
+                await this.action.doAction("point_of_sale.action_pos_config_kanban");
+                return;
+            }
+
+            let removeDialog = null;
+            removeDialog = this.dialog.add(OpeningPopup, {
+                sessionId,
+                configId,
+                close: async () => {
+                    if (removeDialog) {
+                        removeDialog();
+                    }
+                },
+            });
+        } catch (error) {
+            console.error("Error opening opening popup:", error);
+            this.notification.add(_t("Error al abrir el popup de apertura"), { type: "danger" });
+            await this.action.doAction("point_of_sale.action_pos_config_kanban");
+        }
+    }
+}
+
+registry.category("actions").add("pos_conventional_opening_popup", OpeningPopupAction);
+registry.category("pos_conventional_dialogs").add("OpeningPopup", OpeningPopup);

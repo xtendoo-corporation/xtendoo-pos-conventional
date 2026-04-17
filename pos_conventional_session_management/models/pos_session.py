@@ -133,7 +133,7 @@ class PosSession(models.Model):
                 "type": "ir.actions.client",
                 "tag": "pos_conventional_opening_popup",
                 "name": _("Control de apertura"),
-                "target": "new",
+                "target": "current",
                 "context": {
                     "session_id": self.id,
                     "config_id": self.config_id.id,

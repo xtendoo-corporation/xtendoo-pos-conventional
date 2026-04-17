@@ -8,6 +8,13 @@
                     <p>Cargando sesión...</p>
                 </div>
                 <div t-else="">
+                    <div class="alert alert-info o_pos_session_banner mb-4" role="status">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa fa-unlock-alt fa-fw"/>
+                                <span class="fw-semibold">Apertura Caja</span>
+                        </div>
+                        <span class="fw-bold fs-4" t-esc="state.configName || state.sessionName || '...'"/>
+                    </div>
                     <div class="mb-4">
                         <label class="form-label fw-bold">Efectivo de apertura</label>
                         <div class="input-group input-group-lg">
@@ -20,11 +27,14 @@
                         <textarea class="form-control" rows="3" t-model="state.notes" placeholder="Opcional..."/>
                     </div>
                     <div class="d-flex justify-content-end gap-2 mt-4">
-                        <button class="btn btn-secondary btn-lg" t-on-click="props.close">Cancelar</button>
+                        <button class="btn btn-secondary btn-lg" t-on-click="cancel">Cancelar</button>
                         <button class="btn btn-primary btn-lg" t-on-click="confirm">Abrir caja</button>
                     </div>
                 </div>
             </div>
         </Dialog>
+    </t>
+    <t t-name="pos_conventional_session_management.OpeningPopupAction">
+        <div class="o_opening_popup_action"/>
     </t>
 </templates>

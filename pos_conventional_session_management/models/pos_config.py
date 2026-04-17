@@ -10,7 +10,7 @@ class PosConfig(models.Model):
             "type": "ir.actions.client",
             "tag": "pos_conventional_opening_popup",
             "name": _("Control de apertura"),
-            "target": "new",
+            "target": "current",
             "context": {
                 "session_id": session.id,
                 "config_id": self.id,

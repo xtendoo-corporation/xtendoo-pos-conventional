@@ -271,6 +271,89 @@ class TestSessionManagement(PosConventionalTestCommon):
         result = self.pos_config._get_non_touch_opening_action(session)
         self.assertEqual(result["context"]["session_id"], session.id)
 
+    def test_22a_config_get_non_touch_opening_action_uses_current_target(self):
+        """Regresión: la acción cliente no debe abrir un diálogo exterior vacío."""
+        session = self.env["pos.session"].with_context(skip_auto_open=True).create(
+            {"config_id": self.pos_config.id}
+        )
+        result = self.pos_config._get_non_touch_opening_action(session)
+        self.assertEqual(result.get("target"), "current")
+
+    def test_22b_opening_popup_xml_uses_cancel_method_not_props_close(self):
+        """Regresión: el botón cancelar del popup no debe enlazar props.close directo."""
+        import os
+
+        xml_path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "static", "src", "xml", "opening_popup.xml",
+        )
+        xml_path = os.path.normpath(xml_path)
+        self.assertTrue(os.path.exists(xml_path), f"No se encontró {xml_path}")
+
+        with open(xml_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn('t-on-click="cancel"', content)
+        self.assertNotIn('t-on-click="props.close"', content)
+        self.assertIn('class="o_opening_popup_action"', content)
+
+    def test_22c_opening_popup_js_registers_action_wrapper(self):
+        """Regresión: la acción cliente debe registrarse sobre OpeningPopupAction."""
+        import os
+
+        js_path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "static", "src", "js", "opening_popup.js",
+        )
+        js_path = os.path.normpath(js_path)
+        self.assertTrue(os.path.exists(js_path), f"No se encontró {js_path}")
+
+        with open(js_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("class OpeningPopupAction", content)
+        self.assertIn('registry.category("actions").add("pos_conventional_opening_popup", OpeningPopupAction)', content)
+        self.assertIn("cancel()", content)
+
+    def test_22d_opening_popup_xml_shows_blue_info_banner(self):
+        """Regresión UX: apertura debe mostrar una banda azul con la caja y la sesión."""
+        import os
+
+        xml_path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "static", "src", "xml", "opening_popup.xml",
+        )
+        xml_path = os.path.normpath(xml_path)
+        self.assertTrue(os.path.exists(xml_path), f"No se encontró {xml_path}")
+
+        with open(xml_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("alert alert-info o_pos_session_banner", content)
+        self.assertIn("Caja que vas a abrir", content)
+        self.assertIn("state.configName", content)
+        self.assertIn("state.sessionName", content)
+
+    def test_22e_closing_popup_js_focuses_cash_count_input(self):
+        """Regresión UX: el popup de cierre debe enfocar el recuento de efectivo."""
+        import os
+
+        js_path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "static", "src", "js", "closing_popup.js",
+        )
+        js_path = os.path.normpath(js_path)
+        self.assertTrue(os.path.exists(js_path), f"No se encontró {js_path}")
+
+        with open(js_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn('useRef("cashCountInput")', content)
+        self.assertIn("focusCashCountInput()", content)
+        self.assertIn("input.focus()", content)
+        self.assertIn("input.select()", content)
+        self.assertIn('this.formatAmount(0)', content)
+
     # ── PosSessionOpeningWizard — acción de apertura ──────────────────────
 
     def test_23_opening_wizard_action_validate_and_open_returns_action(self):
@@ -1533,16 +1616,36 @@ class TestClosingPopupDataStructure(PosConventionalTestCommon):
             "El prop 'title' del Dialog debe usar la expresión JS directa con state.sessionName",
         )
 
-        # Verificar que existe la banda de color con el número de sesión
+        # Verificar que existe la banda de color azul con el número de sesión
         self.assertIn(
-            "alert alert-warning",
+            "alert alert-info o_pos_session_banner",
             content,
-            "El ClosingPopup debe tener una banda de color (alert-warning) con el número de sesión",
+            "El ClosingPopup debe tener una banda de color azul clara con el número de sesión",
         )
         self.assertIn(
             "state.sessionName",
             content,
             "La banda de sesión debe mostrar state.sessionName",
+        )
+        self.assertIn(
+            "state.currencySymbol",
+            content,
+            "El recuento de efectivo debe mostrar el símbolo de moneda dentro del input-group",
+        )
+        self.assertIn(
+            't-ref="cashCountInput"',
+            content,
+            "El input de recuento de efectivo debe tener una referencia para poder recibir foco automático",
+        )
+        self.assertIn(
+            "input-group-text",
+            content,
+            "El recuento de efectivo debe renderizar el prefijo de moneda como en apertura",
+        )
+        self.assertIn(
+            "'0,00'",
+            content,
+            "El recuento de efectivo debe arrancar visualmente con 0,00 y no con 0",
         )
 
     def test_55_closing_popup_cash_moves_section_refreshes_after_cash_out(self):

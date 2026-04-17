@@ -12,3 +12,19 @@
 .modal-dialog .modal-footer .btn {
     border-radius: 0.25rem;
 }
+
+.o_pos_session_banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    background-color: #eaf4ff !important;
+    border-color: #b9dafc !important;
+    color: #174a7c !important;
+}
+
+.o_pos_session_banner .text-muted {
+    color: #4f6f90 !important;
+}
+

@@ -1,7 +1,7 @@
 /** @odoo-module **/
 
 import { Dialog } from "@web/core/dialog/dialog";
-import { Component, useState, onWillStart, onMounted } from "@odoo/owl";
+import { Component, useState, onWillStart, onMounted, useRef } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
@@ -49,6 +49,7 @@ export class ClosingPopup extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.dialog = useService("dialog");
+        this.cashCountInput = useRef("cashCountInput");
 
         this.state = useState({
             loading: true,
@@ -62,10 +63,15 @@ export class ClosingPopup extends Component {
             cashMoves: [],
             currencyId: null,
             currencyName: "EUR",
+            currencySymbol: "€",
         });
 
         onWillStart(async () => {
             await this.loadClosingData();
+        });
+
+        onMounted(() => {
+            this.focusCashCountInput();
         });
     }
 
@@ -77,8 +83,14 @@ export class ClosingPopup extends Component {
             const sessionId = this.props.sessionId;
             const [data, sessionInfo] = await Promise.all([
                 this.orm.call("pos.session", "get_closing_control_data_non_touch", [sessionId]),
-                this.orm.read("pos.session", [sessionId], ["name"]),
+                this.orm.read("pos.session", [sessionId], ["name", "currency_id"]),
             ]);
+            const currencyId = sessionInfo?.[0]?.currency_id?.[0];
+            let currencySymbol = "€";
+            if (currencyId) {
+                const currencyInfo = await this.orm.read("res.currency", [currencyId], ["symbol"]);
+                currencySymbol = currencyInfo?.[0]?.symbol || "€";
+            }
 
             this.state.sessionData = data;
             this.state.sessionName = sessionInfo?.[0]?.name || "";
@@ -88,11 +100,12 @@ export class ClosingPopup extends Component {
             this.state.cashMoves = data.default_cash_details?.moves || [];
             this.state.currencyId = data.currency_id;
             this.state.currencyName = data.currency_name || "EUR";
+            this.state.currencySymbol = currencySymbol;
 
             if (this.state.cashDetails) {
                 const prev = previousPayments[this.state.cashDetails.id];
                 this.state.payments[this.state.cashDetails.id] = {
-                    counted: prev?.counted !== undefined ? prev.counted : "0",
+                    counted: prev?.counted !== undefined ? prev.counted : this.formatAmount(0),
                 };
             }
 
@@ -105,10 +118,26 @@ export class ClosingPopup extends Component {
                 }
             }
             this.state.loading = false;
+            this.focusCashCountInput();
         } catch (error) {
             console.error("Error loading closing data:", error);
             this.notification.add(_t("Error al cargar datos de cierre: ") + error.message, { type: "danger" });
             this.state.loading = false;
+        }
+    }
+
+    focusCashCountInput() {
+        const focusInput = () => {
+            const input = this.cashCountInput.el;
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        };
+        if (typeof window !== "undefined" && window.requestAnimationFrame) {
+            window.requestAnimationFrame(() => window.requestAnimationFrame(focusInput));
+        } else {
+            setTimeout(focusInput, 0);
         }
     }
 
