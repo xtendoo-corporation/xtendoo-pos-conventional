@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Regla: los usuarios solo ven las cajas POS permitidas para su usuario
-         o las cajas de sus compañías -->
+    <!-- Regla: los usuarios POS normales solo ven las cajas POS permitidas
+         para su usuario. La regla multiempresa global de Odoo sigue aplicando. -->
     <record id="pos_config_rule_allowed" model="ir.rule">
         <field name="name">POS: Solo ver los POS permitidos por usuario</field>
         <field name="model_id" ref="point_of_sale.model_pos_config"/>
-        <field name="domain_force">['|', ('id', 'in', user.allowed_pos_config_ids.ids), ('company_id', 'in', user.company_ids.ids)]</field>
-        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="domain_force">[('id', 'in', user.allowed_pos_config_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_user'))]"/>
         <field name="perm_read" eval="1"/>
         <field name="perm_write" eval="0"/>
         <field name="perm_create" eval="0"/>

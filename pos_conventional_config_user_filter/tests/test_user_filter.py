@@ -8,6 +8,23 @@ from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCo
 class TestResUsersFilter(PosConventionalTestCommon):
     """Tests para res.users — campo allowed_pos_config_ids (pos_conventional_config_user_filter)."""
 
+    def _create_pos_user(self, name, login, extra_group_xmlids=None):
+        group_ids = [
+            self.env.ref("base.group_user").id,
+            self.env.ref("point_of_sale.group_pos_user").id,
+        ]
+        for xmlid in extra_group_xmlids or []:
+            group_ids.append(self.env.ref(xmlid).id)
+        return self.env["res.users"].create(
+            {
+                "name": name,
+                "login": login,
+                "company_id": self.env.company.id,
+                "company_ids": [(6, 0, self.env.company.ids)],
+                "groups_id": [(6, 0, group_ids)],
+            }
+        )
+
     def test_01_allowed_pos_config_ids_empty_by_default(self):
         """Un nuevo usuario no tiene cajas POS permitidas por defecto."""
         user = self.env["res.users"].create(
@@ -112,4 +129,74 @@ class TestResUsersFilter(PosConventionalTestCommon):
         user.allowed_pos_config_ids = [(4, self.pos_config.id)]
         user.allowed_pos_config_ids = [(5, 0, 0)]  # Eliminar todos
         self.assertFalse(user.allowed_pos_config_ids)
+
+    def test_09_pos_user_only_sees_assigned_configs(self):
+        """Un usuario POS normal solo ve las cajas explícitamente permitidas."""
+        config2 = self.env["pos.config"].create(
+            {
+                "name": "Config No Permitida",
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
+            }
+        )
+        user = self._create_pos_user(
+            "POS Limited User",
+            "pos_limited_user@example.com",
+        )
+        user.allowed_pos_config_ids = [(6, 0, [self.pos_config.id])]
+
+        visible_configs = self.env["pos.config"].with_user(user).search(
+            [("id", "in", [self.pos_config.id, config2.id])]
+        )
+
+        self.assertEqual(visible_configs.ids, self.pos_config.ids)
+
+    def test_10_pos_user_with_no_allowed_configs_sees_none(self):
+        """Si no tiene cajas permitidas, un usuario POS normal no ve ninguna."""
+        user = self._create_pos_user(
+            "POS Without Configs",
+            "pos_without_configs@example.com",
+        )
+
+        visible_configs = self.env["pos.config"].with_user(user).search(
+            [("id", "=", self.pos_config.id)]
+        )
+
+        self.assertFalse(visible_configs)
+
+    def test_11_pos_manager_sees_all_configs(self):
+        """Un administrador POS mantiene acceso a todas las cajas de su compañía."""
+        config2 = self.env["pos.config"].create(
+            {
+                "name": "Config Manager Visible",
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
+            }
+        )
+        manager = self._create_pos_user(
+            "POS Manager User",
+            "pos_manager_user@example.com",
+            extra_group_xmlids=["point_of_sale.group_pos_manager"],
+        )
+
+        visible_configs = self.env["pos.config"].with_user(manager).search(
+            [("id", "in", [self.pos_config.id, config2.id])]
+        )
+
+        self.assertEqual(set(visible_configs.ids), {self.pos_config.id, config2.id})
+
+    def test_12_can_access_pos_config_helper_matches_security_rules(self):
+        """El helper de acceso replica la restricción aplicada a usuarios POS normales."""
+        config2 = self.env["pos.config"].create(
+            {
+                "name": "Config Helper Denied",
+                "payment_method_ids": [(6, 0, [self.card_pm.id])],
+            }
+        )
+        user = self._create_pos_user(
+            "POS Helper User",
+            "pos_helper_user@example.com",
+        )
+        user.allowed_pos_config_ids = [(6, 0, [self.pos_config.id])]
+
+        self.assertTrue(user._can_access_pos_config(self.pos_config))
+        self.assertFalse(user._can_access_pos_config(config2))
 
