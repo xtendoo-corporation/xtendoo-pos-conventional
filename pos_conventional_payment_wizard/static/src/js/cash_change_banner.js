@@ -1,12 +1,11 @@
 /** @odoo-module **/
 
 /**
- * CashChangeBanner — view widget shown on the new POS order form after a cash
- * payment that produced change.
+ * CashChangeBanner — view widget shown on the new POS order form after closing
+ * the previous sale.
  *
- * The amount is stored in sessionStorage by `pos_new_order_action.js` when the
- * `pos_conventional_new_order` action is dispatched. The banner stays visible
- * until:
+ * The summary is stored in sessionStorage by `pos_new_order_action.js` when the
+ * `pos_conventional_new_order` action is dispatched. The banner stays visible until:
  *   - The cashier adds the first product line (auto-dismiss), or
  *   - The cashier clicks the dismiss button.
  */
@@ -14,8 +13,11 @@
 import { registry } from "@web/core/registry";
 import { Component, useState, onMounted, onWillPatch } from "@odoo/owl";
 
-const STORAGE_KEY_AMOUNT = "pos_conventional_cash_change";
-const STORAGE_KEY_CURRENCY = "pos_conventional_cash_change_currency";
+const STORAGE_KEY_PREVIOUS_TOTAL = "pos_conventional_previous_sale_total";
+const STORAGE_KEY_PREVIOUS_CHANGE = "pos_conventional_previous_sale_change";
+const STORAGE_KEY_PREVIOUS_CURRENCY = "pos_conventional_previous_sale_currency";
+const LEGACY_STORAGE_KEY_CHANGE = "pos_conventional_cash_change";
+const LEGACY_STORAGE_KEY_CURRENCY = "pos_conventional_cash_change_currency";
 
 export class CashChangeBanner extends Component {
     static template = "pos_conventional_payment_wizard.CashChangeBanner";
@@ -25,13 +27,14 @@ export class CashChangeBanner extends Component {
 
     setup() {
         this.state = useState({
+            previousTotal: this._readAmount(STORAGE_KEY_PREVIOUS_TOTAL, null),
             changeAmount: this._readChangeAmount(),
             currencySymbol: this._readCurrencySymbol(),
             dismissed: false,
         });
 
         const dismissIfLinesExist = () => {
-            if (this.state.dismissed || this.state.changeAmount <= 0.005) {
+            if (this.state.dismissed || !this.hasSummary) {
                 return;
             }
             const lineCount = this._getLineCount();
@@ -48,18 +51,33 @@ export class CashChangeBanner extends Component {
         onWillPatch(dismissIfLinesExist);
     }
 
-    _readChangeAmount() {
+    _readAmount(storageKey, fallbackValue = 0.0) {
         try {
-            const val = sessionStorage.getItem(STORAGE_KEY_AMOUNT);
-            return val ? parseFloat(val) : 0.0;
+            const val = sessionStorage.getItem(storageKey);
+            if (val === null || val === "") {
+                return fallbackValue;
+            }
+            const parsed = parseFloat(val);
+            return Number.isFinite(parsed) ? parsed : fallbackValue;
         } catch (e) {
-            return 0.0;
+            return fallbackValue;
         }
+    }
+
+    _readChangeAmount() {
+        return this._readAmount(
+            STORAGE_KEY_PREVIOUS_CHANGE,
+            this._readAmount(LEGACY_STORAGE_KEY_CHANGE, 0.0)
+        );
     }
 
     _readCurrencySymbol() {
         try {
-            return sessionStorage.getItem(STORAGE_KEY_CURRENCY) || "€";
+            return (
+                sessionStorage.getItem(STORAGE_KEY_PREVIOUS_CURRENCY) ||
+                sessionStorage.getItem(LEGACY_STORAGE_KEY_CURRENCY) ||
+                "€"
+            );
         } catch (e) {
             return "€";
         }
@@ -75,15 +93,28 @@ export class CashChangeBanner extends Component {
 
     _clearStorage() {
         try {
-            sessionStorage.removeItem(STORAGE_KEY_AMOUNT);
-            sessionStorage.removeItem(STORAGE_KEY_CURRENCY);
+            sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_TOTAL);
+            sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_CHANGE);
+            sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_CURRENCY);
+            sessionStorage.removeItem(LEGACY_STORAGE_KEY_CHANGE);
+            sessionStorage.removeItem(LEGACY_STORAGE_KEY_CURRENCY);
         } catch (e) {
             // silent
         }
     }
 
+    get hasSummary() {
+        return this.state.previousTotal !== null || this.state.changeAmount > 0.005;
+    }
+
     get visible() {
-        return !this.state.dismissed && this.state.changeAmount > 0.005;
+        return !this.state.dismissed && this.hasSummary;
+    }
+
+    get formattedTotal() {
+        return this.state.previousTotal !== null
+            ? this.state.previousTotal.toFixed(2)
+            : null;
     }
 
     get formattedChange() {

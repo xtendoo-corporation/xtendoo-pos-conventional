@@ -11,6 +11,27 @@ _logger = logging.getLogger(__name__)
 class PosOrder(models.Model):
     _inherit = "pos.order"
 
+    def _get_previous_sale_banner_params(self):
+        """Datos a mostrar en la siguiente venta como resumen de la operación anterior."""
+        self.ensure_one()
+
+        currency = self.currency_id or self.session_id.currency_id or self.env.company.currency_id
+        round_amount = currency.round if currency else lambda amount: round(amount, 2)
+
+        change_amount = 0.0
+        if self.amount_total > 0:
+            negative_payments = self.payment_ids.filtered(lambda payment: payment.amount < -0.005)
+            if negative_payments:
+                change_amount = abs(sum(negative_payments.mapped("amount")))
+            elif getattr(self, "amount_return", 0.0) > 0:
+                change_amount = self.amount_return
+
+        return {
+            "previous_sale_total": round_amount(self.amount_total),
+            "previous_sale_change": round_amount(change_amount),
+            "previous_sale_currency": currency.symbol if currency and currency.symbol else "€",
+        }
+
     def _is_negative_payment_flow(self):
         self.ensure_one()
         return self.amount_total < 0 or bool(getattr(self, "is_refund", False))

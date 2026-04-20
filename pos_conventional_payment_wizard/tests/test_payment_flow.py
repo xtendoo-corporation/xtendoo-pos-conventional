@@ -247,6 +247,12 @@ class TestPaymentFlow(PosConventionalTestCommon):
         self.assertIn("default_session_id", params)
         self.assertEqual(params["config_id"], order.config_id.id)
         self.assertEqual(params["default_session_id"], order.session_id.id)
+        self.assertIn("previous_sale_total", params)
+        self.assertIn("previous_sale_change", params)
+        self.assertIn("previous_sale_currency", params)
+        self.assertAlmostEqual(params["previous_sale_total"], order.amount_total, places=2)
+        self.assertAlmostEqual(params["previous_sale_change"], 0.0, places=2)
+        self.assertEqual(params["previous_sale_currency"], order.currency_id.symbol or "€")
 
     def test_14_cash_wizard_with_change_returns_new_order(self):
         """Con importe entregado > total (cambio), sigue devolviendo new_order (iface_print_auto=False)."""
@@ -617,6 +623,18 @@ class TestPaymentFlow(PosConventionalTestCommon):
             places=2,
             msg=f"El valor de cash_change debe ser {change}. obtenido={params['cash_change']}",
         )
+        self.assertAlmostEqual(
+            params["previous_sale_total"],
+            order.amount_total,
+            places=2,
+            msg="El resumen debe incluir el total de la venta anterior",
+        )
+        self.assertAlmostEqual(
+            params["previous_sale_change"],
+            change,
+            places=2,
+            msg="El resumen debe incluir el cambio de la venta anterior",
+        )
 
     def test_34_cash_with_change_includes_currency_symbol_in_params(self):
         """Con cambio a devolver, next_action incluye cash_change_currency en params."""
@@ -653,8 +671,29 @@ class TestPaymentFlow(PosConventionalTestCommon):
             "cash_change", params,
             f"Sin cambio NO debe incluir 'cash_change' en params. params={params}",
         )
+        self.assertAlmostEqual(
+            params["previous_sale_total"],
+            order.amount_total,
+            places=2,
+            msg="El banner debe seguir mostrando el total de la venta anterior aunque no haya cambio",
+        )
+        self.assertAlmostEqual(
+            params["previous_sale_change"],
+            0.0,
+            places=2,
+            msg="Sin cambio, previous_sale_change debe ser 0",
+        )
 
-    def test_36_cash_with_change_in_print_receipt_next_action_params(self):
+    def test_36_card_flow_includes_previous_sale_summary(self):
+        """El flujo de tarjeta también debe enviar total, cambio y moneda al nuevo pedido."""
+        order = self._order_with_line()
+        action = self._pay_card_check(order)
+        params = self._get_final_params(action)
+        self.assertAlmostEqual(params["previous_sale_total"], order.amount_total, places=2)
+        self.assertAlmostEqual(params["previous_sale_change"], 0.0, places=2)
+        self.assertEqual(params["previous_sale_currency"], order.currency_id.symbol or "€")
+
+    def test_37_cash_with_change_in_print_receipt_next_action_params(self):
         """Con iface_print_auto=True y cambio, el cash_change está en next_action.params
         dentro de la acción pos_conventional_print_receipt_client.
         """
@@ -697,4 +736,6 @@ class TestPaymentFlow(PosConventionalTestCommon):
             places=2,
             msg=f"cash_change incorrecto. esperado={change}, obtenido={next_action_params.get('cash_change')}",
         )
+        self.assertAlmostEqual(next_action_params["previous_sale_total"], order.amount_total, places=2)
+        self.assertAlmostEqual(next_action_params["previous_sale_change"], change, places=2)
 

@@ -47,3 +47,11 @@
     white-space: nowrap;
 }
 
+.pos-previous-sale-banner {
+    border-left: 6px solid #f0ad4e;
+}
+
+.pos-previous-sale-banner.alert {
+    margin-top: 0.25rem;
+}
+

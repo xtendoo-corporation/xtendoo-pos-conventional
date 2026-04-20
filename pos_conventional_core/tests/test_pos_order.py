@@ -287,6 +287,20 @@ class TestPosOrder(PosConventionalTestCommon):
         result = order._get_post_validation_action()
         self.assertEqual(result["params"]["config_id"], order.config_id.id)
 
+    def test_24b_get_post_validation_action_contains_previous_sale_summary(self):
+        """La acción postvalidación debe incluir total, cambio y moneda de la venta anterior."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        self._add_line(order)
+        self._add_payment(order)
+        order.action_pos_order_paid()
+
+        result = order._get_post_validation_action()
+
+        self.assertAlmostEqual(result["params"]["previous_sale_total"], order.amount_total, places=2)
+        self.assertAlmostEqual(result["params"]["previous_sale_change"], 0.0, places=2)
+        self.assertEqual(result["params"]["previous_sale_currency"], order.currency_id.symbol or "€")
+
     def test_25_get_post_validation_action_with_force_login(self):
         """Con pos_force_employee_login_after_order activo, la acción incluye force_login_after_order."""
         if not hasattr(self.pos_config, 'pos_force_employee_login_after_order'):

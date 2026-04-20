@@ -454,22 +454,21 @@ class PosMakePaymentWizard(models.TransientModel):
             if not is_conventional or order.state not in {"paid", "done"}:
                 return {"type": "ir.actions.act_window_close"}
 
+            previous_sale_params = order._get_previous_sale_banner_params()
+
             next_action = {
                 "type": "ir.actions.client",
                 "tag": "pos_conventional_new_order",
                 "params": {
                     "config_id": order.config_id.id,
                     "default_session_id": order.config_id.current_session_id.id,
+                    **previous_sale_params,
                 },
             }
 
-            # Pass change amount to the next order form so the cashier sees a
-            # prominent banner reminding them how much to return to the customer.
             if cash_change_for_banner > 0.005:
                 next_action["params"]["cash_change"] = round(cash_change_for_banner, 2)
-                next_action["params"]["cash_change_currency"] = (
-                    order.currency_id.symbol if order.currency_id else "€"
-                )
+                next_action["params"]["cash_change_currency"] = previous_sale_params["previous_sale_currency"]
 
             # Print receipt if iface_print_auto is enabled (or explicitly requested)
             # and an invoice has been generated.

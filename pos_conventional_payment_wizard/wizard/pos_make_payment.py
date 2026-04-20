@@ -121,14 +121,21 @@ class PosMakePaymentConventional(models.TransientModel):
             if not is_conventional or order.state not in {"paid", "done"}:
                 return {"type": "ir.actions.act_window_close"}
 
+            previous_sale_params = order._get_previous_sale_banner_params()
+
             next_action = {
                 "type": "ir.actions.client",
                 "tag": "pos_conventional_new_order",
                 "params": {
                     "config_id": order.config_id.id,
                     "default_session_id": order.config_id.current_session_id.id,
+                    **previous_sale_params,
                 },
             }
+
+            if previous_sale_params["previous_sale_change"] > 0.005:
+                next_action["params"]["cash_change"] = previous_sale_params["previous_sale_change"]
+                next_action["params"]["cash_change_currency"] = previous_sale_params["previous_sale_currency"]
 
             # Print receipt if iface_print_auto is enabled ("Automatic Receipt Printing")
             # and an invoice has been generated.

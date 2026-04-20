@@ -380,6 +380,7 @@ class PosOrder(models.Model):
         Returns the client action to execute after a POS order has been validated.
         """
         self.ensure_one()
+        previous_sale_params = self._get_previous_sale_banner_params()
 
         # Base action: New Order
         next_action = {
@@ -388,8 +389,13 @@ class PosOrder(models.Model):
             "params": {
                 "config_id": self.config_id.id,
                 "default_session_id": self.session_id.id,
+                **previous_sale_params,
             },
         }
+
+        if previous_sale_params["previous_sale_change"] > 0.005:
+            next_action["params"]["cash_change"] = previous_sale_params["previous_sale_change"]
+            next_action["params"]["cash_change_currency"] = previous_sale_params["previous_sale_currency"]
 
         # If force employee login after order is enabled, propagate the flag
         if getattr(self.config_id, "pos_force_employee_login_after_order", False):
