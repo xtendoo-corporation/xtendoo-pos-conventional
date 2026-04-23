@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="pos_conventional_cash_drawer.PosPaymentButtonsCashDrawer">
+        <div class="d-flex flex-wrap gap-2">
+            <t t-foreach="paymentMethods" t-as="method" t-key="method.id">
+                <button type="button"
+                        class="btn btn-secondary"
+                        t-on-click="() => this.onPaymentMethodClick(method.id)">
+                    <span>Pago <t t-esc="method.name"/></span>
+                </button>
+            </t>
+            <button type="button"
+                    class="btn btn-outline-primary"
+                    t-att-disabled="this.state.openingCashDrawer ? true : undefined"
+                    t-on-click="() => this.onOpenCashDrawerClick()">
+                <span t-if="!this.state.openingCashDrawer">Abrir cajón</span>
+                <span t-else="">Abriendo...</span>
+            </button>
+        </div>
+    </t>
+</templates>
+

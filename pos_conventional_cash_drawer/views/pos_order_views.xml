@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_pos_form_payment_wizard_cash_drawer" model="ir.ui.view">
+        <field name="name">pos.order.form.payment.wizard.cash.drawer</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="pos_conventional_payment_wizard.view_pos_pos_form_payment_wizard"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='available_payment_method_ids'][@widget='pos_payment_buttons']" position="before">
+                <field name="config_id" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='available_payment_method_ids'][@widget='pos_payment_buttons']" position="attributes">
+                <attribute name="widget">pos_payment_buttons_cash_drawer</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+
+
