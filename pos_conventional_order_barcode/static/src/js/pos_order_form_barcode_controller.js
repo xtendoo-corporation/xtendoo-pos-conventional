@@ -6,7 +6,6 @@ import { FormController } from "@web/views/form/form_controller";
 import { useService } from "@web/core/utils/hooks";
 import { onMounted, onWillUnmount } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
-import { openUrlInHiddenPrintIframe } from "@pos_conventional_core/js/pos_print_iframe";
 
 export class PosOrderBarcodeFormController extends FormController {
     setup() {
@@ -171,19 +170,64 @@ export class PosOrderBarcodeFormController extends FormController {
     async addProductToLines(product, lineVals) {
         const record = this.model.root;
         if (record.isNew) {
+            await this.addLineLocally(record, product, lineVals);
             try {
                 await record.save();
             } catch (error) {
-                this.notification.add("Debe guardar el pedido antes de escanear productos.", { type: "warning" });
-                return;
+                console.error("Error al guardar el pedido tras escanear el producto:", error);
+                this.notification.add(
+                    _t("La línea se añadió al pedido, pero no se pudo guardar automáticamente. Revise los datos obligatorios y guarde manualmente."),
+                    { type: "warning" }
+                );
             }
+            return;
         }
         const orderId = record.resId;
         if (!orderId) return;
-        await this.addLineViaRPC(orderId, product, lineVals);
+        await this.addLineViaRPC(orderId, product);
     }
 
-    async addLineViaRPC(orderId, product, lineVals) {
+    async addLineLocally(record, product, lineVals) {
+        const lines = record.data.lines;
+        if (!lines) {
+            return;
+        }
+
+        const qtyToAdd = lineVals.qty || 1.0;
+        const existingLine = lines.records.find((line) => line.data.product_id?.id === product.id);
+
+        if (existingLine) {
+            const newQty = (existingLine.data.qty || 0) + qtyToAdd;
+            await existingLine.update({ qty: newQty });
+            this.notification.add(
+                _t("Cantidad actualizada: %(qty)s x %(product)s", {
+                    qty: newQty,
+                    product: product.display_name,
+                }),
+                { type: "success" }
+            );
+            return existingLine;
+        }
+
+        const newLine = await lines.addNewRecord({ position: "bottom" });
+        await newLine.update({
+            product_id: {
+                id: product.id,
+                display_name: product.display_name,
+            },
+        });
+        await newLine.update({
+            full_product_name: lineVals.full_product_name || product.display_name,
+            qty: qtyToAdd,
+            price_unit: lineVals.price_unit,
+            discount: lineVals.discount || 0.0,
+        });
+
+        this.notification.add(_t("Añadido: %s", product.display_name), { type: "success" });
+        return newLine;
+    }
+
+    async addLineViaRPC(orderId, product) {
         try {
             const result = await this.orm.call("pos.order", "add_product_by_barcode", [orderId], { product_id: product.id });
             if (result.success) {
