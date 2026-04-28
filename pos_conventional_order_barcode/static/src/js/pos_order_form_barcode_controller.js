@@ -240,6 +240,27 @@ export class PosOrderBarcodeFormController extends FormController {
             console.error("Error al añadir línea:", error);
         }
     }
+
+    async beforeLeave({ forceLeave } = {}) {
+        const record = this.model.root;
+        
+        // Ensure record exists and we are not forcing leave (e.g. error redirect)
+        if (record && record.data && record.data.state === 'draft' && !forceLeave) {
+            this._playErrorBeep();
+            this.notification.add(
+                _t("No puedes salir de un pedido que no ha sido pagado. Por favor, finaliza el pago, cancélalo o elimínalo antes de salir."),
+                { 
+                    type: "warning", 
+                    title: _t("Pedido no pagado"), 
+                    sticky: false,
+                    autocloseDelay: 10000
+                }
+            );
+            return false;
+        }
+
+        return super.beforeLeave(...arguments);
+    }
 }
 
 export const posOrderBarcodeFormView = {
