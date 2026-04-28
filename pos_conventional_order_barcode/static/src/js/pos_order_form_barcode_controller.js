@@ -4,12 +4,24 @@ import { registry } from "@web/core/registry";
 import { formView } from "@web/views/form/form_view";
 import { FormController } from "@web/views/form/form_controller";
 import { useService } from "@web/core/utils/hooks";
-import { onMounted, onWillUnmount } from "@odoo/owl";
+import { onMounted, onWillUnmount, useSubEnv } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 
 export class PosOrderBarcodeFormController extends FormController {
     setup() {
         super.setup();
+        useSubEnv({
+            config: {
+                ...this.env.config,
+                beforeLeave: async () => {
+                    if (window.bypassPosLeave) {
+                        return true;
+                    }
+                    return await this.model.root.save();
+                },
+            },
+        });
+
         this.orm = useService("orm");
         this.notification = useService("notification");
         this.barcodeBuffer = "";
@@ -20,18 +32,28 @@ export class PosOrderBarcodeFormController extends FormController {
         this.isProcessing = false;
         this.boundKeydownHandler = this.onKeyDown.bind(this);
         this.boundPaymentButtonClickHandler = this._onPaymentButtonClick.bind(this);
+        this.boundDocClickHandler = this._onDocClick.bind(this);
 
         onMounted(() => {
             document.addEventListener("keydown", this.boundKeydownHandler, true);
             // Capturar clicks en el botón "Pago" antes de que Odoo los procese
             document.addEventListener("click", this.boundPaymentButtonClickHandler, true);
+            document.addEventListener("click", this.boundDocClickHandler, true);
         });
 
         onWillUnmount(() => {
             document.removeEventListener("keydown", this.boundKeydownHandler, true);
             document.removeEventListener("click", this.boundPaymentButtonClickHandler, true);
+            document.removeEventListener("click", this.boundDocClickHandler, true);
             if (this.barcodeTimeout) clearTimeout(this.barcodeTimeout);
         });
+    }
+
+    _onDocClick(ev) {
+        if (ev.target.closest('button[name="action_open_stock_forecast"]')) {
+            window.bypassPosLeave = true;
+            setTimeout(() => { window.bypassPosLeave = false; }, 2000);
+        }
     }
 
     /**
@@ -242,6 +264,11 @@ export class PosOrderBarcodeFormController extends FormController {
     }
 
     async beforeLeave({ forceLeave } = {}) {
+        if (window.bypassPosLeave) {
+            window.bypassPosLeave = false;
+            return super.beforeLeave(...arguments);
+        }
+
         const record = this.model.root;
         
         // Ensure record exists and we are not forcing leave (e.g. error redirect)
