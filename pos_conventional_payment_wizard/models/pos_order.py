@@ -19,6 +19,7 @@ class PosOrder(models.Model):
         round_amount = currency.round if currency else lambda amount: round(amount, 2)
 
         change_amount = 0.0
+        is_cash = False
         if self.amount_total > 0:
             negative_payments = self.payment_ids.filtered(lambda payment: payment.amount < -0.005)
             if negative_payments:
@@ -26,10 +27,17 @@ class PosOrder(models.Model):
             elif getattr(self, "amount_return", 0.0) > 0:
                 change_amount = self.amount_return
 
+            # Detectamos si se ha usado algún método de efectivo
+            cash_methods = self.payment_ids.filtered(
+                lambda p: p.payment_method_id.type == "cash" or p.payment_method_id.is_cash_count
+            )
+            is_cash = bool(cash_methods)
+
         return {
             "previous_sale_total": round_amount(self.amount_total),
             "previous_sale_change": round_amount(change_amount),
             "previous_sale_currency": currency.symbol if currency and currency.symbol else "€",
+            "previous_sale_is_cash": is_cash,
         }
 
     def _is_negative_payment_flow(self):

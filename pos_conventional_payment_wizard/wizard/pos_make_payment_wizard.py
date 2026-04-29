@@ -479,13 +479,22 @@ class PosMakePaymentWizard(models.TransientModel):
             # and an invoice has been generated.
             should_print = print_invoice or order.config_id.iface_print_auto
             if should_print and order.account_move:
+                is_cash = False
+                if self.payment_method_id and self.payment_method_id.type == 'cash':
+                    is_cash = True
+
                 return {
                     "type": "ir.actions.client",
                     "tag": "pos_conventional_print_receipt_client",
                     "params": {
                         "order_id": order.id,
-                        "move_id": order.account_move.id,
-                        "next_action": next_action,
+                        "move_id": order.account_move.id if order.account_move else False,
+                        "session_id": order.session_id.id,
+                        "previous_sale_total": order.amount_total,
+                        "previous_sale_change": self.change_amount,
+                        "previous_sale_currency": order.currency_id.symbol,
+                        "previous_sale_is_cash": is_cash,
+                        "force_login_after_order": self.pos_config_id.force_login_after_order,
                     },
                 }
 
@@ -498,4 +507,3 @@ class PosMakePaymentWizard(models.TransientModel):
 
     def action_validate_print(self):
         return self._execute_validation(print_invoice=True)
-

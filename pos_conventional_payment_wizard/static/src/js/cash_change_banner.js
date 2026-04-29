@@ -16,6 +16,7 @@ import { Component, useState, onMounted, onWillPatch } from "@odoo/owl";
 const STORAGE_KEY_PREVIOUS_TOTAL = "pos_conventional_previous_sale_total";
 const STORAGE_KEY_PREVIOUS_CHANGE = "pos_conventional_previous_sale_change";
 const STORAGE_KEY_PREVIOUS_CURRENCY = "pos_conventional_previous_sale_currency";
+const STORAGE_KEY_PREVIOUS_IS_CASH = "pos_conventional_previous_sale_is_cash";
 const LEGACY_STORAGE_KEY_CHANGE = "pos_conventional_cash_change";
 const LEGACY_STORAGE_KEY_CURRENCY = "pos_conventional_cash_change_currency";
 
@@ -32,6 +33,7 @@ export class CashChangeBanner extends Component {
             previousTotal: this._readAmount(STORAGE_KEY_PREVIOUS_TOTAL, null),
             changeAmount: this._readChangeAmount(),
             currencySymbol: this._readCurrencySymbol(),
+            isCash: sessionStorage.getItem(STORAGE_KEY_PREVIOUS_IS_CASH) === "1",
             dismissed: false,
         });
 
@@ -98,6 +100,7 @@ export class CashChangeBanner extends Component {
             sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_TOTAL);
             sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_CHANGE);
             sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_CURRENCY);
+            sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_IS_CASH);
             sessionStorage.removeItem(LEGACY_STORAGE_KEY_CHANGE);
             sessionStorage.removeItem(LEGACY_STORAGE_KEY_CURRENCY);
         } catch (e) {
@@ -110,7 +113,7 @@ export class CashChangeBanner extends Component {
     }
 
     get visible() {
-        return !this.state.dismissed && this.hasSummary;
+        return !this.state.dismissed && this.hasSummary && this.state.isCash;
     }
 
     get formattedTotal() {

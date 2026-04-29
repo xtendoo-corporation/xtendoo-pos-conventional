@@ -5,6 +5,7 @@ import { registry } from "@web/core/registry";
 const STORAGE_KEY_PREVIOUS_TOTAL = "pos_conventional_previous_sale_total";
 const STORAGE_KEY_PREVIOUS_CHANGE = "pos_conventional_previous_sale_change";
 const STORAGE_KEY_PREVIOUS_CURRENCY = "pos_conventional_previous_sale_currency";
+const STORAGE_KEY_PREVIOUS_IS_CASH = "pos_conventional_previous_sale_is_cash";
 const LEGACY_STORAGE_KEY_CHANGE = "pos_conventional_cash_change";
 const LEGACY_STORAGE_KEY_CURRENCY = "pos_conventional_cash_change_currency";
 
@@ -30,6 +31,7 @@ function _storePreviousSaleSummary(context) {
     );
     const currencySymbol =
         context.previous_sale_currency || context.cash_change_currency || "€";
+    const isCash = !!context.previous_sale_is_cash;
     const hasPreviousSaleSummary =
         Number.isFinite(previousSaleTotal) || Number.isFinite(previousSaleChange);
 
@@ -51,6 +53,7 @@ function _storePreviousSaleSummary(context) {
         const safeChange = Number.isFinite(previousSaleChange) ? previousSaleChange : 0;
         sessionStorage.setItem(STORAGE_KEY_PREVIOUS_CHANGE, safeChange.toFixed(2));
         sessionStorage.setItem(STORAGE_KEY_PREVIOUS_CURRENCY, currencySymbol);
+        sessionStorage.setItem(STORAGE_KEY_PREVIOUS_IS_CASH, isCash ? "1" : "0");
 
         if (safeChange > 0.005) {
             sessionStorage.setItem(LEGACY_STORAGE_KEY_CHANGE, safeChange.toFixed(2));
@@ -68,6 +71,7 @@ function _clearPreviousSaleSummary() {
     sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_TOTAL);
     sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_CHANGE);
     sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_CURRENCY);
+    sessionStorage.removeItem(STORAGE_KEY_PREVIOUS_IS_CASH);
     sessionStorage.removeItem(LEGACY_STORAGE_KEY_CHANGE);
     sessionStorage.removeItem(LEGACY_STORAGE_KEY_CURRENCY);
 }
