@@ -57,8 +57,8 @@
                     <div class="page">
                         <div class="text-center" style="margin-bottom: 8px;">
                             <img t-if="res_company.logo"
-                                t-att-src="image_data_uri(res_company.logo)"
-                                style="max-height: 75px; max-width: 90%;" />
+                                t-att-src="'/logo.png?company=%s' % res_company.id"
+                                style="max-height: 75px; max-width: 90%; filter: brightness(0); -webkit-filter: brightness(0);" />
                         </div>
 
                         <t t-if="o.pos_order_ids and len(o.pos_order_ids) &gt; 0">
