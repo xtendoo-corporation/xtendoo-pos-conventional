@@ -23,6 +23,8 @@ export class CashChangeBanner extends Component {
     static template = "pos_conventional_payment_wizard.CashChangeBanner";
     static props = {
         record: { type: Object, optional: true },
+        readonly: { type: Boolean, optional: true },
+        name: { type: String, optional: true },
     };
 
     setup() {

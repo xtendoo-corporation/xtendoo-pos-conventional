@@ -24,6 +24,9 @@
         <field name="priority">8</field>
         <field name="inherit_id" ref="point_of_sale.view_pos_pos_form" />
         <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="default_focus">0</attribute>
+            </xpath>
 
             <!-- Añadir campos técnicos al header (ocultos) -->
             <xpath expr="//header" position="inside">

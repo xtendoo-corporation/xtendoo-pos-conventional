@@ -39,6 +39,16 @@ export class PosOrderBarcodeFormController extends FormController {
             // Capturar clicks en el botón "Pago" antes de que Odoo los procese
             document.addEventListener("click", this.boundPaymentButtonClickHandler, true);
             document.addEventListener("click", this.boundDocClickHandler, true);
+
+            // Quitar el foco automático si es un pedido nuevo
+            if (this.model.root.isNew) {
+                setTimeout(() => {
+                    if (document.activeElement instanceof HTMLElement && 
+                        (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                        document.activeElement.blur();
+                    }
+                }, 100);
+            }
         });
 
         onWillUnmount(() => {
@@ -195,6 +205,7 @@ export class PosOrderBarcodeFormController extends FormController {
             await this.addLineLocally(record, product, lineVals);
             try {
                 await record.save();
+                this._blurActiveElement();
             } catch (error) {
                 console.error("Error al guardar el pedido tras escanear el producto:", error);
                 this.notification.add(
@@ -207,6 +218,7 @@ export class PosOrderBarcodeFormController extends FormController {
         const orderId = record.resId;
         if (!orderId) return;
         await this.addLineViaRPC(orderId, product);
+        this._blurActiveElement();
     }
 
     async addLineLocally(record, product, lineVals) {
@@ -228,6 +240,7 @@ export class PosOrderBarcodeFormController extends FormController {
                 }),
                 { type: "success" }
             );
+            this._blurActiveElement();
             return existingLine;
         }
 
@@ -246,6 +259,7 @@ export class PosOrderBarcodeFormController extends FormController {
         });
 
         this.notification.add(_t("Añadido: %s", product.display_name), { type: "success" });
+        this._blurActiveElement();
         return newLine;
     }
 
@@ -255,12 +269,22 @@ export class PosOrderBarcodeFormController extends FormController {
             if (result.success) {
                 this.notification.add(result.message, { type: "success" });
                 await this.model.root.load();
+                this._blurActiveElement();
             } else {
                 this.notification.add(result.message, { type: "warning" });
             }
         } catch (error) {
             console.error("Error al añadir línea:", error);
         }
+    }
+
+    _blurActiveElement() {
+        setTimeout(() => {
+            if (document.activeElement instanceof HTMLElement && 
+                (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT')) {
+                document.activeElement.blur();
+            }
+        }, 100);
     }
 
     async beforeLeave({ forceLeave } = {}) {
