@@ -98,16 +98,13 @@
                             </span>
                             <span t-field="o.name" />
                         </div>
-                        <div class="text-left" style="font-size: 1em; margin-bottom: 6px;">
-                            <span class="bold">FECHA:</span>
-                            <span t-field="o.invoice_date" />
-                            <span t-field="o.create_date" t-options='{"format": "HH:mm"}' />
-                        </div>
 
                         <t t-if="o.partner_id">
                             <div class="text-left" style="font-size: 1em; margin-top: 5px;">
                                 <div>
                                     <span class="bold">CLIENTE:</span>
+                                </div>
+                                <div>
                                     <span t-field="o.partner_id.name" />
                                 </div>
                                 <div t-if="o.partner_id.street">
@@ -146,6 +143,36 @@
                                             <span t-esc="'%.2f' % line.price_total" />
                                         </td>
                                     </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <div class="dashed-line" />
+
+                        <!-- Desglose de IVA -->
+                        <table style="width: 100%; font-size: 0.9em; margin-top: 5px; margin-bottom: 5px;">
+                            <thead>
+                                <tr style="border-bottom: 1px dashed black;">
+                                    <th class="text-left">Base</th>
+                                    <th class="text-center">IMPUESTO</th>
+                                    <th class="text-right">Cuota</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.tax_totals['subtotals']" t-as="subtotal">
+                                    <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
+                                        <tr>
+                                            <td class="text-left">
+                                                <span t-out="tax_group['base_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </td>
+                                            <td class="text-center">
+                                                <span t-out="tax_group['group_name']"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-out="tax_group['tax_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                            </td>
+                                        </tr>
+                                    </t>
                                 </t>
                             </tbody>
                         </table>
@@ -193,6 +220,11 @@
                             su visita</div>
                         <div class="text-center" style="font-size: 1em;"> Atendido por: <span
                                 t-field="o.invoice_user_id.name" />
+                        </div>
+                        <div class="text-center" style="font-size: 1em;">
+                            <span t-field="o.invoice_date" />
+                            <span
+                                t-field="o.create_date" t-options='{"format": "HH:mm"}' />
                         </div>
                     </div>
                 </div>

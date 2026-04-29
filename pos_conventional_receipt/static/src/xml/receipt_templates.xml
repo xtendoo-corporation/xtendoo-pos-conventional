@@ -45,6 +45,27 @@
             <!-- Quitamos la fecha de abajo porque ya la pusimos arriba -->
         </xpath>
 
+        <!-- Desglose de IVA personalizado -->
+        <xpath expr="//div[hasclass('pos-receipt-taxes')]" position="replace">
+            <div t-if="props.order.prices.taxDetails and props.order.prices.taxDetails.has_tax_groups" 
+                 class="pos-receipt-taxes pt-2" 
+                 style="font-family: 'Lucida Console', 'DejaVu Sans Mono', monospace; font-size: 11px;">
+                <div class="d-flex" style="border-bottom: 1px dashed black; font-weight: bold; margin-bottom: 2px;">
+                    <span style="flex: 1; text-align: left;">BASE</span>
+                    <span style="flex: 1; text-align: center;">IMPUESTO</span>
+                    <span style="flex: 1; text-align: right;">CUOTA</span>
+                </div>
+                <t t-foreach="props.order.prices.taxDetails.subtotals" t-as="subtotal" t-key="subtotal.name">
+                    <div t-foreach="subtotal.tax_groups" t-as="tax_group" t-key="tax_group.id" class="d-flex">
+                        <span style="flex: 1; text-align: left;"><t t-esc="formatCurrency(tax_group.base_amount_currency)"/></span>
+                        <span style="flex: 1; text-align: center;"><t t-esc="tax_group.group_name"/></span>
+                        <span style="flex: 1; text-align: right;"><t t-esc="formatCurrency(tax_group.tax_amount_currency)"/></span>
+                    </div>
+                </t>
+                <div style="border-top: 1px dashed black; margin-top: 2px;"/>
+            </div>
+        </xpath>
+
         <xpath expr="//div[hasclass('after-footer')]" position="before">
             <div style="font-family: 'Lucida Console', 'DejaVu Sans Mono', monospace; font-size: 11px; text-align: center; margin-top: 5px;">
                 <div style="margin-bottom: 2px;">Gracias por su visita</div>
