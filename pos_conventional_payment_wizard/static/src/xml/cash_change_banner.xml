@@ -4,19 +4,19 @@
     <!-- Resumen warning de la venta anterior. -->
     <t t-name="pos_conventional_payment_wizard.CashChangeBanner">
         <div t-if="visible"
-             class="pos-previous-sale-banner alert alert-warning d-flex align-items-start justify-content-between mb-3 shadow-sm"
+             class="pos-previous-sale-banner alert alert-warning d-flex align-items-center justify-content-between mb-3 shadow-sm py-2 px-3"
              role="alert">
 
             <div class="d-flex align-items-center gap-3">
-                <i class="fa fa-exclamation-triangle" style="font-size: 1.2rem; opacity: 0.9;"/>
-                <div class="d-flex gap-4">
-                    <span t-if="formattedTotal">
-                        <strong>Total anterior:</strong>&#160;
-                        <t t-esc="formattedTotal"/>&#160;<t t-esc="state.currencySymbol"/>
+                <i class="fa fa-exclamation-triangle fs-4 text-warning" style="opacity: 0.9;"/>
+                <div class="d-flex align-items-center gap-4">
+                    <span t-if="formattedTotal" class="d-flex align-items-center">
+                        <strong class="text-uppercase small me-1">Total anterior:</strong>
+                        <span class="fs-5 fw-semibold"><t t-esc="formattedTotal"/>&#160;<t t-esc="state.currencySymbol"/></span>
                     </span>
-                    <span>
-                        <strong>Cambio anterior:</strong>&#160;
-                        <t t-esc="formattedChange"/>&#160;<t t-esc="state.currencySymbol"/>
+                    <span class="d-flex align-items-center">
+                        <strong class="text-uppercase small me-1">Cambio anterior:</strong>
+                        <span class="fs-5 fw-semibold"><t t-esc="formattedChange"/>&#160;<t t-esc="state.currencySymbol"/></span>
                     </span>
                 </div>
             </div>
@@ -30,4 +30,3 @@
     </t>
 
 </templates>
-

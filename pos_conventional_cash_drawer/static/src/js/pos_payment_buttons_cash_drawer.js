@@ -111,6 +111,9 @@ export class PosPaymentButtonsCashDrawer extends Component {
         }
 
         try {
+            // Activamos el bypass de navegación antes de disparar el pago.
+            window.bypassPosLeave = true;
+
             const action = await this.orm.call(
                 "pos.order",
                 "action_pos_convention_pay_with_method",
@@ -120,9 +123,11 @@ export class PosPaymentButtonsCashDrawer extends Component {
             if (action) {
                 await this.action.doAction(action);
             } else {
+                window.bypassPosLeave = false;
                 await this.props.record.load();
             }
         } catch (error) {
+            window.bypassPosLeave = false;
             console.error("Error al procesar pago:", error);
         }
     }

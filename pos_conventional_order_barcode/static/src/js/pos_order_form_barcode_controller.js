@@ -67,18 +67,19 @@ export class PosOrderBarcodeFormController extends FormController {
     }
 
     /**
-     * Intercepta el botón "Pago" (action_open_payment_popup) en fase de captura.
-     * Si el pedido tiene importe cero o no tiene líneas, bloquea la acción,
-     * reproduce el pitido de error y muestra una notificación de aviso.
+     * Intercepta el botón "Pago" y otros botones de acción de pago.
+     * Si el pedido tiene importe cero o no tiene líneas, bloquea la acción.
+     * Si es válido, activa el bypass de navegación.
      */
     _onPaymentButtonClick(ev) {
-        const btn = ev.target.closest('button[name="action_open_payment_popup"]');
+        const btn = ev.target.closest('button[name^="action_pay_"], button[name="action_open_payment_popup"], button[name="action_pos_convention_pay_with_method"]');
         if (!btn) return;
 
         const record = this.model.root;
         const amountTotal = record.data.amount_total || 0;
         const linesCount = record.data.lines?.currentIds?.length || 0;
 
+        // Si intentamos cobrar algo vacío, bloqueamos
         if (linesCount === 0 || amountTotal <= 0) {
             ev.preventDefault();
             ev.stopImmediatePropagation();
@@ -87,7 +88,18 @@ export class PosOrderBarcodeFormController extends FormController {
                 _t("No se puede cobrar un pedido sin productos o con importe cero."),
                 { type: "warning", title: _t("Importe inválido"), sticky: false }
             );
+            return;
         }
+
+        // Si el pedido es válido y vamos a pagar, activamos el bypass de navegación
+        // para permitir el cambio de pantalla fluido tras la validación.
+        window.bypassPosLeave = true;
+        // Limpiamos el bypass tras 10 segundos por seguridad si no se navegó
+        setTimeout(() => { 
+            if (window.location.hash.includes('model=pos.order') && window.location.hash.includes('id=' + record.resId)) {
+                window.bypassPosLeave = false; 
+            }
+        }, 10000);
     }
 
     onKeyDown(ev) {
@@ -289,7 +301,9 @@ export class PosOrderBarcodeFormController extends FormController {
 
     async beforeLeave({ forceLeave } = {}) {
         if (window.bypassPosLeave) {
-            window.bypassPosLeave = false;
+            // No reseteamos inmediatamente a false aquí, ya que Odoo puede llamar 
+            // a beforeLeave varias veces durante una transición compleja.
+            // El flag se limpia solo tras 2 segundos o al entrar en un pedido nuevo.
             return super.beforeLeave(...arguments);
         }
 

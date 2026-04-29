@@ -37,6 +37,7 @@
             "pos_conventional_core/static/src/js/pos_new_order_action.js",
             "pos_conventional_core/static/src/js/pos_order_list_controller.js",
             "pos_conventional_core/static/src/js/pos_order_list_auto_open.js",
+            "pos_conventional_core/static/src/js/pos_action_service_patch.js",
             "pos_conventional_core/static/src/xml/pos_order_list_view.xml",
             # POS receipt components injected into backend
             # (needed by pos_receipt_client_action.js which renders OrderReceipt)

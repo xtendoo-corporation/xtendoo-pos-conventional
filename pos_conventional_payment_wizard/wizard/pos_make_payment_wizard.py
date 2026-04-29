@@ -471,9 +471,6 @@ class PosMakePaymentWizard(models.TransientModel):
                 },
             }
 
-            if cash_change_for_banner > 0.005:
-                next_action["params"]["cash_change"] = round(cash_change_for_banner, 2)
-                next_action["params"]["cash_change_currency"] = previous_sale_params["previous_sale_currency"]
 
             # Print receipt if iface_print_auto is enabled (or explicitly requested)
             # and an invoice has been generated.
@@ -491,10 +488,11 @@ class PosMakePaymentWizard(models.TransientModel):
                         "move_id": order.account_move.id if order.account_move else False,
                         "session_id": order.session_id.id,
                         "previous_sale_total": order.amount_total,
-                        "previous_sale_change": self.change_amount,
+                        "previous_sale_change": self.amount_change,
                         "previous_sale_currency": order.currency_id.symbol,
                         "previous_sale_is_cash": is_cash,
-                        "force_login_after_order": self.pos_config_id.force_login_after_order,
+                        "force_login_after_order": getattr(self.config_id, "pos_force_employee_login_after_order", False),
+                        "next_action": next_action,
                     },
                 }
 

@@ -94,6 +94,11 @@ export class PosPaymentButtons extends Component {
         }
 
         try {
+            // Activamos el bypass de navegación antes de disparar el pago.
+            // Esto evita que el controlador del formulario bloquee la salida
+            // cuando el servidor responda con la acción de impresión o nuevo pedido.
+            window.bypassPosLeave = true;
+
             const action = await this.orm.call(
                 "pos.order",
                 "action_pos_convention_pay_with_method",
@@ -103,10 +108,12 @@ export class PosPaymentButtons extends Component {
             if (action) {
                 await this.action.doAction(action);
             } else {
-                // Si no hay acción, refrescar el registro por si acaso
+                // Si no hay acción (pago fallido o incompleto), reseteamos el bypass
+                window.bypassPosLeave = false;
                 await this.props.record.load();
             }
         } catch (error) {
+            window.bypassPosLeave = false;
             console.error("Error al procesar pago:", error);
         }
     }
