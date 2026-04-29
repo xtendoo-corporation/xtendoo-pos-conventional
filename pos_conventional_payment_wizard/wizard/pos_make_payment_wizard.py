@@ -437,10 +437,15 @@ class PosMakePaymentWizard(models.TransientModel):
             # _process_saved_order generates the invoice if to_invoice=True and state='paid'.
             # This must be set BEFORE calling _process_saved_order.
             if order.partner_id and not order.account_move:
-                order.with_context(skip_completeness_check=True).write({"to_invoice": True})
+                vals = {"to_invoice": True}
+                # Si existe el campo de factura simplificada (localización española), lo marcamos
+                if "is_l10n_es_simplified_invoice" in order._fields:
+                    vals["is_l10n_es_simplified_invoice"] = True
+                
+                order.with_context(skip_completeness_check=True).write(vals)
                 _logger.info(
-                    "POS: to_invoice=True for order %s with customer %s",
-                    order.name, order.partner_id.name,
+                    "POS: to_invoice=True (simplified=%s) for order %s",
+                    vals.get("is_l10n_es_simplified_invoice", False), order.name
                 )
 
             order._process_saved_order(False)
