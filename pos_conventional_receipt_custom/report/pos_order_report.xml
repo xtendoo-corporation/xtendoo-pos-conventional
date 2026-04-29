@@ -3,7 +3,8 @@
     <template id="report_factura_simplificada_80mm">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <div class="article" t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id">
+                <div class="article" t-att-data-oe-model="o and o._name"
+                    t-att-data-oe-id="o and o.id">
                     <style>
                         @page { size: 80mm auto; margin: 0mm; }
                         body, .container, .row, .col-12 {
@@ -55,40 +56,70 @@
 
                     <div class="page">
                         <div class="text-center" style="margin-bottom: 8px;">
-                            <img t-if="res_company.logo" t-att-src="image_data_uri(res_company.logo)" style="max-height: 75px; max-width: 90%;" />
+                            <img t-if="res_company.logo"
+                                t-att-src="image_data_uri(res_company.logo)"
+                                style="max-height: 75px; max-width: 90%;" />
                         </div>
 
                         <t t-if="o.pos_order_ids and len(o.pos_order_ids) &gt; 0">
                             <t t-set="_pos_order_header" t-value="o.pos_order_ids[0]" />
-                            <t t-if="_pos_order_header.config_id and _pos_order_header.config_id.receipt_header">
-                                <div class="text-center" style="margin-bottom: 6px; font-size: 1em; white-space: pre-line;">
+                            <t
+                                t-if="_pos_order_header.config_id and _pos_order_header.config_id.receipt_header">
+                                <div class="text-left"
+                                    style="margin-bottom: 6px; font-size: 1em; white-space: pre-line;">
                                     <span t-out="_pos_order_header.config_id.receipt_header" />
                                 </div>
                             </t>
                         </t>
 
-                        <div class="text-center" style="font-size: 1em; margin-bottom: 6px;">
-                            <span t-field="o.invoice_date" />
-                        </div>
-
-                        <div class="text-center bold" style="font-size: 1.2em; text-transform: uppercase; margin-bottom: 2px;">
+                        <div class="text-left bold"
+                            style="font-size: 1.2em; text-transform: uppercase; margin-bottom: 2px;">
                             <span t-field="res_company.name" />
                         </div>
-                        <div class="text-center"><span t-field="res_company.street" /></div>
-                        <div class="text-center"><span t-field="res_company.zip" /> <span t-field="res_company.city" /></div>
-                        <div class="text-center"><span t-field="res_company.vat" /></div>
+                        <div class="text-left">
+                            <span t-field="res_company.street" />
+                        </div>
+                        <div class="text-left">
+                            <span t-field="res_company.zip" />
+                            <span t-field="res_company.city" />
+                        </div>
+                        <div class="text-left">
+                            <span t-field="res_company.vat" />
+                        </div>
 
                         <div class="dashed-line" />
 
-                        <div class="text-center bold" style="text-transform: uppercase; font-size: 1em; margin: 3px 0;">
-                            <t t-if="o.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
-                            <t t-else="">FACTURA SIMPLIFICADA:</t>
-                            <br/>
+                        <div class="text-left"
+                            style="text-transform: uppercase; font-size: 1em; margin: 3px 0;">
+                            <span class="bold">
+                                <t t-if="o.move_type == 'out_refund'">FACTURA SIMPLIFICADA
+                                    RECTIFICATIVA:</t>
+                                <t t-else="">FACTURA SIMPLIFICADA:</t>
+                            </span>
                             <span t-field="o.name" />
                         </div>
-                        <div class="text-center" style="text-transform: uppercase; font-size: 1em; margin-top: 3px;">
-                            ATENDIDO POR: <span t-field="o.invoice_user_id.name" />
+                        <div class="text-left" style="font-size: 1em; margin-bottom: 6px;">
+                            <span class="bold">FECHA:</span>
+                            <span t-field="o.invoice_date" />
+                            <span t-field="o.create_date" t-options='{"format": "HH:mm"}' />
                         </div>
+
+                        <t t-if="o.partner_id">
+                            <div class="text-left" style="font-size: 1em; margin-top: 5px;">
+                                <div>
+                                    <span class="bold">CLIENTE:</span>
+                                    <span t-field="o.partner_id.name" />
+                                </div>
+                                <div t-if="o.partner_id.street">
+                                    <span t-field="o.partner_id.street" />
+                                </div>
+                                <div t-if="o.partner_id.zip">
+                                    <span t-field="o.partner_id.zip" />
+                                    <span t-field="o.partner_id.city" />
+                                </div>
+                                <div t-if="o.partner_id.vat">NIF: <span t-field="o.partner_id.vat" /></div>
+                            </div>
+                        </t>
 
                         <div class="dashed-line" />
 
@@ -104,11 +135,16 @@
                                 <t t-foreach="o.invoice_line_ids" t-as="line">
                                     <tr t-if="line.display_type == 'product'">
                                         <td class="text-left col-name" style="padding-right: 2px;">
-                                            <t t-set="line_name" t-value="(line.name or '').split('] ', 1)[-1] if '] ' in (line.name or '') else (line.name or '')" />
+                                            <t t-set="line_name"
+                                                t-value="(line.name or '').split('] ', 1)[-1] if '] ' in (line.name or '') else (line.name or '')" />
                                             <span t-out="line_name" />
                                         </td>
-                                        <td class="text-center col-ud"><span t-esc="'%.0f' % line.quantity" /></td>
-                                        <td class="text-right col-total"><span t-esc="'%.2f' % line.price_total" /></td>
+                                        <td class="text-center col-ud">
+                                            <span t-esc="'%.0f' % line.quantity" />
+                                        </td>
+                                        <td class="text-right col-total">
+                                            <span t-esc="'%.2f' % line.price_total" />
+                                        </td>
                                     </tr>
                                 </t>
                             </tbody>
@@ -121,9 +157,9 @@
                         </div>
 
                         <div class="text-center" style="margin-bottom: 6px; font-size: 1em;">
-                            Pagado:
-                            <t t-set="pago_encontrado" t-value="False" />
-                            <t t-if="o.pos_order_ids">
+                            Pagado: <t t-set="pago_encontrado" t-value="False" />
+                            <t
+                                t-if="o.pos_order_ids">
                                 <t t-foreach="o.pos_order_ids" t-as="pos_order">
                                     <t t-foreach="pos_order.payment_ids" t-as="payment">
                                         <t t-set="pago_encontrado" t-value="True" />
@@ -131,9 +167,11 @@
                                     </t>
                                 </t>
                             </t>
-                            <t t-if="not pago_encontrado and o.invoice_payments_widget">
-                                <t t-foreach="o.invoice_payments_widget['content']" t-as="payment_val">
-                                    <span t-out="payment_val['journal_name']" />
+                            <t
+                                t-if="not pago_encontrado and o.invoice_payments_widget">
+                                <t t-set="payments" t-value="o._get_reconciled_info_JSON_values()" />
+                                <t t-foreach="payments" t-as="payment">
+                                    <span t-out="payment['journal_name']" />
                                 </t>
                             </t>
                         </div>
@@ -143,13 +181,19 @@
                         <t t-if="o.pos_order_ids and len(o.pos_order_ids) &gt; 0">
                             <t t-set="_pos_order" t-value="o.pos_order_ids[0]" />
                             <t t-if="_pos_order.config_id and _pos_order.config_id.receipt_footer">
-                                <div class="text-center" style="margin-top: 6px; font-size: 1em; white-space: pre-line;">
+                                <div class="text-center"
+                                    style="margin-top: 6px; font-size: 1em; white-space: pre-line;">
                                     <span t-out="_pos_order.config_id.receipt_footer" />
                                 </div>
                             </t>
                         </t>
 
-                        <div class="text-center" style="margin-top: 8px; margin-bottom: 4px; font-size: 1em;">Gracias por su visita</div>
+                        <div class="text-center"
+                            style="margin-top: 8px; margin-bottom: 2px; font-size: 1em;">Gracias por
+                            su visita</div>
+                        <div class="text-center" style="font-size: 1em;"> Atendido por: <span
+                                t-field="o.invoice_user_id.name" />
+                        </div>
                     </div>
                 </div>
             </t>
