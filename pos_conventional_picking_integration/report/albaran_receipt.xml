@@ -53,5 +53,7 @@
         <field name="report_type">qweb-html</field>
         <field name="report_name">pos_conventional_picking_integration.report_albaran_80mm</field>
         <field name="report_file">pos_conventional_picking_integration.report_albaran_80mm</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
     </record>
 </odoo>

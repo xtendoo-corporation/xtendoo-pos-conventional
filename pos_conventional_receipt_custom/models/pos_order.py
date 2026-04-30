@@ -17,9 +17,9 @@ class PosOrder(models.Model):
 
     def action_print_factura_simplificada(self):
         self.ensure_one()
-        if not self.account_move:
-            raise UserError(_("Este pedido no tiene una factura simplificada asociada para imprimir."))
-        return self.env.ref("pos_conventional_receipt_custom.action_factura_simplificada_80mm_pdf").report_action(self.account_move)
+        if self.account_move:
+            return self.env.ref("pos_conventional_receipt_custom.action_factura_simplificada_80mm_pdf").report_action(self.account_move)
+        return self.env.ref("pos_conventional_receipt_custom.action_report_pos_order_80mm").report_action(self)
 
     def action_send_email(self):
         """
