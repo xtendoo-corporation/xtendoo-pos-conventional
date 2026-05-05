@@ -28,8 +28,10 @@ export class PosOrderBarcodeFormController extends FormController {
         this.lastKeyTime = 0;
         this.barcodeTimeout = null;
         this.maxTimeBetweenKeys = 150;
+        this.maxTimeBetweenKeysEditable = 50;
         this.minBarcodeLength = 3;
         this.isProcessing = false;
+        this.editableTargetSnapshot = null;
         this.boundKeydownHandler = this.onKeyDown.bind(this);
         this.boundPaymentButtonClickHandler = this._onPaymentButtonClick.bind(this);
         this.boundDocClickHandler = this._onDocClick.bind(this);
@@ -43,7 +45,7 @@ export class PosOrderBarcodeFormController extends FormController {
             // Quitar el foco automático si es un pedido nuevo
             if (this.model.root.isNew) {
                 setTimeout(() => {
-                    if (document.activeElement instanceof HTMLElement && 
+                    if (document.activeElement instanceof HTMLElement &&
                         (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
                         document.activeElement.blur();
                     }
@@ -95,22 +97,23 @@ export class PosOrderBarcodeFormController extends FormController {
         // para permitir el cambio de pantalla fluido tras la validación.
         window.bypassPosLeave = true;
         // Limpiamos el bypass tras 10 segundos por seguridad si no se navegó
-        setTimeout(() => { 
+        setTimeout(() => {
             if (window.location.hash.includes('model=pos.order') && window.location.hash.includes('id=' + record.resId)) {
-                window.bypassPosLeave = false; 
+                window.bypassPosLeave = false;
             }
         }, 10000);
     }
 
     onKeyDown(ev) {
-        try {
-            const target = ev.target || document.activeElement;
-            const tag = target && target.tagName ? target.tagName.toLowerCase() : null;
-            if (tag === 'input' || tag === 'textarea' || tag === 'select' || (target && target.isContentEditable)) return;
-        } catch (err) {}
+        const target = ev.target || document.activeElement;
+        const isEditableTarget = this._isEditableTarget(target);
+        if (isEditableTarget && !this.editableTargetSnapshot) {
+            this.editableTargetSnapshot = this._captureEditableTargetSnapshot(target);
+        }
 
         const now = Date.now();
         const timeDiff = now - this.lastKeyTime;
+        const keyDelayLimit = isEditableTarget ? this.maxTimeBetweenKeysEditable : this.maxTimeBetweenKeys;
 
         if (["Shift", "Control", "Alt", "Meta", "CapsLock", "Escape"].includes(ev.key)) return;
         if (ev.key.length > 1 && ev.key !== "Enter" && ev.key !== "Tab") return;
@@ -122,41 +125,113 @@ export class PosOrderBarcodeFormController extends FormController {
             }
             if (this.barcodeBuffer.length >= this.minBarcodeLength) {
                 ev.preventDefault();
-                ev.stopPropagation();
+                ev.stopImmediatePropagation();
+                this._restoreEditableTargetIfNeeded();
+                this._blurActiveElement({ immediate: true });
                 const barcode = this.barcodeBuffer;
-                this.barcodeBuffer = "";
-                this.lastKeyTime = 0;
+                this._resetBarcodeCaptureState();
                 this.processBarcode(barcode);
                 return false;
             }
-            this.barcodeBuffer = "";
-            this.lastKeyTime = 0;
+            this._resetBarcodeCaptureState();
             return;
         }
 
-        if (this.lastKeyTime > 0 && timeDiff > this.maxTimeBetweenKeys) this.barcodeBuffer = "";
+        if (this.lastKeyTime > 0 && timeDiff > keyDelayLimit) {
+            this._resetBarcodeCaptureState({ preserveEditableSnapshot: isEditableTarget });
+            if (isEditableTarget) {
+                this.editableTargetSnapshot = this._captureEditableTargetSnapshot(target);
+            }
+        }
         this.barcodeBuffer += ev.key;
         this.lastKeyTime = now;
 
-        if (this.barcodeBuffer.length >= 1) {
+        if (isEditableTarget && this._isLikelyBarcodeInEditableTarget(timeDiff)) {
+            this._restoreEditableTargetIfNeeded();
+            this._blurActiveElement({ immediate: true });
             ev.preventDefault();
-            ev.stopPropagation();
+            ev.stopImmediatePropagation();
+        } else if (!isEditableTarget && this.barcodeBuffer.length >= 1) {
+            ev.preventDefault();
+            ev.stopImmediatePropagation();
         }
 
         if (this.barcodeTimeout) clearTimeout(this.barcodeTimeout);
         this.barcodeTimeout = setTimeout(() => {
             if (this.barcodeBuffer.length >= this.minBarcodeLength) {
                 const barcode = this.barcodeBuffer;
-                this.barcodeBuffer = "";
-                this.lastKeyTime = 0;
+                this._restoreEditableTargetIfNeeded();
+                this._blurActiveElement({ immediate: true });
+                this._resetBarcodeCaptureState();
                 this.processBarcode(barcode);
             } else {
-                this.barcodeBuffer = "";
-                this.lastKeyTime = 0;
+                this._resetBarcodeCaptureState();
             }
         }, this.maxTimeBetweenKeys + 50);
 
         return false;
+    }
+
+    _isEditableTarget(target) {
+        if (!(target instanceof HTMLElement)) {
+            return false;
+        }
+        const tag = target.tagName ? target.tagName.toLowerCase() : "";
+        return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+    }
+
+    _captureEditableTargetSnapshot(target) {
+        if (!(target instanceof HTMLElement)) {
+            return null;
+        }
+        if (target.isContentEditable) {
+            return {
+                target,
+                type: "contenteditable",
+                value: target.textContent,
+            };
+        }
+        return {
+            target,
+            type: "input",
+            value: "value" in target ? target.value : "",
+        };
+    }
+
+    _restoreEditableTargetIfNeeded() {
+        const snapshot = this.editableTargetSnapshot;
+        if (!snapshot || !(snapshot.target instanceof HTMLElement)) {
+            return;
+        }
+        if (snapshot.type === "contenteditable") {
+            if (snapshot.target.textContent !== snapshot.value) {
+                snapshot.target.textContent = snapshot.value || "";
+                snapshot.target.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+        } else if ("value" in snapshot.target && snapshot.target.value !== snapshot.value) {
+            snapshot.target.value = snapshot.value || "";
+            snapshot.target.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+    }
+
+    _isLikelyBarcodeInEditableTarget(timeDiff) {
+        return Boolean(
+            this.barcodeBuffer.length >= 2 &&
+            this.lastKeyTime > 0 &&
+            timeDiff <= this.maxTimeBetweenKeysEditable
+        );
+    }
+
+    _resetBarcodeCaptureState({ preserveEditableSnapshot = false } = {}) {
+        this.barcodeBuffer = "";
+        this.lastKeyTime = 0;
+        if (this.barcodeTimeout) {
+            clearTimeout(this.barcodeTimeout);
+            this.barcodeTimeout = null;
+        }
+        if (!preserveEditableSnapshot) {
+            this.editableTargetSnapshot = null;
+        }
     }
 
     async processBarcode(barcode) {
@@ -290,33 +365,46 @@ export class PosOrderBarcodeFormController extends FormController {
         }
     }
 
-    _blurActiveElement() {
-        setTimeout(() => {
-            if (document.activeElement instanceof HTMLElement && 
-                (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT')) {
+    _blurActiveElement({ immediate = false } = {}) {
+        const blur = () => {
+            if (
+                document.activeElement instanceof HTMLElement &&
+                (
+                    document.activeElement.tagName === 'INPUT' ||
+                    document.activeElement.tagName === 'TEXTAREA' ||
+                    document.activeElement.tagName === 'SELECT' ||
+                    document.activeElement.isContentEditable
+                )
+            ) {
                 document.activeElement.blur();
             }
-        }, 100);
+        };
+
+        if (immediate) {
+            blur();
+            return;
+        }
+        setTimeout(blur, 100);
     }
 
     async beforeLeave({ forceLeave } = {}) {
         if (window.bypassPosLeave) {
-            // No reseteamos inmediatamente a false aquí, ya que Odoo puede llamar 
+            // No reseteamos inmediatamente a false aquí, ya que Odoo puede llamar
             // a beforeLeave varias veces durante una transición compleja.
             // El flag se limpia solo tras 2 segundos o al entrar en un pedido nuevo.
             return super.beforeLeave(...arguments);
         }
 
         const record = this.model.root;
-        
+
         // Ensure record exists and we are not forcing leave (e.g. error redirect)
         if (record && record.data && record.data.state === 'draft' && !forceLeave) {
             this._playErrorBeep();
             this.notification.add(
                 _t("No puedes salir de un pedido que no ha sido pagado. Por favor, finaliza el pago, cancélalo o elimínalo antes de salir."),
-                { 
-                    type: "warning", 
-                    title: _t("Pedido no pagado"), 
+                {
+                    type: "warning",
+                    title: _t("Pedido no pagado"),
                     sticky: false,
                     autocloseDelay: 10000
                 }
