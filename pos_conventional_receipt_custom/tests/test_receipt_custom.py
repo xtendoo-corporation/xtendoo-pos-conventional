@@ -1,5 +1,6 @@
 # Copyright 2024 Xtendoo
 # License OPL-1
+from odoo import fields
 from odoo.tests.common import tagged
 from odoo.exceptions import UserError
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
@@ -215,4 +216,45 @@ class TestReceiptCustom(PosConventionalTestCommon):
 
         self.assertEqual(refund_move.move_type, "out_refund")
         self.assertIn("FACTURA SIMPLIFICADA RECTIFICATIVA:", html)
+
+    def test_18_report_renders_payments_widget_without_legacy_method(self):
+        """El ticket 80mm debe renderizar pagos reconciliados usando invoice_payments_widget."""
+        move = self.env["account.move"].create(
+            {
+                "move_type": "out_invoice",
+                "partner_id": self.partner.id,
+                "journal_id": self.invoice_journal.id,
+                "invoice_date": fields.Date.today(),
+                "invoice_line_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "product_id": self.product.id,
+                            "name": self.product.display_name,
+                            "quantity": 1.0,
+                            "price_unit": 25.0,
+                        },
+                    )
+                ],
+            }
+        )
+        move.action_post()
+
+        payment_register = self.env["account.payment.register"].with_context(
+            active_model="account.move",
+            active_ids=move.ids,
+        ).create(
+            {
+                "journal_id": self.cash_pm.journal_id.id,
+                "payment_date": fields.Date.today(),
+            }
+        )
+        payment_register._create_payments()
+        move.invalidate_recordset(["invoice_payments_widget"])
+
+        html = self._render_factura_simplificada_html(move)
+
+        self.assertTrue(move.invoice_payments_widget)
+        self.assertIn(self.cash_pm.journal_id.name, html)
 
