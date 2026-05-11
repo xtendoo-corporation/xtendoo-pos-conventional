@@ -184,3 +184,30 @@ class TestPosOrderBarcode(PosConventionalTestCommon):
         self.assertAlmostEqual(line.total_cost, 0.0, places=2)
         self.assertAlmostEqual(line.margin, line.price_subtotal, places=2)
 
+    def test_20_repeated_barcode_scans_keep_single_line_and_accumulate_qty(self):
+        """Escanear el mismo barcode varias veces mantiene una sola línea y acumula qty."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+
+        for _index in range(3):
+            result = order.add_product_by_barcode(barcode="TST0001BARCODE")
+            self.assertTrue(result.get("success"))
+
+        self.assertEqual(len(order.lines), 1)
+        line = order.lines[0]
+        self.assertEqual(line.product_id, self.product_barcode)
+        self.assertEqual(line.qty, 3.0)
+
+    def test_21_mixed_barcode_and_default_code_accumulate_same_product(self):
+        """Barcode y default_code del mismo producto deben acumular sobre la misma línea."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+
+        first_result = order.add_product_by_barcode(barcode="TST0001BARCODE")
+        second_result = order.add_product_by_barcode(barcode="TST0001")
+
+        self.assertTrue(first_result.get("success"))
+        self.assertTrue(second_result.get("success"))
+        self.assertEqual(len(order.lines), 1)
+        self.assertEqual(order.lines.qty, 2.0)
+

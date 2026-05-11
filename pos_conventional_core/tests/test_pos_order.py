@@ -985,3 +985,46 @@ class TestPosOrder(PosConventionalTestCommon):
         with self.assertRaises(UserError, msg="No se puede borrar un pedido pagado"):
             order_in_restricted_ctx.unlink()
 
+    def test_64_barcode_accumulation_recomputes_order_totals_correctly(self):
+        """Varios escaneos del mismo producto recalculan qty, impuestos y total del pedido."""
+        self.product_barcode.write({"taxes_id": [(6, 0, [self.tax_21.id])]})
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+
+        for _index in range(3):
+            result = order.add_product_by_barcode(barcode="TST0001BARCODE")
+            self.assertTrue(result.get("success"))
+
+        order.invalidate_recordset(["amount_total", "amount_tax", "lines"])
+        self.assertEqual(len(order.lines), 1)
+        line = order.lines[0]
+        expected_tax = line.price_subtotal_incl - line.price_subtotal
+
+        self.assertEqual(line.qty, 3.0)
+        self.assertAlmostEqual(order.amount_total, line.price_subtotal_incl, places=2)
+        self.assertAlmostEqual(order.amount_tax, expected_tax, places=2)
+        self.assertAlmostEqual(
+            order.amount_total,
+            order.amount_untaxed + order.amount_tax,
+            places=2,
+            msg="El total del pedido debe seguir siendo subtotal + impuestos tras acumular por barcode",
+        )
+
+    def test_65_receipt_data_keeps_single_aggregated_line_after_barcode_scans(self):
+        """Los datos de impresión deben reflejar una sola línea acumulada con su qty correcta."""
+        self.product_barcode.write({"taxes_id": [(6, 0, [self.tax_21.id])]})
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+
+        for _index in range(4):
+            result = order.add_product_by_barcode(barcode="TST0001BARCODE")
+            self.assertTrue(result.get("success"))
+
+        receipt_data = self.env["pos.order"].get_order_receipt_data(order.id)
+
+        self.assertEqual(len(receipt_data["lines"]), 1)
+        line_data = receipt_data["lines"][0]
+        self.assertEqual(line_data["product_id"][0], self.product_barcode.id)
+        self.assertAlmostEqual(line_data["qty"], 4.0)
+        self.assertAlmostEqual(line_data["price_subtotal_incl"], order.amount_total, places=2)
+

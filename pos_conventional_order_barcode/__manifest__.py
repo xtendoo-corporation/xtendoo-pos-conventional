@@ -15,6 +15,9 @@
         "web.assets_backend": [
             "pos_conventional_order_barcode/static/src/js/pos_order_form_barcode_controller.js",
         ],
+        "web.assets_unit_tests": [
+            "pos_conventional_order_barcode/static/tests/pos_order_form_barcode_controller.test.js",
+        ],
     },
     "installable": True,
 }

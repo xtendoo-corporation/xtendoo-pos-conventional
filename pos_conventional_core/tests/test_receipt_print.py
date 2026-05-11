@@ -5,6 +5,7 @@ from odoo.tests.common import tagged
 from .common import PosConventionalTestCommon
 
 REPORT_XMLID = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
+ORDER_REPORT_XMLID = "pos_conventional_receipt_custom.report_pos_order_80mm"
 
 
 @tagged("pos_conventional_core", "-standard", "post_install", "-at_install")
@@ -35,6 +36,18 @@ class TestReceiptPrint(PosConventionalTestCommon):
         self._add_payment(order, self.cash_pm)
         result = order.action_validate_and_invoice()
         return order, result
+
+    def _make_order_with_barcode_scans(self, *, scan_count=3):
+        """Creates a draft order by repeatedly scanning the same product barcode."""
+        self.product_barcode.write({"taxes_id": [(6, 0, [self.tax_21.id])]})
+        session = self._open_session()
+        order = self._make_draft_order(session, partner=self.partner)
+
+        for _index in range(scan_count):
+            result = order.add_product_by_barcode(barcode="TST0001BARCODE")
+            self.assertTrue(result.get("success"))
+
+        return order
 
     # ── account_move creation ─────────────────────────────────────────────
 
@@ -315,3 +328,26 @@ class TestReceiptPrint(PosConventionalTestCommon):
             second_result,
             "Second call to action_validate_and_invoice must return False",
         )
+
+    def test_52_order_report_from_repeated_barcode_scans_keeps_single_line(self):
+        """El ticket HTML del pedido debe representar una única línea acumulada por barcode."""
+        order = self._make_order_with_barcode_scans(scan_count=4)
+        html_content, _content_type = self.env["ir.actions.report"]._render(
+            ORDER_REPORT_XMLID,
+            order.ids,
+        )
+
+        self.assertEqual(len(order.lines), 1)
+        self.assertAlmostEqual(order.lines.qty, 4.0)
+        self.assertIn(self.product_barcode.name.encode(), html_content)
+
+    def test_53_order_report_contains_barcode_accumulated_total(self):
+        """El ticket HTML del pedido debe mostrar el total acumulado tras varios escaneos."""
+        order = self._make_order_with_barcode_scans(scan_count=4)
+        html_content, _content_type = self.env["ir.actions.report"]._render(
+            ORDER_REPORT_XMLID,
+            order.ids,
+        )
+
+        self.assertIn(f"{order.amount_total:.2f}".encode(), html_content)
+

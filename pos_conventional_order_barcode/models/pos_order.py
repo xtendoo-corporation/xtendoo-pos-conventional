@@ -1,4 +1,4 @@
-from odoo import api, fields, models, _
+from odoo import api, models, _
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -6,6 +6,67 @@ _logger = logging.getLogger(__name__)
 
 class PosOrder(models.Model):
     _inherit = "pos.order"
+
+    def _prepare_barcode_line_vals(self, product, qty=1.0):
+        """Prepara los valores de línea usados al crear o acumular un producto escaneado."""
+        self.ensure_one()
+        if hasattr(self, "_prepare_order_line_vals"):
+            return self._prepare_order_line_vals(product, qty)
+
+        price_unit = product.lst_price
+        taxes = product.taxes_id.filtered(lambda t: t.company_id == self.env.company)
+        if taxes:
+            tax_results = taxes.compute_all(
+                price_unit,
+                currency=self.currency_id or self.env.company.currency_id,
+                quantity=qty,
+                product=product,
+            )
+            price_subtotal = tax_results["total_excluded"]
+            price_subtotal_incl = tax_results["total_included"]
+        else:
+            price_subtotal = price_unit * qty
+            price_subtotal_incl = price_unit * qty
+        return {
+            "order_id": self.id,
+            "product_id": product.id,
+            "full_product_name": product.display_name,
+            "qty": qty,
+            "price_unit": price_unit,
+            "discount": 0.0,
+            "price_subtotal": price_subtotal,
+            "price_subtotal_incl": price_subtotal_incl,
+            "tax_ids": [(6, 0, taxes.ids)],
+        }
+
+    def _recompute_barcode_order_amounts(self):
+        """Recalcula y persiste los totales del pedido tras cambios por barcode."""
+        self.ensure_one()
+        if hasattr(self, "_compute_prices"):
+            try:
+                self._compute_prices()
+                return
+            except Exception:
+                _logger.exception(
+                    "Error al recalcular totales con _compute_prices() para el pedido %s",
+                    self.id,
+                )
+
+        refund_factor = -1 if self.is_refund else 1
+        tax_total = refund_factor * sum(
+            line.price_subtotal_incl - line.price_subtotal for line in self.lines
+        )
+        amount_total = refund_factor * sum(line.price_subtotal_incl for line in self.lines)
+        currency = self.currency_id or self.env.company.currency_id
+
+        if currency:
+            tax_total = currency.round(tax_total)
+            amount_total = currency.round(amount_total)
+
+        self.write({
+            "amount_tax": tax_total,
+            "amount_total": amount_total,
+        })
 
     @api.model
     def get_product_line_data_by_barcode(
@@ -97,42 +158,26 @@ class PosOrder(models.Model):
         if existing_line:
             line = existing_line[0]
             new_qty = line.qty + 1
-            line.write({"qty": new_qty})
+            line_vals = self._prepare_barcode_line_vals(product, qty=new_qty)
+            line.write(
+                {
+                    "full_product_name": line_vals["full_product_name"],
+                    "qty": line_vals["qty"],
+                    "price_unit": line_vals["price_unit"],
+                    "discount": line_vals["discount"],
+                    "price_subtotal": line_vals["price_subtotal"],
+                    "price_subtotal_incl": line_vals["price_subtotal_incl"],
+                    "tax_ids": line_vals["tax_ids"],
+                }
+            )
+            self._recompute_barcode_order_amounts()
             return {"success": True, "message": _("Cantidad actualizada: %s x %s") % (new_qty, product.display_name)}
 
         # Crear nueva línea
         try:
-            if hasattr(self, '_prepare_order_line_vals'):
-                vals = self._prepare_order_line_vals(product)
-            else:
-                price_unit = product.lst_price
-                taxes = product.taxes_id.filtered(
-                    lambda t: t.company_id == self.env.company
-                )
-                if taxes:
-                    tax_results = taxes.compute_all(
-                        price_unit,
-                        currency=self.currency_id or self.env.company.currency_id,
-                        quantity=1.0,
-                        product=product,
-                    )
-                    price_subtotal = tax_results["total_excluded"]
-                    price_subtotal_incl = tax_results["total_included"]
-                else:
-                    price_subtotal = price_unit
-                    price_subtotal_incl = price_unit
-                vals = {
-                    'order_id': self.id,
-                    'product_id': product.id,
-                    'full_product_name': product.display_name,
-                    'qty': 1.0,
-                    'price_unit': price_unit,
-                    'discount': 0.0,
-                    'price_subtotal': price_subtotal,
-                    'price_subtotal_incl': price_subtotal_incl,
-                    'tax_ids': [(6, 0, taxes.ids)],
-                }
+            vals = self._prepare_barcode_line_vals(product)
             self.env["pos.order.line"].create(vals)
+            self._recompute_barcode_order_amounts()
             return {"success": True, "message": _("Añadido: %s") % product.display_name}
         except Exception as e:
             _logger.exception("Error al añadir producto por código de barras: %s", str(e))

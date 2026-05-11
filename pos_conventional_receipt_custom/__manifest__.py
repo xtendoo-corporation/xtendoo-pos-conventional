@@ -9,8 +9,8 @@
     "license": "LGPL-3",
     "depends": ["point_of_sale", "sale", "mail"],
     "data": [
-        "report/pos_order_report.xml",
         "data/mail_template_pos_receipt.xml",
+        "report/pos_order_report.xml",
     ],
     "installable": True,
 }
