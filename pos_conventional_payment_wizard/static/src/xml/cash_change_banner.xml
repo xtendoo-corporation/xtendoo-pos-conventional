@@ -4,6 +4,7 @@
     <!-- Resumen warning de la venta anterior. -->
     <t t-name="pos_conventional_payment_wizard.CashChangeBanner">
         <div t-if="visible"
+             t-ref="bannerRoot"
              class="pos-previous-sale-banner alert alert-warning d-flex align-items-center justify-content-between mb-3 shadow-sm py-2 px-3"
              role="alert">
 

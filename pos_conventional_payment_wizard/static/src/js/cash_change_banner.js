@@ -11,7 +11,7 @@
  */
 
 import { registry } from "@web/core/registry";
-import { Component, useState, onMounted, onWillPatch } from "@odoo/owl";
+import { Component, useEffect, useRef, useState, onMounted, onWillPatch, onWillUnmount } from "@odoo/owl";
 
 const STORAGE_KEY_PREVIOUS_TOTAL = "pos_conventional_previous_sale_total";
 const STORAGE_KEY_PREVIOUS_CHANGE = "pos_conventional_previous_sale_change";
@@ -29,30 +29,42 @@ export class CashChangeBanner extends Component {
     };
 
     setup() {
+        this.rootRef = useRef("bannerRoot");
+        this._formObserver = null;
         this.state = useState({
             previousTotal: this._readAmount(STORAGE_KEY_PREVIOUS_TOTAL, null),
             changeAmount: this._readChangeAmount(),
             currencySymbol: this._readCurrencySymbol(),
-            isCash: sessionStorage.getItem(STORAGE_KEY_PREVIOUS_IS_CASH) === "1",
+            isCash: this._readIsCash(),
             dismissed: false,
         });
 
-        const dismissIfLinesExist = () => {
-            if (this.state.dismissed || !this.hasSummary) {
-                return;
-            }
-            const lineCount = this._getLineCount();
-            if (lineCount > 0) {
-                this._clearStorage();
-                this.state.dismissed = true;
-            }
-        };
+        const dismissIfLinesExist = () => this._dismissIfLinesExist();
 
         // Check on initial mount (edge case: form opened with lines already present)
-        onMounted(dismissIfLinesExist);
+        onMounted(() => {
+            dismissIfLinesExist();
+            this._observeFormChanges();
+        });
 
         // Check before each re-render so we react as soon as the first line is added
         onWillPatch(dismissIfLinesExist);
+
+        onWillUnmount(() => this._disconnectFormObserver());
+
+        // React also to model updates because adding the first order line may update
+        // the x2many value without forcing this widget to patch immediately.
+        useEffect(
+            (bus) => {
+                if (!bus) {
+                    return;
+                }
+                const listener = dismissIfLinesExist.bind(this);
+                bus.addEventListener("update", listener);
+                return () => bus.removeEventListener("update", listener);
+            },
+            () => [this.props.record?.model?.bus]
+        );
     }
 
     _readAmount(storageKey, fallbackValue = 0.0) {
@@ -87,12 +99,70 @@ export class CashChangeBanner extends Component {
         }
     }
 
+    _readIsCash() {
+        try {
+            return sessionStorage.getItem(STORAGE_KEY_PREVIOUS_IS_CASH) === "1";
+        } catch (e) {
+            return false;
+        }
+    }
+
     _getLineCount() {
         const lines = this.props.record?.data?.lines;
         if (!lines) return 0;
+        if (this.props.record?.data?.has_order_lines) {
+            return 1;
+        }
         if (typeof lines.count === "number") return lines.count;
         if (Array.isArray(lines.records)) return lines.records.length;
+        if (Array.isArray(lines.currentIds)) return lines.currentIds.length;
+        if (Array.isArray(lines.resIds)) return lines.resIds.length;
         return 0;
+    }
+
+    _getRenderedLineCount() {
+        const bannerEl = this.rootRef.el;
+        const formEl = bannerEl?.closest(".o_form_view") || bannerEl?.closest(".o_content");
+        if (!formEl) {
+            return 0;
+        }
+
+        const lineRows = formEl.querySelectorAll(
+            '.o_field_x2many[name="lines"] tr.o_data_row[data-id], [name="lines"] tr.o_data_row[data-id]'
+        );
+        return lineRows.length;
+    }
+
+
+    _dismissIfLinesExist() {
+        if (this.state.dismissed || !this.hasSummary) {
+            return;
+        }
+        if (this._getLineCount() > 0 || this._getRenderedLineCount() > 0) {
+            this._clearStorage();
+            this.state.dismissed = true;
+        }
+    }
+
+    _observeFormChanges() {
+        this._disconnectFormObserver();
+
+        const bannerEl = this.rootRef.el;
+        const formEl = bannerEl?.closest(".o_form_view") || bannerEl?.closest(".o_content");
+        if (!formEl || typeof MutationObserver === "undefined") {
+            return;
+        }
+
+        this._formObserver = new MutationObserver(() => this._dismissIfLinesExist());
+        this._formObserver.observe(formEl, {
+            childList: true,
+            subtree: true,
+        });
+    }
+
+    _disconnectFormObserver() {
+        this._formObserver?.disconnect();
+        this._formObserver = null;
     }
 
     _clearStorage() {
@@ -134,6 +204,6 @@ export class CashChangeBanner extends Component {
 
 registry.category("view_widgets").add("pos_cash_change_banner", {
     component: CashChangeBanner,
-    extractProps: ({ attrs, record }) => ({ record }),
+    extractProps: ({ record }) => ({ record }),
 });
 
