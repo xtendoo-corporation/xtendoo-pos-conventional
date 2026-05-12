@@ -101,31 +101,225 @@ describe("@pos_conventional_order_barcode/barcode_controller", () => {
         expect(controller.notifications[0].options.type).toBe("success");
     });
 
-    test("addProductToLines uses local flow and saves the new order after barcode scans", async () => {
+    test("processBarcode saves the order, blurs focus, resolves the barcode and then adds the product", async () => {
         const controller = makeController();
         const product = { id: 33, display_name: "Producto Local" };
-        const lineVals = { qty: 1, price_unit: 9.99, discount: 0 };
-        let localAddCalls = 0;
-        let saveCalls = 0;
+        const lineVals = { qty: 1, price_unit: 9.99, discount: 0, full_product_name: "Producto Local" };
+        const callOrder = [];
         const record = {
-            isNew: true,
-            data: {},
+            resId: 91,
+            data: {
+                pricelist_id: false,
+                fiscal_position_id: false,
+                partner_id: false,
+            },
             async save() {
-                saveCalls++;
+                callOrder.push("save");
             },
         };
         controller.model = { root: record };
-        controller.addLineLocally = async (currentRecord, currentProduct, currentLineVals) => {
-            localAddCalls++;
-            expect(currentRecord).toBe(record);
+        controller.minBarcodeLength = 3;
+        controller.isProcessing = false;
+        controller._blurActiveElement = () => {
+            callOrder.push("blur");
+        };
+        controller.orm = {
+            async call(model, method, args, kwargs) {
+                callOrder.push("lookup");
+                expect(model).toBe("pos.order");
+                expect(method).toBe("get_product_line_data_by_barcode");
+                expect(args).toEqual([]);
+                expect(kwargs.barcode).toBe("123456");
+                return { success: true, product, line_vals: lineVals };
+            },
+        };
+        controller.addProductToLines = async (currentProduct, currentLineVals) => {
+            callOrder.push("add");
+            expect(currentProduct).toBe(product);
+            expect(currentLineVals).toBe(lineVals);
+        };
+
+        await controller.processBarcode("123456");
+
+        expect(callOrder).toEqual(["save", "blur", "lookup", "add"]);
+        expect(controller.isProcessing).toBe(false);
+    });
+
+    test("addProductToLines adds the scanned product through RPC on an already saved order", async () => {
+        const controller = makeController();
+        const product = { id: 44, display_name: "Producto RPC" };
+        const lineVals = { qty: 1, price_unit: 15.0, discount: 0.0 };
+        let rpcCalls = 0;
+        controller.model = {
+            root: {
+                resId: 108,
+            },
+        };
+        controller.addLineViaRPC = async (orderId, currentProduct, currentLineVals) => {
+            rpcCalls++;
+            expect(orderId).toBe(108);
             expect(currentProduct).toBe(product);
             expect(currentLineVals).toBe(lineVals);
         };
 
         await controller.addProductToLines(product, lineVals);
 
-        expect(localAddCalls).toBe(1);
-        expect(saveCalls).toBe(1);
+        expect(rpcCalls).toBe(1);
+    });
+
+    test("addLineViaRPC reloads, saves the order and clears focus after adding the scanned product", async () => {
+        const controller = makeController();
+        const product = { id: 55, display_name: "Producto Guardado" };
+        const lineVals = { qty: 1, price_unit: 7.5, discount: 0.0 };
+        const callOrder = [];
+
+        controller.orm = {
+            async call(model, method, args, kwargs) {
+                callOrder.push("rpc");
+                expect(model).toBe("pos.order");
+                expect(method).toBe("add_product_by_barcode");
+                expect(args).toEqual([205]);
+                expect(kwargs).toEqual({
+                    product_id: 55,
+                    line_vals: lineVals,
+                });
+                return {
+                    success: true,
+                    message: "Añadido: Producto Guardado",
+                };
+            },
+        };
+        controller.model = {
+            root: {
+                async load() {
+                    callOrder.push("load");
+                },
+                async save() {
+                    callOrder.push("save");
+                },
+            },
+        };
+        controller._blurActiveElement = ({ immediate } = {}) => {
+            callOrder.push(immediate ? "blur-immediate" : "blur-delayed");
+        };
+
+        await controller.addLineViaRPC(205, product, lineVals);
+
+        expect(callOrder).toEqual(["rpc", "load", "blur-immediate", "save", "blur-delayed"]);
+        expect(controller.notifications).toHaveLength(1);
+        expect(controller.notifications[0].options.type).toBe("success");
+    });
+
+    test("_blurActiveElement removes focus from generic focusable elements in the editable line", async () => {
+        const controller = Object.create(PosOrderBarcodeFormController.prototype);
+        controller.blurFocusTarget = null;
+        const focusedButton = document.createElement("button");
+        focusedButton.type = "button";
+        focusedButton.textContent = "focusable";
+        document.body.appendChild(focusedButton);
+        focusedButton.focus();
+
+        expect(document.activeElement).toBe(focusedButton);
+
+        controller._blurActiveElement({ immediate: true });
+
+        expect(document.activeElement).not.toBe(focusedButton);
+        controller.blurFocusTarget?.remove();
+        focusedButton.remove();
+    });
+
+    test("_tryCleanupManualLineFocus blurs manual focus inside the lines one2many row", async () => {
+        const controller = Object.create(PosOrderBarcodeFormController.prototype);
+        controller.manualLineFocusCleanupTimeout = null;
+        controller.manualLineFocusCleanupAttempts = 0;
+        controller.manualLineFocusCleanupObserver = {
+            disconnect() {},
+        };
+        let blurCalls = 0;
+        controller._blurActiveElement = ({ immediate } = {}) => {
+            expect(immediate).toBe(true);
+            blurCalls++;
+        };
+
+        const field = document.createElement("div");
+        field.className = "o_field_widget";
+        field.setAttribute("name", "lines");
+        field.innerHTML = `
+            <table>
+                <tbody>
+                    <tr class="o_data_row">
+                        <td><button type="button">Producto</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+        document.body.appendChild(field);
+        const focusable = field.querySelector("button");
+        focusable.focus();
+
+        controller._tryCleanupManualLineFocus();
+
+        expect(blurCalls).toBe(1);
+        field.remove();
+    });
+
+    test("onKeyDown removes focus from lines before buffering a barcode key", async () => {
+        const controller = makeController();
+        controller.barcodeBuffer = "";
+        controller.lastKeyTime = 0;
+        controller.maxTimeBetweenKeys = 150;
+        controller.minBarcodeLength = 3;
+        controller._stopManualLineFocusCleanup = () => {};
+        let blurCalls = 0;
+        controller._blurActiveElement = ({ immediate } = {}) => {
+            expect(immediate).toBe(true);
+            blurCalls++;
+        };
+
+        const field = document.createElement("div");
+        field.className = "o_field_widget";
+        field.setAttribute("name", "lines");
+        const input = document.createElement("input");
+        field.appendChild(input);
+        document.body.appendChild(field);
+
+        const ev = {
+            key: "1",
+            target: input,
+            preventDefault() {},
+            stopPropagation() {},
+        };
+
+        controller.onKeyDown(ev);
+
+        expect(blurCalls).toBe(1);
+        expect(controller.barcodeBuffer).toBe("1");
+        field.remove();
+    });
+
+    test("onKeyDown still ignores editable targets outside lines", async () => {
+        const controller = makeController();
+        controller.barcodeBuffer = "";
+        controller.lastKeyTime = 0;
+
+        const input = document.createElement("input");
+        document.body.appendChild(input);
+
+        const ev = {
+            key: "1",
+            target: input,
+            preventDefault() {
+                throw new Error("No debería prevenir el evento fuera de lines");
+            },
+            stopPropagation() {
+                throw new Error("No debería parar el evento fuera de lines");
+            },
+        };
+
+        controller.onKeyDown(ev);
+
+        expect(controller.barcodeBuffer).toBe("");
+        input.remove();
     });
 });
 

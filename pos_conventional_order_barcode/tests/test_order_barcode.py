@@ -211,3 +211,63 @@ class TestPosOrderBarcode(PosConventionalTestCommon):
         self.assertEqual(len(order.lines), 1)
         self.assertEqual(order.lines.qty, 2.0)
 
+    def test_22_add_product_by_barcode_respects_line_vals(self):
+        """Los valores calculados en frontend deben persistirse al crear la línea por RPC."""
+        self.product_barcode.write({"taxes_id": [(5,)]})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+
+        result = order.add_product_by_barcode(
+            product_id=self.product_barcode.id,
+            line_vals={
+                "full_product_name": "Producto Barcode Personalizado",
+                "qty": 2.0,
+                "price_unit": 30.0,
+                "discount": 10.0,
+                "tax_ids": [],
+            },
+        )
+
+        self.assertTrue(result.get("success"))
+        self.assertEqual(len(order.lines), 1)
+        line = order.lines[0]
+        self.assertEqual(line.full_product_name, "Producto Barcode Personalizado")
+        self.assertEqual(line.qty, 2.0)
+        self.assertAlmostEqual(line.price_unit, 30.0, places=2)
+        self.assertAlmostEqual(line.discount, 10.0, places=2)
+        self.assertFalse(line.tax_ids)
+        self.assertAlmostEqual(line.price_subtotal, 54.0, places=2)
+        self.assertAlmostEqual(line.price_subtotal_incl, 54.0, places=2)
+
+    def test_23_add_product_by_barcode_accumulates_existing_line_without_losing_line_vals(self):
+        """Al acumular un producto ya existente se conservan precio y descuento de la línea."""
+        self.product_barcode.write({"taxes_id": [(5,)]})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        custom_line_vals = {
+            "full_product_name": "Producto Barcode Personalizado",
+            "qty": 2.0,
+            "price_unit": 30.0,
+            "discount": 10.0,
+            "tax_ids": [],
+        }
+
+        first_result = order.add_product_by_barcode(
+            product_id=self.product_barcode.id,
+            line_vals=custom_line_vals,
+        )
+        second_result = order.add_product_by_barcode(
+            product_id=self.product_barcode.id,
+            line_vals=custom_line_vals,
+        )
+
+        self.assertTrue(first_result.get("success"))
+        self.assertTrue(second_result.get("success"))
+        self.assertEqual(len(order.lines), 1)
+        line = order.lines[0]
+        self.assertEqual(line.qty, 4.0)
+        self.assertAlmostEqual(line.price_unit, 30.0, places=2)
+        self.assertAlmostEqual(line.discount, 10.0, places=2)
+        self.assertAlmostEqual(line.price_subtotal, 108.0, places=2)
+        self.assertAlmostEqual(line.price_subtotal_incl, 108.0, places=2)
+

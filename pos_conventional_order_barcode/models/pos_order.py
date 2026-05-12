@@ -7,6 +7,53 @@ _logger = logging.getLogger(__name__)
 class PosOrder(models.Model):
     _inherit = "pos.order"
 
+    def _prepare_barcode_line_vals_from_scan(self, product, line_vals=None):
+        """Combina los valores calculados del escaneo con la estructura estándar de línea POS."""
+        self.ensure_one()
+        base_vals = self._prepare_barcode_line_vals(product, qty=1.0)
+        if not line_vals:
+            return base_vals
+
+        qty = line_vals.get("qty") or base_vals["qty"]
+        price_unit = line_vals.get("price_unit", base_vals["price_unit"])
+        discount = line_vals.get("discount", base_vals.get("discount", 0.0))
+        tax_ids = line_vals.get("tax_ids")
+        if tax_ids is None:
+            taxes = self.env["account.tax"].browse(base_vals["tax_ids"][0][2])
+        else:
+            taxes = self.env["account.tax"].browse(tax_ids)
+
+        price = price_unit * (1 - discount / 100.0)
+        currency = self.currency_id or self.env.company.currency_id
+        if taxes:
+            tax_results = taxes.compute_all(
+                price,
+                currency=currency,
+                quantity=qty,
+                product=product,
+                partner=self.partner_id,
+            )
+            price_subtotal = tax_results["total_excluded"]
+            price_subtotal_incl = tax_results["total_included"]
+        else:
+            price_subtotal = price * qty
+            price_subtotal_incl = price * qty
+
+        base_vals.update(
+            {
+                "full_product_name": line_vals.get(
+                    "full_product_name", base_vals["full_product_name"]
+                ),
+                "qty": qty,
+                "price_unit": price_unit,
+                "discount": discount,
+                "price_subtotal": price_subtotal,
+                "price_subtotal_incl": price_subtotal_incl,
+                "tax_ids": [(6, 0, taxes.ids)],
+            }
+        )
+        return base_vals
+
     def _prepare_barcode_line_vals(self, product, qty=1.0):
         """Prepara los valores de línea usados al crear o acumular un producto escaneado."""
         self.ensure_one()
@@ -157,17 +204,37 @@ class PosOrder(models.Model):
         existing_line = self.lines.filtered(lambda l: l.product_id.id == product.id)
         if existing_line:
             line = existing_line[0]
-            new_qty = line.qty + 1
-            line_vals = self._prepare_barcode_line_vals(product, qty=new_qty)
+            qty_to_add = (line_vals or {}).get("qty") or 1.0
+            new_qty = line.qty + qty_to_add
+            price_unit = line.price_unit
+            discount = line.discount or 0.0
+            taxes = line.tax_ids
+            price = price_unit * (1 - discount / 100.0)
+            currency = self.currency_id or self.env.company.currency_id
+
+            if taxes:
+                tax_results = taxes.compute_all(
+                    price,
+                    currency=currency,
+                    quantity=new_qty,
+                    product=product,
+                    partner=self.partner_id,
+                )
+                price_subtotal = tax_results["total_excluded"]
+                price_subtotal_incl = tax_results["total_included"]
+            else:
+                price_subtotal = price * new_qty
+                price_subtotal_incl = price * new_qty
+
             line.write(
                 {
-                    "full_product_name": line_vals["full_product_name"],
-                    "qty": line_vals["qty"],
-                    "price_unit": line_vals["price_unit"],
-                    "discount": line_vals["discount"],
-                    "price_subtotal": line_vals["price_subtotal"],
-                    "price_subtotal_incl": line_vals["price_subtotal_incl"],
-                    "tax_ids": line_vals["tax_ids"],
+                    "full_product_name": line.full_product_name or product.display_name,
+                    "qty": new_qty,
+                    "price_unit": price_unit,
+                    "discount": discount,
+                    "price_subtotal": price_subtotal,
+                    "price_subtotal_incl": price_subtotal_incl,
+                    "tax_ids": [(6, 0, taxes.ids)],
                 }
             )
             self._recompute_barcode_order_amounts()
@@ -175,7 +242,7 @@ class PosOrder(models.Model):
 
         # Crear nueva línea
         try:
-            vals = self._prepare_barcode_line_vals(product)
+            vals = self._prepare_barcode_line_vals_from_scan(product, line_vals=line_vals)
             self.env["pos.order.line"].create(vals)
             self._recompute_barcode_order_amounts()
             return {"success": True, "message": _("Añadido: %s") % product.display_name}

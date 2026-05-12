@@ -13,7 +13,13 @@ class TestPosOrderBarcodeFrontend(HOOTCommon):
         "+",
         "@pos_conventional_order_barcode/barcode_controller/addLineLocally accumulates quantity for repeated scans in a new order,"
         "@pos_conventional_order_barcode/barcode_controller/addLineLocally creates a new line with barcode values in a new order,"
-        "@pos_conventional_order_barcode/barcode_controller/addProductToLines uses local flow and saves the new order after barcode scans",
+        "@pos_conventional_order_barcode/barcode_controller/processBarcode saves the order, blurs focus, resolves the barcode and then adds the product,"
+        "@pos_conventional_order_barcode/barcode_controller/addProductToLines adds the scanned product through RPC on an already saved order,"
+        "@pos_conventional_order_barcode/barcode_controller/addLineViaRPC reloads, saves the order and clears focus after adding the scanned product,"
+        "@pos_conventional_order_barcode/barcode_controller/_blurActiveElement removes focus from generic focusable elements in the editable line,"
+        "@pos_conventional_order_barcode/barcode_controller/_tryCleanupManualLineFocus blurs manual focus inside the lines one2many row,"
+        "@pos_conventional_order_barcode/barcode_controller/onKeyDown removes focus from lines before buffering a barcode key,"
+        "@pos_conventional_order_barcode/barcode_controller/onKeyDown still ignores editable targets outside lines",
     )]
 
     @odoo.tests.no_retry

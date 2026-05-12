@@ -28,10 +28,12 @@ export class PosOrderBarcodeFormController extends FormController {
         this.lastKeyTime = 0;
         this.barcodeTimeout = null;
         this.maxTimeBetweenKeys = 150;
-        this.maxTimeBetweenKeysEditable = 50;
         this.minBarcodeLength = 3;
         this.isProcessing = false;
-        this.editableTargetSnapshot = null;
+        this.blurFocusTarget = null;
+        this.manualLineFocusCleanupTimeout = null;
+        this.manualLineFocusCleanupObserver = null;
+        this.manualLineFocusCleanupAttempts = 0;
         this.boundKeydownHandler = this.onKeyDown.bind(this);
         this.boundPaymentButtonClickHandler = this._onPaymentButtonClick.bind(this);
         this.boundDocClickHandler = this._onDocClick.bind(this);
@@ -58,6 +60,11 @@ export class PosOrderBarcodeFormController extends FormController {
             document.removeEventListener("click", this.boundPaymentButtonClickHandler, true);
             document.removeEventListener("click", this.boundDocClickHandler, true);
             if (this.barcodeTimeout) clearTimeout(this.barcodeTimeout);
+            if (this.manualLineFocusCleanupTimeout) clearTimeout(this.manualLineFocusCleanupTimeout);
+            this.manualLineFocusCleanupObserver?.disconnect();
+            this.manualLineFocusCleanupObserver = null;
+            this.blurFocusTarget?.remove();
+            this.blurFocusTarget = null;
         });
     }
 
@@ -66,6 +73,122 @@ export class PosOrderBarcodeFormController extends FormController {
             window.bypassPosLeave = true;
             setTimeout(() => { window.bypassPosLeave = false; }, 2000);
         }
+
+        if (this._isManualLineAddButton(ev.target)) {
+            this._watchManualLineFocusCleanup();
+        }
+    }
+
+    _isManualLineAddButton(target) {
+        return !!target?.closest?.(
+            ".o_field_widget[name='lines'] .o_field_x2many_list_row_add a, " +
+            ".o_field_widget[name='lines'] .o_group_field_row_add a, " +
+            "[name='lines'] .o_field_x2many_list_row_add a, " +
+            "[name='lines'] .o_group_field_row_add a"
+        );
+    }
+
+    _getOrderLinesFieldElement() {
+        return document.querySelector(
+            ".o_field_widget[name='lines'], [name='lines'].o_field_widget, [name='lines']"
+        );
+    }
+
+    _isFocusInsideOrderLines(target) {
+        const linesField = this._getOrderLinesFieldElement();
+        return !!(
+            linesField &&
+            target instanceof HTMLElement &&
+            linesField.contains(target)
+        );
+    }
+
+    _watchManualLineFocusCleanup() {
+        const linesField = this._getOrderLinesFieldElement();
+        this.manualLineFocusCleanupAttempts = 0;
+
+        if (this.manualLineFocusCleanupTimeout) {
+            clearTimeout(this.manualLineFocusCleanupTimeout);
+            this.manualLineFocusCleanupTimeout = null;
+        }
+
+        this.manualLineFocusCleanupObserver?.disconnect();
+        this.manualLineFocusCleanupObserver = null;
+
+        if (!linesField) {
+            return;
+        }
+
+        this.manualLineFocusCleanupObserver = new MutationObserver(() => {
+            this._queueManualLineFocusCleanupAttempt();
+        });
+        this.manualLineFocusCleanupObserver.observe(linesField, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+        });
+
+        this._queueManualLineFocusCleanupAttempt();
+    }
+
+    _queueManualLineFocusCleanupAttempt() {
+        if (this.manualLineFocusCleanupTimeout) {
+            clearTimeout(this.manualLineFocusCleanupTimeout);
+        }
+        this.manualLineFocusCleanupTimeout = setTimeout(() => {
+            this.manualLineFocusCleanupTimeout = null;
+            this._tryCleanupManualLineFocus();
+        }, 120);
+    }
+
+    _tryCleanupManualLineFocus() {
+        const linesField = this._getOrderLinesFieldElement();
+        if (!linesField) {
+            this._stopManualLineFocusCleanup();
+            return;
+        }
+
+        const activeElement = document.activeElement;
+        const autoCompleteOpen = !!document.querySelector(".o-autocomplete--dropdown-menu.show");
+        const focusInsideLines = activeElement instanceof HTMLElement && linesField.contains(activeElement);
+
+        if (autoCompleteOpen) {
+            this._retryManualLineFocusCleanup();
+            return;
+        }
+
+        if (!focusInsideLines) {
+            this._stopManualLineFocusCleanup();
+            return;
+        }
+
+        const activeRow = activeElement.closest?.("tr.o_data_row");
+        if (!activeRow) {
+            this._retryManualLineFocusCleanup();
+            return;
+        }
+
+        this._blurActiveElement({ immediate: true });
+        this._stopManualLineFocusCleanup();
+    }
+
+    _retryManualLineFocusCleanup() {
+        this.manualLineFocusCleanupAttempts += 1;
+        if (this.manualLineFocusCleanupAttempts >= 25) {
+            this._stopManualLineFocusCleanup();
+            return;
+        }
+        this._queueManualLineFocusCleanupAttempt();
+    }
+
+    _stopManualLineFocusCleanup() {
+        if (this.manualLineFocusCleanupTimeout) {
+            clearTimeout(this.manualLineFocusCleanupTimeout);
+            this.manualLineFocusCleanupTimeout = null;
+        }
+        this.manualLineFocusCleanupObserver?.disconnect();
+        this.manualLineFocusCleanupObserver = null;
+        this.manualLineFocusCleanupAttempts = 0;
     }
 
     /**
@@ -105,15 +228,22 @@ export class PosOrderBarcodeFormController extends FormController {
     }
 
     onKeyDown(ev) {
-        const target = ev.target || document.activeElement;
-        const isEditableTarget = this._isEditableTarget(target);
-        if (isEditableTarget && !this.editableTargetSnapshot) {
-            this.editableTargetSnapshot = this._captureEditableTargetSnapshot(target);
-        }
+        try {
+            const target = ev.target || document.activeElement;
+            const tag = target && target.tagName ? target.tagName.toLowerCase() : null;
+            const isEditableTarget = tag === 'input' || tag === 'textarea' || tag === 'select' || (target && target.isContentEditable);
+            if (isEditableTarget) {
+                if (this._isFocusInsideOrderLines(target)) {
+                    this._stopManualLineFocusCleanup();
+                    this._blurActiveElement({ immediate: true });
+                } else {
+                    return;
+                }
+            }
+        } catch (err) {}
 
         const now = Date.now();
         const timeDiff = now - this.lastKeyTime;
-        const keyDelayLimit = isEditableTarget ? this.maxTimeBetweenKeysEditable : this.maxTimeBetweenKeys;
 
         if (["Shift", "Control", "Alt", "Meta", "CapsLock", "Escape"].includes(ev.key)) return;
         if (ev.key.length > 1 && ev.key !== "Enter" && ev.key !== "Tab") return;
@@ -125,113 +255,41 @@ export class PosOrderBarcodeFormController extends FormController {
             }
             if (this.barcodeBuffer.length >= this.minBarcodeLength) {
                 ev.preventDefault();
-                ev.stopImmediatePropagation();
-                this._restoreEditableTargetIfNeeded();
-                this._blurActiveElement({ immediate: true });
+                ev.stopPropagation();
                 const barcode = this.barcodeBuffer;
-                this._resetBarcodeCaptureState();
+                this.barcodeBuffer = "";
+                this.lastKeyTime = 0;
                 this.processBarcode(barcode);
                 return false;
             }
-            this._resetBarcodeCaptureState();
+            this.barcodeBuffer = "";
+            this.lastKeyTime = 0;
             return;
         }
 
-        if (this.lastKeyTime > 0 && timeDiff > keyDelayLimit) {
-            this._resetBarcodeCaptureState({ preserveEditableSnapshot: isEditableTarget });
-            if (isEditableTarget) {
-                this.editableTargetSnapshot = this._captureEditableTargetSnapshot(target);
-            }
-        }
+        if (this.lastKeyTime > 0 && timeDiff > this.maxTimeBetweenKeys) this.barcodeBuffer = "";
         this.barcodeBuffer += ev.key;
         this.lastKeyTime = now;
 
-        if (isEditableTarget && this._isLikelyBarcodeInEditableTarget(timeDiff)) {
-            this._restoreEditableTargetIfNeeded();
-            this._blurActiveElement({ immediate: true });
+        if (this.barcodeBuffer.length >= 1) {
             ev.preventDefault();
-            ev.stopImmediatePropagation();
-        } else if (!isEditableTarget && this.barcodeBuffer.length >= 1) {
-            ev.preventDefault();
-            ev.stopImmediatePropagation();
+            ev.stopPropagation();
         }
 
         if (this.barcodeTimeout) clearTimeout(this.barcodeTimeout);
         this.barcodeTimeout = setTimeout(() => {
             if (this.barcodeBuffer.length >= this.minBarcodeLength) {
                 const barcode = this.barcodeBuffer;
-                this._restoreEditableTargetIfNeeded();
-                this._blurActiveElement({ immediate: true });
-                this._resetBarcodeCaptureState();
+                this.barcodeBuffer = "";
+                this.lastKeyTime = 0;
                 this.processBarcode(barcode);
             } else {
-                this._resetBarcodeCaptureState();
+                this.barcodeBuffer = "";
+                this.lastKeyTime = 0;
             }
         }, this.maxTimeBetweenKeys + 50);
 
         return false;
-    }
-
-    _isEditableTarget(target) {
-        if (!(target instanceof HTMLElement)) {
-            return false;
-        }
-        const tag = target.tagName ? target.tagName.toLowerCase() : "";
-        return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
-    }
-
-    _captureEditableTargetSnapshot(target) {
-        if (!(target instanceof HTMLElement)) {
-            return null;
-        }
-        if (target.isContentEditable) {
-            return {
-                target,
-                type: "contenteditable",
-                value: target.textContent,
-            };
-        }
-        return {
-            target,
-            type: "input",
-            value: "value" in target ? target.value : "",
-        };
-    }
-
-    _restoreEditableTargetIfNeeded() {
-        const snapshot = this.editableTargetSnapshot;
-        if (!snapshot || !(snapshot.target instanceof HTMLElement)) {
-            return;
-        }
-        if (snapshot.type === "contenteditable") {
-            if (snapshot.target.textContent !== snapshot.value) {
-                snapshot.target.textContent = snapshot.value || "";
-                snapshot.target.dispatchEvent(new Event("input", { bubbles: true }));
-            }
-        } else if ("value" in snapshot.target && snapshot.target.value !== snapshot.value) {
-            snapshot.target.value = snapshot.value || "";
-            snapshot.target.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-    }
-
-    _isLikelyBarcodeInEditableTarget(timeDiff) {
-        return Boolean(
-            this.barcodeBuffer.length >= 2 &&
-            this.lastKeyTime > 0 &&
-            timeDiff <= this.maxTimeBetweenKeysEditable
-        );
-    }
-
-    _resetBarcodeCaptureState({ preserveEditableSnapshot = false } = {}) {
-        this.barcodeBuffer = "";
-        this.lastKeyTime = 0;
-        if (this.barcodeTimeout) {
-            clearTimeout(this.barcodeTimeout);
-            this.barcodeTimeout = null;
-        }
-        if (!preserveEditableSnapshot) {
-            this.editableTargetSnapshot = null;
-        }
     }
 
     async processBarcode(barcode) {
@@ -241,7 +299,11 @@ export class PosOrderBarcodeFormController extends FormController {
         this.isProcessing = true;
 
         try {
-            const record = this.model.root;
+            const record = await this._prepareOrderForBarcodeScan();
+            if (!record) {
+                return;
+            }
+
             const pricelistId = record.data.pricelist_id ? record.data.pricelist_id[0] : false;
             const fiscalPositionId = record.data.fiscal_position_id ? record.data.fiscal_position_id[0] : false;
             const partnerId = record.data.partner_id ? record.data.partner_id[0] : false;
@@ -286,26 +348,44 @@ export class PosOrderBarcodeFormController extends FormController {
         }
     }
 
+    async _prepareOrderForBarcodeScan() {
+        const record = this.model.root;
+
+        try {
+            await record.save();
+        } catch (error) {
+            console.error("Error al guardar el pedido antes de procesar el barcode:", error);
+            this.notification.add(
+                _t("Debe guardar el pedido antes de escanear productos. Revise los datos obligatorios y vuelva a intentarlo."),
+                { type: "warning", title: _t("Pedido no guardado") }
+            );
+            return null;
+        }
+
+        if (!record.resId) {
+            this.notification.add(
+                _t("No se puede identificar el pedido actual para procesar el barcode escaneado."),
+                { type: "warning", title: _t("Pedido no disponible") }
+            );
+            return null;
+        }
+
+        this._blurActiveElement({ immediate: true });
+        return record;
+    }
+
     async addProductToLines(product, lineVals) {
         const record = this.model.root;
-        if (record.isNew) {
-            await this.addLineLocally(record, product, lineVals);
-            try {
-                await record.save();
-                this._blurActiveElement();
-            } catch (error) {
-                console.error("Error al guardar el pedido tras escanear el producto:", error);
-                this.notification.add(
-                    _t("La línea se añadió al pedido, pero no se pudo guardar automáticamente. Revise los datos obligatorios y guarde manualmente."),
-                    { type: "warning" }
-                );
-            }
+        const orderId = record.resId;
+        if (!orderId) {
+            this.notification.add(
+                _t("No se puede identificar el pedido actual para añadir el producto escaneado."),
+                { type: "warning", title: _t("Pedido no disponible") }
+            );
             return;
         }
-        const orderId = record.resId;
-        if (!orderId) return;
-        await this.addLineViaRPC(orderId, product);
-        this._blurActiveElement();
+
+        await this.addLineViaRPC(orderId, product, lineVals);
     }
 
     async addLineLocally(record, product, lineVals) {
@@ -350,13 +430,15 @@ export class PosOrderBarcodeFormController extends FormController {
         return newLine;
     }
 
-    async addLineViaRPC(orderId, product) {
+    async addLineViaRPC(orderId, product, lineVals) {
         try {
-            const result = await this.orm.call("pos.order", "add_product_by_barcode", [orderId], { product_id: product.id });
+            const result = await this.orm.call("pos.order", "add_product_by_barcode", [orderId], {
+                product_id: product.id,
+                line_vals: lineVals,
+            });
             if (result.success) {
                 this.notification.add(result.message, { type: "success" });
-                await this.model.root.load();
-                this._blurActiveElement();
+                await this._saveOrderAfterBarcodeLineChange();
             } else {
                 this.notification.add(result.message, { type: "warning" });
             }
@@ -365,25 +447,74 @@ export class PosOrderBarcodeFormController extends FormController {
         }
     }
 
-    _blurActiveElement({ immediate = false } = {}) {
+    async _saveOrderAfterBarcodeLineChange() {
+        await this.model.root.load();
+        this._blurActiveElement({ immediate: true });
+
+        try {
+            await this.model.root.save();
+        } catch (error) {
+            console.error("Error al guardar el pedido tras añadir una línea por barcode:", error);
+            this.notification.add(
+                _t("La línea se añadió correctamente, pero no se pudo guardar el pedido automáticamente."),
+                { type: "warning", title: _t("Pedido no guardado") }
+            );
+        }
+
+        this._blurActiveElement();
+    }
+
+    _getBlurFocusTarget() {
+        if (this.blurFocusTarget?.isConnected) {
+            return this.blurFocusTarget;
+        }
+
+        const target = document.createElement("button");
+        target.type = "button";
+        target.tabIndex = -1;
+        target.setAttribute("aria-hidden", "true");
+        target.style.position = "fixed";
+        target.style.left = "-9999px";
+        target.style.top = "0";
+        target.style.width = "1px";
+        target.style.height = "1px";
+        target.style.opacity = "0";
+        target.style.pointerEvents = "none";
+        document.body.appendChild(target);
+        this.blurFocusTarget = target;
+        return target;
+    }
+
+    _moveFocusOutOfEditableLine() {
         const blur = () => {
+            const activeElement = document.activeElement;
             if (
-                document.activeElement instanceof HTMLElement &&
-                (
-                    document.activeElement.tagName === 'INPUT' ||
-                    document.activeElement.tagName === 'TEXTAREA' ||
-                    document.activeElement.tagName === 'SELECT' ||
-                    document.activeElement.isContentEditable
-                )
+                activeElement instanceof HTMLElement &&
+                activeElement !== document.body &&
+                activeElement !== document.documentElement &&
+                activeElement !== this.blurFocusTarget
             ) {
-                document.activeElement.blur();
+                activeElement.blur?.();
             }
+
+            this._getBlurFocusTarget().focus({ preventScroll: true });
+            window.getSelection?.()?.removeAllRanges?.();
         };
+
+        blur();
+        setTimeout(blur, 0);
+        setTimeout(blur, 50);
+        setTimeout(blur, 150);
+    }
+
+    _blurActiveElement({ immediate = false } = {}) {
+        const blur = () => this._moveFocusOutOfEditableLine();
 
         if (immediate) {
             blur();
             return;
         }
+
         setTimeout(blur, 100);
     }
 
