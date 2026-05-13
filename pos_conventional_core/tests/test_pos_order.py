@@ -1028,3 +1028,59 @@ class TestPosOrder(PosConventionalTestCommon):
         self.assertAlmostEqual(line_data["qty"], 4.0)
         self.assertAlmostEqual(line_data["price_subtotal_incl"], order.amount_total, places=2)
 
+    def test_66_line_onchange_qty_updates_parent_total_immediately(self):
+        """Editar la cantidad de una línea existente debe refrescar el total visible del pedido."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line = self._add_line(order, self.product, 1.0)
+        original_total = order.amount_total
+
+        line.qty = 3.0
+        line._onchange_qty()
+
+        expected_total = sum(order.lines.mapped("price_subtotal_incl"))
+        expected_tax = sum(
+            line_item.price_subtotal_incl - line_item.price_subtotal
+            for line_item in order.lines
+        )
+
+        self.assertGreater(
+            order.amount_total,
+            original_total,
+            "El total del pedido debe aumentar al subir la cantidad desde la línea.",
+        )
+        self.assertAlmostEqual(order.amount_total, expected_total, places=2)
+        self.assertAlmostEqual(order.amount_tax, expected_tax, places=2)
+        self.assertAlmostEqual(
+            order.amount_total,
+            order.amount_untaxed + order.amount_tax,
+            places=2,
+            msg="Tras editar qty en una línea, el total debe seguir siendo base + impuestos.",
+        )
+
+    def test_67_line_onchange_discount_updates_parent_total_immediately(self):
+        """Cambiar el descuento de una línea debe recalcular al instante impuestos y total del pedido."""
+        product = self.product.with_context(active_test=False)
+        product.write({"taxes_id": [(6, 0, [self.tax_21.id])]})
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        line = self._add_line(order, product, 2.0)
+        original_total = order.amount_total
+
+        line.discount = 50.0
+        line._onchange_qty()
+
+        expected_total = sum(order.lines.mapped("price_subtotal_incl"))
+        expected_tax = sum(
+            line_item.price_subtotal_incl - line_item.price_subtotal
+            for line_item in order.lines
+        )
+
+        self.assertLess(
+            order.amount_total,
+            original_total,
+            "El total del pedido debe bajar al aplicar un descuento desde la línea.",
+        )
+        self.assertAlmostEqual(order.amount_total, expected_total, places=2)
+        self.assertAlmostEqual(order.amount_tax, expected_tax, places=2)
+

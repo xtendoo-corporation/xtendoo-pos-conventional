@@ -128,3 +128,30 @@ class PosOrderLine(models.Model):
             total_cost, computed = line._get_total_cost_for_line()
             line.total_cost = total_cost
             line.is_total_cost_computed = computed
+
+    def _onchange_recompute_parent_order_totals(self):
+        """Sincroniza los importes del pedido cuando cambia una línea en el formulario.
+
+        En Odoo 19 la vista OWL del one2many recalcula correctamente los subtotales de
+        la línea, pero el onchange del padre sobre `lines` no siempre se dispara cuando
+        solo cambian campos internos de una línea existente (qty, precio, descuento o
+        impuestos). El síntoma es que la base visible puede actualizarse mientras el
+        total del pedido queda con un valor anterior hasta guardar o recargar.
+
+        Forzamos aquí el recálculo en memoria del pedido padre usando el helper del
+        propio módulo, pensado precisamente para feedback visual inmediato.
+        """
+        if self.env.context.get("skip_parent_order_totals_recompute"):
+            return
+        for line in self:
+            order = line.order_id
+            if not order or not hasattr(order, "_onchange_lines_recompute_totals"):
+                continue
+            order._onchange_lines_recompute_totals()
+
+    @api.onchange("qty", "discount", "price_unit", "tax_ids")
+    def _onchange_qty(self):
+        result = super()._onchange_qty()
+        self._onchange_recompute_parent_order_totals()
+        return result
+

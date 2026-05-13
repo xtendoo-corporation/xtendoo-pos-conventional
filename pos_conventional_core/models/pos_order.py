@@ -39,6 +39,22 @@ class PosOrder(models.Model):
             refund_factor = -1 if order.is_refund else 1
             order.amount_untaxed = refund_factor * sum(line.price_subtotal for line in order.lines)
 
+    def _get_amounts_from_lines(self):
+        """Devuelve impuestos y total calculados a partir de las líneas actuales."""
+        self.ensure_one()
+        refund_factor = -1 if self.is_refund else 1
+        tax_total = refund_factor * sum(
+            line.price_subtotal_incl - line.price_subtotal for line in self.lines
+        )
+        amount_total = refund_factor * sum(
+            line.price_subtotal_incl for line in self.lines
+        )
+        currency = self.currency_id or self.env.company.currency_id
+        if currency:
+            tax_total = currency.round(tax_total)
+            amount_total = currency.round(amount_total)
+        return tax_total, amount_total
+
     @api.onchange("lines")
     def _onchange_lines_recompute_totals(self):
         """
@@ -49,19 +65,7 @@ class PosOrder(models.Model):
         Este onchange calcula los valores; force_save garantiza su persistencia.
         """
         for order in self:
-            lines = order.lines
-            refund_factor = -1 if order.is_refund else 1
-            tax_total = refund_factor * sum(
-                line.price_subtotal_incl - line.price_subtotal for line in lines
-            )
-            amount_total = refund_factor * sum(line.price_subtotal_incl for line in lines)
-            currency = order.currency_id or self.env.company.currency_id
-            if currency:
-                order.amount_tax = currency.round(tax_total)
-                order.amount_total = currency.round(amount_total)
-            else:
-                order.amount_tax = tax_total
-                order.amount_total = amount_total
+            order.amount_tax, order.amount_total = order._get_amounts_from_lines()
 
 
     @api.depends("payment_ids", "state")
@@ -326,12 +330,15 @@ class PosOrder(models.Model):
         self.ensure_one()
         if not self.pricelist_id or not self.lines:
             return
-        for line in self.lines:
+        order_for_batch_update = self.with_context(
+            skip_parent_order_totals_recompute=True
+        )
+        for line in order_for_batch_update.lines:
             product = line.product_id
             if not product:
                 continue
             qty = line.qty or 1.0
-            new_vals = self._prepare_order_line_vals(product, qty)
+            new_vals = order_for_batch_update._prepare_order_line_vals(product, qty)
             line.price_unit = new_vals["price_unit"]
             line.discount = new_vals["discount"]
             line.price_subtotal = new_vals["price_subtotal"]

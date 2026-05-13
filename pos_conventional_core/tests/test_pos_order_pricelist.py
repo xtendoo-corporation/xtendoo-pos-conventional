@@ -15,6 +15,8 @@ Comportamiento validado:
   - Los subtotales se calculan sobre el precio efectivo (precio de lista menos
     descuento de tarifa), no sobre el precio de lista sin descuento.
 """
+from unittest.mock import patch
+
 from odoo.tests.common import tagged
 
 from .common import PosConventionalTestCommon
@@ -457,6 +459,54 @@ class TestPosOrderPricelist(PosConventionalTestCommon):
                 session.config_id.pricelist_id,
                 "La tarifa del pedido debe coincidir con la de la sesión al crearlo",
             )
+
+    def test_23_line_onchange_can_skip_parent_total_recompute_in_batch_context(self):
+        """El contexto de lote evita recálculos redundantes del pedido desde cada línea."""
+        _session, order = self._order_with_session_pricelist()
+        line = self._add_line(order, self.product, 1.0)
+        original_method = type(order)._onchange_lines_recompute_totals
+
+        with patch.object(
+            type(order),
+            "_onchange_lines_recompute_totals",
+            autospec=True,
+            wraps=original_method,
+        ) as recompute_mock:
+            line.with_context(skip_parent_order_totals_recompute=True).price_unit = 80.0
+            line.with_context(skip_parent_order_totals_recompute=True)._onchange_qty()
+
+        self.assertEqual(
+            recompute_mock.call_count,
+            0,
+            "El contexto de lote no debe recalcular el total del pedido desde la línea.",
+        )
+
+    def test_24_recompute_with_pricelist_batches_parent_total_recompute_once(self):
+        """El recálculo por tarifa en varias líneas debe consolidar el total del pedido una sola vez."""
+        _session, order = self._order_with_session_pricelist()
+        self._add_line(order, self.product, 1.0)
+        self._add_line(order, self.product_barcode, 2.0)
+        order.pricelist_id = self.pricelist_20pct
+        original_method = type(order)._onchange_lines_recompute_totals
+
+        with patch.object(
+            type(order),
+            "_onchange_lines_recompute_totals",
+            autospec=True,
+            wraps=original_method,
+        ) as recompute_mock:
+            order._recompute_lines_with_pricelist()
+
+        self.assertEqual(
+            recompute_mock.call_count,
+            1,
+            "El pedido debe recalcular sus totales una sola vez al terminar el lote.",
+        )
+        self.assertAlmostEqual(
+            order.amount_total,
+            sum(order.lines.mapped("price_subtotal_incl")),
+            places=2,
+        )
 
 
 
