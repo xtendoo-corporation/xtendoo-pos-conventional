@@ -321,7 +321,7 @@ export class PosOrderBarcodeFormController extends FormController {
                 return;
             }
 
-            await this.addProductToLines(result.product, result.line_vals);
+             await this.addProductToLines(result.product, result.line_vals, record);
         } catch (error) {
             console.error("Error al procesar código de barras:", error);
         } finally {
@@ -351,18 +351,7 @@ export class PosOrderBarcodeFormController extends FormController {
     async _prepareOrderForBarcodeScan() {
         const record = this.model.root;
 
-        try {
-            await record.save();
-        } catch (error) {
-            console.error("Error al guardar el pedido antes de procesar el barcode:", error);
-            this.notification.add(
-                _t("Debe guardar el pedido antes de escanear productos. Revise los datos obligatorios y vuelva a intentarlo."),
-                { type: "warning", title: _t("Pedido no guardado") }
-            );
-            return null;
-        }
-
-        if (!record.resId) {
+        if (!record) {
             this.notification.add(
                 _t("No se puede identificar el pedido actual para procesar el barcode escaneado."),
                 { type: "warning", title: _t("Pedido no disponible") }
@@ -374,8 +363,48 @@ export class PosOrderBarcodeFormController extends FormController {
         return record;
     }
 
-    async addProductToLines(product, lineVals) {
-        const record = this.model.root;
+    async _shouldAddBarcodeLineLocally(record) {
+        if (!record || record.isNew || !record.resId) {
+            return true;
+        }
+
+        if (typeof record.isDirty === "function") {
+            try {
+                return !!(await record.isDirty());
+            } catch (error) {
+                console.warn("No se pudo determinar si el pedido POS tiene cambios pendientes:", error);
+            }
+        }
+
+        return !!record.dirty;
+    }
+
+    _getOrderLinesList(record) {
+        return record?.data?.lines || null;
+    }
+
+    _getRelationalValueId(value) {
+        if (!value) {
+            return false;
+        }
+        if (typeof value === "number") {
+            return value;
+        }
+        if (Array.isArray(value)) {
+            return value[0] || false;
+        }
+        if (typeof value === "object") {
+            return value.id || value.resId || false;
+        }
+        return false;
+    }
+
+    async addProductToLines(product, lineVals, record = this.model.root) {
+        if (await this._shouldAddBarcodeLineLocally(record)) {
+            await this.addLineLocally(record, product, lineVals);
+            return;
+        }
+
         const orderId = record.resId;
         if (!orderId) {
             this.notification.add(
@@ -389,13 +418,19 @@ export class PosOrderBarcodeFormController extends FormController {
     }
 
     async addLineLocally(record, product, lineVals) {
-        const lines = record.data.lines;
-        if (!lines) {
-            return;
+        const lines = this._getOrderLinesList(record);
+        if (!lines || typeof lines.addNewRecord !== "function") {
+            this.notification.add(
+                _t("No se pudieron preparar las líneas del pedido para añadir el producto escaneado."),
+                { type: "warning", title: _t("Líneas no disponibles") }
+            );
+            return null;
         }
 
         const qtyToAdd = lineVals.qty || 1.0;
-        const existingLine = lines.records.find((line) => line.data.product_id?.id === product.id);
+        const existingLine = (lines.records || []).find(
+            (line) => this._getRelationalValueId(line.data.product_id) === product.id
+        );
 
         if (existingLine) {
             const newQty = (existingLine.data.qty || 0) + qtyToAdd;
@@ -411,7 +446,7 @@ export class PosOrderBarcodeFormController extends FormController {
             return existingLine;
         }
 
-        const newLine = await lines.addNewRecord({ position: "bottom" });
+        const newLine = await lines.addNewRecord({ mode: "edit", position: "bottom" });
         await newLine.update({
             product_id: {
                 id: product.id,

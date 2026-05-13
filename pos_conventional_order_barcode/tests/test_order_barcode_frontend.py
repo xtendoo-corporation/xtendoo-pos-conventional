@@ -12,8 +12,12 @@ class TestPosOrderBarcodeFrontend(HOOTCommon):
     _test_params = [(
         "+",
         "@pos_conventional_order_barcode/barcode_controller/addLineLocally accumulates quantity for repeated scans in a new order,"
+        "@pos_conventional_order_barcode/barcode_controller/addLineLocally also accumulates quantity when the product many2one stores resId,"
         "@pos_conventional_order_barcode/barcode_controller/addLineLocally creates a new line with barcode values in a new order,"
-        "@pos_conventional_order_barcode/barcode_controller/processBarcode saves the order, blurs focus, resolves the barcode and then adds the product,"
+        "@pos_conventional_order_barcode/barcode_controller/addLineLocally warns when the order lines one2many is not available,"
+        "@pos_conventional_order_barcode/barcode_controller/processBarcode blurs focus, resolves the barcode and then adds the product without saving a new order,"
+        "@pos_conventional_order_barcode/barcode_controller/addProductToLines adds the scanned product locally on an unsaved order,"
+        "@pos_conventional_order_barcode/barcode_controller/addProductToLines keeps using local lines when a saved order has pending changes,"
         "@pos_conventional_order_barcode/barcode_controller/addProductToLines adds the scanned product through RPC on an already saved order,"
         "@pos_conventional_order_barcode/barcode_controller/addLineViaRPC reloads, saves the order and clears focus after adding the scanned product,"
         "@pos_conventional_order_barcode/barcode_controller/_blurActiveElement removes focus from generic focusable elements in the editable line,"
