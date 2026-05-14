@@ -19,8 +19,9 @@ export class PosReceiptClientAction extends Component {
             const moveId = params.move_id;
 
             if (moveId) {
-                // Fire the print in the background — the iframe loads and calls
-                // window.print() on its own without blocking navigation.
+                // Fire the print in the background. The loaded report already
+                // calls window.print() on load, so we must not trigger an extra
+                // iframeWin.print() here or the browser will print twice.
                 this._printReportBackground(moveId);
             } else {
                 console.warn(
@@ -35,9 +36,9 @@ export class PosReceiptClientAction extends Component {
     }
 
     /**
-     * Loads the receipt report inside a hidden iframe and triggers window.print()
-     * once the document is ready. Runs entirely in the background — the caller
-     * does not need to await this method.
+     * Loads the receipt report inside a hidden iframe. The report template
+     * itself triggers window.print() on load, so this method must only inject
+     * the iframe and clean it up afterwards.
      *
      * @param {number} moveId - ID of the account.move to print.
      */
@@ -49,13 +50,10 @@ export class PosReceiptClientAction extends Component {
 
         iframe.onload = () => {
             try {
-                const iframeWin = iframe.contentWindow;
-                // Give the browser a tick to render sub-resources before printing.
-                setTimeout(() => {
-                    iframeWin.focus();
-                    iframeWin.print();
-                    setTimeout(() => iframe.remove(), 8000);
-                }, 600);
+                // The report loaded in the iframe is responsible for calling
+                // window.print(). We only keep the iframe alive long enough for
+                // the browser print cycle to start and then clean it up.
+                setTimeout(() => iframe.remove(), 8000);
             } catch (error) {
                 console.error("[PosReceiptClientAction] Error printing receipt:", error);
                 iframe.remove();
