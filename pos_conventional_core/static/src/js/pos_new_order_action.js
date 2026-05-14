@@ -13,7 +13,7 @@ const LEGACY_STORAGE_KEY_CURRENCY = "pos_conventional_cash_change_currency";
  * Acción de cliente para nuevo pedido en POS Conventional.
  * Cierra el pedido actual y navega directamente a un nuevo pedido vacío.
  */
-async function posConventionalNewOrder(env, action) {
+export async function posConventionalNewOrder(env, action) {
     const actionService = env.services.action;
     const orm = env.services.orm;
     const context = action.params || {};
@@ -22,7 +22,15 @@ async function posConventionalNewOrder(env, action) {
 
     _storePreviousSaleSummary(context);
 
-    await _navigateToNewOrder(actionService, orm, context);
+    try {
+        await _navigateToNewOrder(actionService, orm, context);
+    } finally {
+        _resetNavigationBypass();
+    }
+}
+
+function _resetNavigationBypass() {
+    window.bypassPosLeave = false;
 }
 
 function _storePreviousSaleSummary(context) {

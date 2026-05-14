@@ -1,6 +1,6 @@
 import { describe, expect, test } from "@odoo/hoot";
 
-import { buildPosOrdersListAction } from "../src/js/pos_new_order_action";
+import { buildPosOrdersListAction, posConventionalNewOrder } from "../src/js/pos_new_order_action";
 
 describe.current.tags("headless");
 
@@ -46,6 +46,42 @@ describe("@pos_conventional_core/pos_new_order_action", () => {
 
         expect(action.domain).toEqual([["session_id", "=", 82]]);
         expect(action.context.default_session_id).toBe(82);
+    });
+
+    test("posConventionalNewOrder clears bypassPosLeave after opening the new order flow", async () => {
+        const actions = [];
+        window.bypassPosLeave = true;
+
+        try {
+            await posConventionalNewOrder(
+                {
+                    services: {
+                        orm: {
+                            async searchRead() {
+                                return [{ id: 81 }, { id: 82 }];
+                            },
+                        },
+                        action: {
+                            async doAction(action, options) {
+                                actions.push({ action, options });
+                            },
+                        },
+                    },
+                },
+                {
+                    params: {
+                        config_id: 12,
+                        default_session_id: 82,
+                        previous_sale_total: 20,
+                    },
+                }
+            );
+
+            expect(actions).toHaveLength(2);
+            expect(window.bypassPosLeave).toBe(false);
+        } finally {
+            window.bypassPosLeave = false;
+        }
     });
 });
 
