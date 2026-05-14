@@ -141,6 +141,32 @@ class TestSessionManagement(PosConventionalTestCommon):
         result = wizard._return_to_backend()
         self.assertEqual(result.get("res_model"), "pos.order")
 
+    def test_10b_opening_wizard_return_to_backend_works_for_pos_user(self):
+        """El wizard de apertura no debe fallar por ACL al leer la acción base con un usuario POS."""
+        pos_user = self.env["res.users"].sudo().create(
+            {
+                "name": "POS Opening Wizard",
+                "login": "pos_opening_wizard@example.com",
+                "company_id": self.env.company.id,
+                "company_ids": [(4, self.env.company.id)],
+                "group_ids": [
+                    (4, self.env.ref("base.group_user").id),
+                    (4, self.env.ref("point_of_sale.group_pos_user").id),
+                ],
+                "allowed_pos_config_ids": [(4, self.pos_config.id)],
+            }
+        )
+        session = self._open_session()
+        wizard = self.env["pos.session.opening.wizard"].sudo().create(
+            {"session_id": session.id, "user_id": pos_user.id}
+        )
+
+        result = wizard.with_user(pos_user)._return_to_backend()
+
+        self.assertEqual(result.get("type"), "ir.actions.act_window")
+        self.assertEqual(result.get("res_model"), "pos.order")
+        self.assertEqual(result.get("context", {}).get("default_session_id"), session.id)
+
     # ── PosSessionClosingWizard ───────────────────────────────────────────
 
     def test_11_closing_wizard_compute_difference(self):

@@ -105,6 +105,30 @@ class TestPosConfig(PosConventionalTestCommon):
         session_ids_in_domain = [v for op, f, v in [domain[0]] if f == "session_id"]
         self.assertTrue(session_ids_in_domain or len(domain) > 0)
 
+    def test_10b_open_ui_opened_session_works_for_pos_user_without_action_acl(self):
+        """Un usuario POS normal puede continuar la venta sin leer ir.actions.act_window con su ACL."""
+        pos_user = self.env["res.users"].sudo().create(
+            {
+                "name": "POS Continue Sale",
+                "login": "pos_continue_sale@example.com",
+                "company_id": self.env.company.id,
+                "company_ids": [(4, self.env.company.id)],
+                "group_ids": [
+                    (4, self.env.ref("base.group_user").id),
+                    (4, self.env.ref("point_of_sale.group_pos_user").id),
+                ],
+                "allowed_pos_config_ids": [(4, self.pos_config.id)],
+            }
+        )
+        session = self._open_session(self.pos_config)
+        session.sudo().write({"user_id": pos_user.id})
+
+        result = self.pos_config.with_user(pos_user).open_ui()
+
+        self.assertEqual(result.get("type"), "ir.actions.act_window")
+        self.assertEqual(result.get("res_model"), "pos.order")
+        self.assertEqual(result.get("context", {}).get("default_session_id"), session.id)
+
     def test_11_open_ui_opening_control_returns_opening_popup(self):
         """open_ui en modo non-touch con sesión en 'opening_control' muestra el popup de apertura.
 

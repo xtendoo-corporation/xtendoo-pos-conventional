@@ -119,7 +119,7 @@ class PosSessionOpeningWizard(models.TransientModel):
         config_sessions = self.env["pos.session"].search([
             ("config_id", "=", self.session_id.config_id.id)
         ])
-        action = self.env.ref("point_of_sale.action_pos_pos_form").read()[0]
+        action = self.env.ref("point_of_sale.action_pos_pos_form").sudo().read()[0]
         action["domain"] = [("session_id", "in", config_sessions.ids)]
         action["context"] = {
             "default_session_id": self.session_id.id,

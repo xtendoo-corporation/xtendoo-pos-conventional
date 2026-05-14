@@ -31,6 +31,31 @@ class TestPosConventionalReturns(PosConventionalReturnsCommon):
         self.assertTrue(action["context"].get("conventional_returns_mode"))
         self.assertEqual(action["context"].get("default_session_id"), session.id)
 
+    def test_01b_action_open_conventional_returns_works_for_pos_user(self):
+        pos_user = self.env["res.users"].sudo().create(
+            {
+                "name": "POS Returns User",
+                "login": "pos_returns_user@example.com",
+                "company_id": self.env.company.id,
+                "company_ids": [(4, self.env.company.id)],
+                "group_ids": [
+                    (4, self.env.ref("base.group_user").id),
+                    (4, self.env.ref("point_of_sale.group_pos_user").id),
+                ],
+                "allowed_pos_config_ids": [(4, self.pos_config.id)],
+            }
+        )
+        session = self._open_session()
+
+        action = self.env["pos.order"].with_user(pos_user).with_context(
+            default_session_id=session.id,
+            session_id=session.id,
+        ).action_open_conventional_returns()
+
+        self.assertEqual(action["type"], "ir.actions.act_window")
+        self.assertEqual(action["name"], "Devoluciones")
+        self.assertEqual(action["context"].get("default_session_id"), session.id)
+
     def test_02_refund_created_in_current_session_of_same_config(self):
         original_session = self._open_session()
         order = self._make_draft_order(original_session, partner=self.partner)

@@ -39,7 +39,7 @@ class PosOrder(models.Model):
         if not config_id:
             raise UserError(_("La sesión seleccionada no tiene una configuración de TPV válida."))
 
-        action = self.env.ref("point_of_sale.action_pos_pos_form").read()[0]
+        action = self.env.ref("point_of_sale.action_pos_pos_form").sudo().read()[0]
         action.update({
             "name": _("Devoluciones"),
             "domain": [
