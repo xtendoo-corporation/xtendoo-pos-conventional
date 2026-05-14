@@ -2,7 +2,7 @@ import logging
 
 from odoo import api, models
 from odoo.exceptions import UserError
-from odoo.tools import float_is_zero
+from odoo.tools import float_compare, float_is_zero
 from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
@@ -17,14 +17,19 @@ class PosOrder(models.Model):
 
         currency = self.currency_id or self.session_id.currency_id or self.env.company.currency_id
         round_amount = currency.round if currency else lambda amount: round(amount, 2)
+        rounding = currency.rounding if currency else 0.01
 
         change_amount = 0.0
         is_cash = False
         if self.amount_total > 0:
-            negative_payments = self.payment_ids.filtered(lambda payment: payment.amount < -0.005)
+            negative_payments = self.payment_ids.filtered(
+                lambda payment: float_compare(
+                    payment.amount, 0.0, precision_rounding=rounding
+                ) < 0
+            )
             if negative_payments:
                 change_amount = abs(sum(negative_payments.mapped("amount")))
-            elif getattr(self, "amount_return", 0.0) > 0:
+            elif float_compare(getattr(self, "amount_return", 0.0), 0.0, precision_rounding=rounding) > 0:
                 change_amount = self.amount_return
 
             # Detectamos si se ha usado algún método de efectivo

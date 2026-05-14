@@ -2,6 +2,7 @@ import logging
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, MissingError
+from odoo.tools import float_compare
 
 _logger = logging.getLogger(__name__)
 
@@ -356,17 +357,24 @@ class PosMakePaymentWizard(models.TransientModel):
         if self.amount_total <= 0:
             raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos."))
 
+        rounding = (
+            order.currency_id.rounding
+            or self.currency_id.rounding
+            or self.env.company.currency_id.rounding
+            or 0.01
+        )
+
         # amount_change = amount_due - amount_tendered:
         #   > 0.01  → importe insuficiente (falta por pagar)
         #   < -0.01 → hay cambio que devolver al cliente
         if self.is_cash_payment:
-            if self.amount_change > 0.01:
+            if float_compare(self.amount_change, 0.0, precision_rounding=rounding) > 0:
                 return self._warning_notification_action(
                     _("Importe insuficiente para completar el pago.")
                 )
         else:
             total_covered = self.amount_paid + self.amount_tendered
-            if total_covered < self.amount_total - 0.01:
+            if float_compare(total_covered, self.amount_total, precision_rounding=rounding) < 0:
                 return self._warning_notification_action(
                     _("Importe insuficiente para completar el pago.")
                 )
@@ -393,11 +401,11 @@ class PosMakePaymentWizard(models.TransientModel):
             # cash_change_for_banner: valor positivo del cambio a devolver
             cash_change_for_banner = (
                 -self.amount_change
-                if self.is_cash_payment and self.amount_change < -0.01
+                if self.is_cash_payment and float_compare(self.amount_change, 0.0, precision_rounding=rounding) < 0
                 else 0.0
             )
 
-            if self.is_cash_payment and self.amount_change < -0.01:
+            if self.is_cash_payment and float_compare(self.amount_change, 0.0, precision_rounding=rounding) < 0:
                 order.add_payment({
                     "pos_order_id": order.id,
                     "amount": self.amount_tendered,
@@ -411,7 +419,7 @@ class PosMakePaymentWizard(models.TransientModel):
                     })
             else:
                 _total, _paid, due = self._get_order_amounts(order)
-                if due > 0.01:
+                if float_compare(due, 0.0, precision_rounding=rounding) > 0:
                     order.add_payment({
                         "pos_order_id": order.id,
                         "amount": due,

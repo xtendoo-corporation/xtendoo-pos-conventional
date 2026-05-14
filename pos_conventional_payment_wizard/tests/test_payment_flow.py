@@ -299,6 +299,21 @@ class TestPaymentFlow(PosConventionalTestCommon):
                 msg="El pago negativo debe coincidir con el cambio calculado",
             )
 
+    def test_16b_cash_wizard_with_one_cent_change_keeps_previous_sale_change(self):
+        """Un cambio exacto de 0,01 € debe registrarse y propagarse al banner del siguiente pedido."""
+        order = self._order_with_line()
+        total = order.amount_total
+        if total <= 0:
+            self.skipTest("Pedido sin importe")
+
+        _wizard, action = self._pay_cash_wizard_validate(order, tendered=total + 0.01)
+        params = self._get_final_params(action)
+        negative = order.payment_ids.filtered(lambda p: p.amount < 0)
+
+        self.assertTrue(negative, "Debe existir un pago negativo de cambio incluso si es de 0,01 €")
+        self.assertAlmostEqual(abs(sum(negative.mapped("amount"))), 0.01, places=2)
+        self.assertAlmostEqual(params.get("previous_sale_change", 0.0), 0.01, places=2)
+
     def test_17_cash_wizard_insufficient_payment_returns_warning(self):
         """action_validate() con importe insuficiente devuelve un banner warning."""
         order = self._order_with_line()
@@ -310,6 +325,20 @@ class TestPaymentFlow(PosConventionalTestCommon):
         self.assertEqual(action.get("tag"), "display_notification")
         self.assertEqual(action.get("params", {}).get("type"), "warning")
         self.assertIn("insuficiente", action.get("params", {}).get("message", "").lower())
+        self.assertEqual(order.state, "draft")
+
+    def test_17b_cash_wizard_with_one_cent_missing_returns_warning(self):
+        """Si falta exactamente 0,01 € también debe bloquearse el pago."""
+        order = self._order_with_line()
+        total = order.amount_total
+        if total <= 0:
+            self.skipTest("Pedido sin importe")
+
+        _wizard, action = self._pay_cash_wizard_validate(order, tendered=total - 0.01)
+
+        self.assertEqual(action.get("type"), "ir.actions.client")
+        self.assertEqual(action.get("tag"), "display_notification")
+        self.assertEqual(action.get("params", {}).get("type"), "warning")
         self.assertEqual(order.state, "draft")
 
     def test_18_cash_wizard_non_conventional_returns_window_close(self):
