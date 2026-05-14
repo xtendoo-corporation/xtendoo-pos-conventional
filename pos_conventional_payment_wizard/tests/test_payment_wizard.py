@@ -207,6 +207,12 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         )
         self.assertFalse(wizard.is_cash_payment)
 
+    def test_17b_payment_wizard_payment_ids_is_one2many(self):
+        """payment_ids debe ser one2many para impedir el enlazado manual desde la tabla."""
+        field = self.env["pos.make.payment.wizard"]._fields["payment_ids"]
+        self.assertEqual(field.type, "one2many")
+        self.assertEqual(field.comodel_name, "pos.payment")
+
     # ── action_pay_order_from_kanban (PosPaymentMethod) ────────────────────
 
     def test_18_action_pay_from_kanban_without_active_id_returns_false(self):

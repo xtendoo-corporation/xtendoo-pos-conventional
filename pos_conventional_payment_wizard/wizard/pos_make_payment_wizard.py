@@ -71,8 +71,9 @@ class PosMakePaymentWizard(models.TransientModel):
     amount_tendered = fields.Monetary(string="Importe Entregado", default=0.0, currency_field="currency_id")
     amount_change = fields.Monetary(string="Cambio a Devolver", compute="_compute_amount_change", currency_field="currency_id")
     is_cash_payment = fields.Boolean(compute="_compute_is_cash_payment")
-    payment_ids = fields.Many2many(
+    payment_ids = fields.One2many(
         comodel_name="pos.payment",
+        inverse_name="pos_order_id",
         compute="_compute_payment_ids",
         inverse="_inverse_payment_ids",
         string="Pagos Registrados",
@@ -441,7 +442,7 @@ class PosMakePaymentWizard(models.TransientModel):
                 # Si existe el campo de factura simplificada (localización española), lo marcamos
                 if "is_l10n_es_simplified_invoice" in order._fields:
                     vals["is_l10n_es_simplified_invoice"] = True
-                
+
                 order.with_context(skip_completeness_check=True).write(vals)
                 _logger.info(
                     "POS: to_invoice=True (simplified=%s) for order %s",

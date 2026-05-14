@@ -65,8 +65,11 @@
 
                     <separator string="Pagos registrados" />
 
-                    <field name="payment_ids" nolabel="1" mode="list">
-                        <list create="0" delete="1">
+                    <field name="payment_ids"
+                           nolabel="1"
+                           mode="list"
+                           options="{'no_create': True, 'no_create_edit': True, 'no_open': True}">
+                        <list create="0" delete="1" edit="0" open_form_view="0">
                             <field name="payment_method_id" />
                             <field name="amount" sum="Total" />
                         </list>
