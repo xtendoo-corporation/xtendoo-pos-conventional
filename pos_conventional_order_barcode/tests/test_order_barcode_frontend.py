@@ -22,7 +22,11 @@ class TestPosOrderBarcodeFrontend(HOOTCommon):
         "@pos_conventional_order_barcode/barcode_controller/addLineViaRPC reloads, saves the order and clears focus after adding the scanned product,"
         "@pos_conventional_order_barcode/barcode_controller/_blurActiveElement removes focus from generic focusable elements in the editable line,"
         "@pos_conventional_order_barcode/barcode_controller/_tryCleanupManualLineFocus blurs manual focus inside the lines one2many row,"
-        "@pos_conventional_order_barcode/barcode_controller/onKeyDown removes focus from lines before buffering a barcode key,"
+        "@pos_conventional_order_barcode/barcode_controller/onKeyDown allows manual typing in the product input inside lines,"
+        "@pos_conventional_order_barcode/barcode_controller/onKeyDown allows manual typing in the qty input inside lines,"
+        "@pos_conventional_order_barcode/barcode_controller/onKeyDown allows manual typing in the discount input inside lines,"
+        "@pos_conventional_order_barcode/barcode_controller/onKeyDown preserves manual line editing for product, qty and discount inputs,"
+        "@pos_conventional_order_barcode/barcode_controller/onKeyDown still buffers barcode keys on non-editable targets inside lines,"
         "@pos_conventional_order_barcode/barcode_controller/onKeyDown still ignores editable targets outside lines",
     )]
 

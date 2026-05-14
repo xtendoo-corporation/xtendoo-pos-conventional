@@ -103,6 +103,16 @@ export class PosOrderBarcodeFormController extends FormController {
         );
     }
 
+    _isEditableTarget(target) {
+        const tag = target && target.tagName ? target.tagName.toLowerCase() : null;
+        return (
+            tag === "input" ||
+            tag === "textarea" ||
+            tag === "select" ||
+            !!(target && target.isContentEditable)
+        );
+    }
+
     _watchManualLineFocusCleanup() {
         const linesField = this._getOrderLinesFieldElement();
         this.manualLineFocusCleanupAttempts = 0;
@@ -230,15 +240,11 @@ export class PosOrderBarcodeFormController extends FormController {
     onKeyDown(ev) {
         try {
             const target = ev.target || document.activeElement;
-            const tag = target && target.tagName ? target.tagName.toLowerCase() : null;
-            const isEditableTarget = tag === 'input' || tag === 'textarea' || tag === 'select' || (target && target.isContentEditable);
-            if (isEditableTarget) {
+            if (this._isEditableTarget(target)) {
                 if (this._isFocusInsideOrderLines(target)) {
                     this._stopManualLineFocusCleanup();
-                    this._blurActiveElement({ immediate: true });
-                } else {
-                    return;
                 }
+                return;
             }
         } catch (err) {}
 

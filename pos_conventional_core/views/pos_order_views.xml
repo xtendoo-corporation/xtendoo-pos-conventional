@@ -114,6 +114,18 @@
             <!-- Eliminar totales originales de la pestaña Products -->
             <xpath expr="//page[@name='products']/group[@name='order_total']" position="replace" />
 
+            <xpath expr="//page[@name='products']/field[@name='lines']/list/field[@name='product_id']" position="attributes">
+                <attribute name="context">{'display_default_code': True}</attribute>
+                <attribute name="domain">[('sale_ok', '=', True), ('available_in_pos', '=', True)]</attribute>
+                <attribute name="options">{'no_create': True, 'no_create_edit': True, 'no_open': True}</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='products']/field[@name='lines']/form/group/field[@name='product_id']" position="attributes">
+                <attribute name="context">{'display_default_code': True}</attribute>
+                <attribute name="domain">[('sale_ok', '=', True), ('available_in_pos', '=', True)]</attribute>
+                <attribute name="options">{'no_create': True, 'no_create_edit': True, 'no_open': True}</attribute>
+            </xpath>
+
             <!-- Eliminar totales originales de la pestaña Payments -->
             <xpath expr="//page[@name='payments']/group[@name='order_total']" position="replace" />
 

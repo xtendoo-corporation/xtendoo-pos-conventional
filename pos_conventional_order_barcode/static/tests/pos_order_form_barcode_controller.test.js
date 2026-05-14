@@ -389,13 +389,16 @@ describe("@pos_conventional_order_barcode/barcode_controller", () => {
         field.remove();
     });
 
-    test("onKeyDown removes focus from lines before buffering a barcode key", async () => {
+    function expectManualTypingAllowedInLines({ inputAttributes = {}, key = "1" } = {}) {
         const controller = makeController();
         controller.barcodeBuffer = "";
         controller.lastKeyTime = 0;
         controller.maxTimeBetweenKeys = 150;
         controller.minBarcodeLength = 3;
-        controller._stopManualLineFocusCleanup = () => {};
+        let cleanupCalls = 0;
+        controller._stopManualLineFocusCleanup = () => {
+            cleanupCalls++;
+        };
         let blurCalls = 0;
         controller._blurActiveElement = ({ immediate } = {}) => {
             expect(immediate).toBe(true);
@@ -406,19 +409,130 @@ describe("@pos_conventional_order_barcode/barcode_controller", () => {
         field.className = "o_field_widget";
         field.setAttribute("name", "lines");
         const input = document.createElement("input");
+        Object.entries(inputAttributes).forEach(([attribute, value]) => {
+            input.setAttribute(attribute, value);
+        });
         field.appendChild(input);
         document.body.appendChild(field);
 
+        let prevented = false;
+        let stopped = false;
         const ev = {
-            key: "1",
+            key,
             target: input,
-            preventDefault() {},
-            stopPropagation() {},
+            preventDefault() {
+                prevented = true;
+            },
+            stopPropagation() {
+                stopped = true;
+            },
         };
 
         controller.onKeyDown(ev);
 
-        expect(blurCalls).toBe(1);
+        expect(cleanupCalls).toBe(1);
+        expect(blurCalls).toBe(0);
+        expect(prevented).toBe(false);
+        expect(stopped).toBe(false);
+        expect(controller.barcodeBuffer).toBe("");
+        field.remove();
+    }
+
+    test("onKeyDown allows manual typing in the product input inside lines", async () => {
+        expectManualTypingAllowedInLines({
+            inputAttributes: {
+                name: "product_id",
+                placeholder: "Código o producto",
+            },
+            key: "7",
+        });
+    });
+
+    test("onKeyDown allows manual typing in the qty input inside lines", async () => {
+        expectManualTypingAllowedInLines({
+            inputAttributes: {
+                name: "qty",
+                inputmode: "decimal",
+            },
+            key: "3",
+        });
+    });
+
+    test("onKeyDown allows manual typing in the discount input inside lines", async () => {
+        expectManualTypingAllowedInLines({
+            inputAttributes: {
+                name: "discount",
+                inputmode: "decimal",
+            },
+            key: "5",
+        });
+    });
+
+    test("onKeyDown preserves manual line editing for product, qty and discount inputs", async () => {
+        const editableLineInputs = [
+            {
+                inputAttributes: {
+                    name: "product_id",
+                    placeholder: "Código o producto",
+                },
+                key: "7",
+            },
+            {
+                inputAttributes: {
+                    name: "qty",
+                    inputmode: "decimal",
+                },
+                key: "3",
+            },
+            {
+                inputAttributes: {
+                    name: "discount",
+                    inputmode: "decimal",
+                },
+                key: "5",
+            },
+        ];
+
+        editableLineInputs.forEach((inputSpec) => {
+            expectManualTypingAllowedInLines(inputSpec);
+        });
+    });
+
+    test("onKeyDown still buffers barcode keys on non-editable targets inside lines", async () => {
+        const controller = makeController();
+        controller.barcodeBuffer = "";
+        controller.lastKeyTime = 0;
+        controller.maxTimeBetweenKeys = 150;
+        controller.minBarcodeLength = 3;
+        controller._stopManualLineFocusCleanup = () => {
+            throw new Error("No debe limpiar foco si el target no es editable");
+        };
+
+        const field = document.createElement("div");
+        field.className = "o_field_widget";
+        field.setAttribute("name", "lines");
+        const button = document.createElement("button");
+        button.type = "button";
+        field.appendChild(button);
+        document.body.appendChild(field);
+
+        let prevented = false;
+        let stopped = false;
+        const ev = {
+            key: "1",
+            target: button,
+            preventDefault() {
+                prevented = true;
+            },
+            stopPropagation() {
+                stopped = true;
+            },
+        };
+
+        controller.onKeyDown(ev);
+
+        expect(prevented).toBe(true);
+        expect(stopped).toBe(true);
         expect(controller.barcodeBuffer).toBe("1");
         field.remove();
     });

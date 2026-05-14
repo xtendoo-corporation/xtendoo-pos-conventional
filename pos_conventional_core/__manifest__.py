@@ -38,6 +38,7 @@
             "pos_conventional_core/static/src/js/pos_order_list_controller.js",
             "pos_conventional_core/static/src/js/pos_order_list_auto_open.js",
             "pos_conventional_core/static/src/js/pos_action_service_patch.js",
+            "pos_conventional_core/static/src/js/product_label_section_and_note_field_patch.js",
             "pos_conventional_core/static/src/xml/pos_order_list_view.xml",
             # POS receipt components injected into backend
             # (needed by pos_receipt_client_action.js which renders OrderReceipt)
@@ -61,6 +62,9 @@
             "point_of_sale/static/src/app/screens/receipt_screen/receipt_screen.scss",
             # Actual receipt client action (must go after POS components are registered)
             "pos_conventional_core/static/src/js/pos_receipt_client_action.js",
+        ],
+        "web.assets_unit_tests": [
+            "pos_conventional_core/static/tests/product_label_section_and_note_field_patch.test.js",
         ],
     },
     "installable": True,

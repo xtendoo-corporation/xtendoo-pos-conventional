@@ -1,5 +1,7 @@
 # Copyright 2024 Xtendoo
 # License OPL-1
+from lxml import etree
+
 from odoo.tests.common import tagged
 
 from .common import PosConventionalTestCommon
@@ -1083,4 +1085,71 @@ class TestPosOrder(PosConventionalTestCommon):
         )
         self.assertAlmostEqual(order.amount_total, expected_total, places=2)
         self.assertAlmostEqual(order.amount_tax, expected_tax, places=2)
+
+    def test_68_products_page_uses_pos_product_selector_context(self):
+        """La vista del pedido debe mostrar la referencia y limitar la búsqueda a productos TPV."""
+        base_view = self.env.ref("point_of_sale.view_pos_pos_form")
+        arch = self.env["pos.order"].get_view(view_id=base_view.id, view_type="form")["arch"]
+        root = etree.fromstring(arch.encode())
+
+        list_field = root.xpath(
+            "//page[@name='products']/field[@name='lines']/list/field[@name='product_id']"
+        )[0]
+        form_field = root.xpath(
+            "//page[@name='products']/field[@name='lines']/form/group/field[@name='product_id']"
+        )[0]
+
+        for product_field in (list_field, form_field):
+            self.assertEqual(product_field.get("context"), "{'display_default_code': True}")
+            self.assertEqual(
+                product_field.get("domain"),
+                "[('sale_ok', '=', True), ('available_in_pos', '=', True)]",
+            )
+            self.assertEqual(
+                product_field.get("options"),
+                "{'no_create': True, 'no_create_edit': True, 'no_open': True}",
+            )
+
+    def test_69_name_search_finds_pos_product_by_default_code(self):
+        """La búsqueda del selector debe encontrar productos TPV por referencia interna."""
+        results = self.env["product.product"].with_context(
+            display_default_code=True
+        ).name_search(
+            name=self.product_barcode.default_code,
+            domain=[("available_in_pos", "=", True)],
+            operator="ilike",
+            limit=20,
+        )
+
+        self.assertIn(
+            self.product_barcode.id,
+            [product_id for product_id, _display_name in results],
+            "La búsqueda por referencia interna debe devolver el producto TPV.",
+        )
+
+    def test_70_name_search_excludes_products_not_available_in_pos(self):
+        """El dominio del selector no debe devolver productos fuera del TPV."""
+        off_pos_product = self.env["product.product"].create(
+            {
+                "name": "Producto fuera de POS",
+                "type": "consu",
+                "list_price": 12.0,
+                "default_code": "OFFPOS0001",
+                "available_in_pos": False,
+                "property_account_income_id": self.income_account.id if self.income_account else False,
+            }
+        )
+
+        results = self.env["product.product"].name_search(
+            name=off_pos_product.default_code,
+            domain=[("available_in_pos", "=", True)],
+            operator="ilike",
+            limit=20,
+        )
+
+        self.assertNotIn(
+            off_pos_product.id,
+            [product_id for product_id, _display_name in results],
+            "El selector sólo debe sugerir productos marcados como disponibles en POS.",
+        )
 
