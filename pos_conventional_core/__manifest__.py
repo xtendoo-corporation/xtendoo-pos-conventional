@@ -65,6 +65,7 @@
         ],
         "web.assets_unit_tests": [
             "pos_conventional_core/static/tests/product_label_section_and_note_field_patch.test.js",
+            "pos_conventional_core/static/tests/pos_new_order_action.test.js",
         ],
     },
     "installable": True,

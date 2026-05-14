@@ -1,6 +1,7 @@
 import { describe, expect, test } from "@odoo/hoot";
 
 import { PosOrderBarcodeFormController } from "@pos_conventional_order_barcode/js/pos_order_form_barcode_controller";
+import { FormController } from "@web/views/form/form_controller";
 
 describe.current.tags("headless");
 
@@ -291,6 +292,148 @@ describe("@pos_conventional_order_barcode/barcode_controller", () => {
         await controller.addProductToLines(product, lineVals);
 
         expect(rpcCalls).toBe(1);
+    });
+
+    test("_hasProductLines only returns true when there is at least one real product line", async () => {
+        const controller = makeController();
+        const record = {
+            data: {
+                lines: {
+                    records: [
+                        {
+                            data: {
+                                display_type: "line_section",
+                                product_id: false,
+                            },
+                        },
+                        {
+                            data: {
+                                display_type: false,
+                                product_id: { id: 44, display_name: "Producto RPC" },
+                            },
+                        },
+                    ],
+                },
+            },
+        };
+
+        expect(controller._hasProductLines(record)).toBe(true);
+    });
+
+    test("beforeLeave allows leaving draft orders without product lines", async () => {
+        const controller = makeController();
+        controller.model = {
+            root: {
+                data: {
+                    state: "draft",
+                    lines: {
+                        records: [
+                            {
+                                data: {
+                                    display_type: "line_note",
+                                    product_id: false,
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
+        };
+        controller._playErrorBeep = () => {
+            throw new Error("No debería sonar si no hay líneas de producto");
+        };
+
+        const originalBeforeLeave = FormController.prototype.beforeLeave;
+        FormController.prototype.beforeLeave = async () => "super-before-leave";
+
+        try {
+            const result = await controller.beforeLeave({});
+            expect(result).toBe("super-before-leave");
+            expect(controller.notifications).toHaveLength(0);
+        } finally {
+            FormController.prototype.beforeLeave = originalBeforeLeave;
+        }
+    });
+
+    test("beforeLeave blocks leaving draft orders with product lines", async () => {
+        const controller = makeController();
+        controller.model = {
+            root: {
+                data: {
+                    state: "draft",
+                    lines: {
+                        records: [
+                            {
+                                data: {
+                                    display_type: false,
+                                    product_id: { id: 55, display_name: "Producto bloqueante" },
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
+        };
+        let beepCalls = 0;
+        controller._playErrorBeep = () => {
+            beepCalls++;
+        };
+
+        const originalBeforeLeave = FormController.prototype.beforeLeave;
+        FormController.prototype.beforeLeave = async () => {
+            throw new Error("No debería delegar a super cuando el pedido tiene productos");
+        };
+
+        try {
+            const result = await controller.beforeLeave({});
+            expect(result).toBe(false);
+            expect(beepCalls).toBe(1);
+            expect(controller.notifications).toHaveLength(1);
+            expect(controller.notifications[0].options.title).toBe("Pedido con productos");
+        } finally {
+            FormController.prototype.beforeLeave = originalBeforeLeave;
+        }
+    });
+
+    test("_onPaymentButtonClick allows cancel to activate the navigation bypass", async () => {
+        const controller = makeController();
+        const record = {
+            resId: 88,
+            data: {
+                amount_total: 0,
+                lines: {
+                    records: [],
+                    currentIds: [],
+                },
+            },
+        };
+        controller.model = { root: record };
+        let bypassCalls = 0;
+        controller._activateNavigationBypass = (currentRecord) => {
+            bypassCalls++;
+            expect(currentRecord).toBe(record);
+        };
+
+        const button = document.createElement("button");
+        button.name = "action_cancel_and_delete_order";
+        document.body.appendChild(button);
+
+        let prevented = false;
+        let stopped = false;
+        controller._onPaymentButtonClick({
+            target: button,
+            preventDefault() {
+                prevented = true;
+            },
+            stopImmediatePropagation() {
+                stopped = true;
+            },
+        });
+
+        expect(bypassCalls).toBe(1);
+        expect(prevented).toBe(false);
+        expect(stopped).toBe(false);
+        button.remove();
     });
 
     test("addLineViaRPC reloads, saves the order and clears focus after adding the scanned product", async () => {

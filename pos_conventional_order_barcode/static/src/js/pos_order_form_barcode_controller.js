@@ -202,20 +202,31 @@ export class PosOrderBarcodeFormController extends FormController {
     }
 
     /**
-     * Intercepta el botón "Pago" y otros botones de acción de pago.
-     * Si el pedido tiene importe cero o no tiene líneas, bloquea la acción.
-     * Si es válido, activa el bypass de navegación.
+     * Intercepta los botones que legítimamente pueden sacar al usuario del pedido
+     * (Pago y Cancelar).
+     *
+     * - Cancelar: activa el bypass para permitir la recarga/transición.
+     * - Pago: solo activa el bypass si el pedido tiene productos e importe válido.
      */
     _onPaymentButtonClick(ev) {
-        const btn = ev.target.closest('button[name^="action_pay_"], button[name="action_open_payment_popup"], button[name="action_pos_convention_pay_with_method"]');
+        const btn = ev.target.closest(
+            'button[name^="action_pay_"], button[name="action_open_payment_popup"], button[name="action_pos_convention_pay_with_method"], button[name="action_cancel_and_delete_order"]'
+        );
         if (!btn) return;
 
         const record = this.model.root;
+        const isCancelButton = btn.name === "action_cancel_and_delete_order";
+
+        if (isCancelButton) {
+            this._activateNavigationBypass(record);
+            return;
+        }
+
         const amountTotal = record.data.amount_total || 0;
-        const linesCount = record.data.lines?.currentIds?.length || 0;
+        const hasProductLines = this._hasProductLines(record);
 
         // Si intentamos cobrar algo vacío, bloqueamos
-        if (linesCount === 0 || amountTotal <= 0) {
+        if (!hasProductLines || amountTotal <= 0) {
             ev.preventDefault();
             ev.stopImmediatePropagation();
             this._playErrorBeep();
@@ -228,13 +239,7 @@ export class PosOrderBarcodeFormController extends FormController {
 
         // Si el pedido es válido y vamos a pagar, activamos el bypass de navegación
         // para permitir el cambio de pantalla fluido tras la validación.
-        window.bypassPosLeave = true;
-        // Limpiamos el bypass tras 10 segundos por seguridad si no se navegó
-        setTimeout(() => {
-            if (window.location.hash.includes('model=pos.order') && window.location.hash.includes('id=' + record.resId)) {
-                window.bypassPosLeave = false;
-            }
-        }, 10000);
+        this._activateNavigationBypass(record);
     }
 
     onKeyDown(ev) {
@@ -389,6 +394,10 @@ export class PosOrderBarcodeFormController extends FormController {
         return record?.data?.lines || null;
     }
 
+    _getOrderLineRecords(record = this.model.root) {
+        return this._getOrderLinesList(record)?.records || [];
+    }
+
     _getRelationalValueId(value) {
         if (!value) {
             return false;
@@ -403,6 +412,35 @@ export class PosOrderBarcodeFormController extends FormController {
             return value.id || value.resId || false;
         }
         return false;
+    }
+
+    _hasProductLines(record = this.model.root) {
+        const lines = this._getOrderLinesList(record);
+        const lineRecords = this._getOrderLineRecords(record);
+
+        if (lineRecords.length) {
+            return lineRecords.some((line) => {
+                if (line?.data?.display_type) {
+                    return false;
+                }
+                return !!this._getRelationalValueId(line?.data?.product_id);
+            });
+        }
+
+        return (lines?.currentIds?.length || 0) > 0;
+    }
+
+    _activateNavigationBypass(record = this.model.root, timeout = 10000) {
+        window.bypassPosLeave = true;
+        setTimeout(() => {
+            if (
+                record?.resId &&
+                window.location.hash.includes("model=pos.order") &&
+                window.location.hash.includes(`id=${record.resId}`)
+            ) {
+                window.bypassPosLeave = false;
+            }
+        }, timeout);
     }
 
     async addProductToLines(product, lineVals, record = this.model.root) {
@@ -569,14 +607,21 @@ export class PosOrderBarcodeFormController extends FormController {
 
         const record = this.model.root;
 
-        // Ensure record exists and we are not forcing leave (e.g. error redirect)
-        if (record && record.data && record.data.state === 'draft' && !forceLeave) {
+        // Solo bloqueamos la salida cuando el pedido sigue en borrador y ya contiene
+        // al menos una línea real de producto.
+        if (
+            record &&
+            record.data &&
+            record.data.state === 'draft' &&
+            !forceLeave &&
+            this._hasProductLines(record)
+        ) {
             this._playErrorBeep();
             this.notification.add(
-                _t("No puedes salir de un pedido que no ha sido pagado. Por favor, finaliza el pago, cancélalo o elimínalo antes de salir."),
+                _t("No puedes salir de un pedido que ya tiene productos. Por favor, finaliza el pago o cancélalo antes de salir."),
                 {
                     type: "warning",
-                    title: _t("Pedido no pagado"),
+                    title: _t("Pedido con productos"),
                     sticky: false,
                     autocloseDelay: 10000
                 }

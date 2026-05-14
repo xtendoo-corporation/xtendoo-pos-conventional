@@ -15,13 +15,14 @@ const LEGACY_STORAGE_KEY_CURRENCY = "pos_conventional_cash_change_currency";
  */
 async function posConventionalNewOrder(env, action) {
     const actionService = env.services.action;
+    const orm = env.services.orm;
     const context = action.params || {};
 
     console.log("[NEW_ORDER] posConventionalNewOrder called, params:", context);
 
     _storePreviousSaleSummary(context);
 
-    await _navigateToNewOrder(actionService, context);
+    await _navigateToNewOrder(actionService, orm, context);
 }
 
 function _storePreviousSaleSummary(context) {
@@ -76,14 +77,58 @@ function _clearPreviousSaleSummary() {
     sessionStorage.removeItem(LEGACY_STORAGE_KEY_CURRENCY);
 }
 
-async function _navigateToNewOrder(actionService, context) {
+async function _getConfigSessionIds(orm, context) {
+    const configId = Number.parseInt(context.config_id, 10);
+    if (!configId || !orm) {
+        return [];
+    }
+
+    try {
+        const sessions = await orm.searchRead(
+            "pos.session",
+            [["config_id", "=", configId]],
+            ["id"]
+        );
+        return (sessions || []).map((session) => session.id).filter(Boolean);
+    } catch (error) {
+        console.warn("[NEW_ORDER] No se pudieron recuperar las sesiones de la caja actual:", error);
+        return [];
+    }
+}
+
+export async function buildPosOrdersListAction(orm, context) {
+    const defaultSessionId = Number.parseInt(context.default_session_id, 10) || false;
+    const sessionIds = await _getConfigSessionIds(orm, context);
+    const domain = sessionIds.length
+        ? [["session_id", "in", sessionIds]]
+        : defaultSessionId
+            ? [["session_id", "=", defaultSessionId]]
+            : [];
+
+    return {
+        type: "ir.actions.act_window",
+        res_model: "pos.order",
+        name: "Pedidos",
+        target: "main",
+        view_mode: "list,form",
+        views: [[false, "list"], [false, "form"]],
+        domain,
+        context: {
+            ...context,
+            default_session_id: defaultSessionId,
+        },
+    };
+}
+
+async function _navigateToNewOrder(actionService, orm, context) {
     console.log("[NEW_ORDER] _navigateToNewOrder called, context:", context);
 
+    const listAction = await buildPosOrdersListAction(orm, context);
+
     // Ir a la lista primero (limpia breadcrumbs)
-    await actionService.doAction("point_of_sale.action_pos_pos_form", {
+    await actionService.doAction(listAction, {
         clearBreadcrumbs: true,
         viewType: "list",
-        additionalContext: context,
     });
 
     if (context.force_login_after_order) {
@@ -102,10 +147,15 @@ async function _navigateToNewOrder(actionService, context) {
         });
     } else {
         console.log("[NEW_ORDER] Opening new empty order form");
-        await actionService.doAction("point_of_sale.action_pos_pos_form", {
-            viewType: "form",
-            props: { resId: false },
-            additionalContext: context,
+        await actionService.doAction({
+            type: "ir.actions.act_window",
+            res_model: "pos.order",
+            views: [[false, "form"]],
+            target: "current",
+            context: {
+                ...context,
+                default_session_id: Number.parseInt(context.default_session_id, 10) || false,
+            },
         });
     }
 }
