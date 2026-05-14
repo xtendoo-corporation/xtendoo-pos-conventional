@@ -16,6 +16,18 @@
                         type="object"
                         class="btn-primary me-1"
                         invisible="state != 'draft'"/>
+                <button name="action_cancel_and_delete_order"
+                        string="Cancelar"
+                        type="object"
+                        class="btn-secondary me-1"
+                        context="{'skip_completeness_check': True}"
+                        invisible="state != 'draft'"/>
+                <button name="action_delete_cancelled_order_from_form"
+                        string="Eliminar"
+                        type="object"
+                        class="btn-danger me-1"
+                        context="{'skip_completeness_check': True}"
+                        invisible="state != 'cancel'"/>
 
                 <field name="available_payment_method_ids"
                        widget="pos_payment_buttons"
@@ -24,5 +36,9 @@
                        class="oe_inline d-inline-flex align-items-center gap-1"/>
             </xpath>
         </field>
+    </record>
+
+    <record id="point_of_sale.pos_order_set_cancel" model="ir.actions.server">
+        <field name="binding_view_types">list,kanban</field>
     </record>
 </odoo>

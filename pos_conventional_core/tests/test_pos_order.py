@@ -921,8 +921,6 @@ class TestPosOrder(PosConventionalTestCommon):
 
         Con el fix (sudo() en unlink) el borrado debe completarse sin error.
         """
-        from odoo.exceptions import UserError
-
         # Crear una segunda compañía que simula la compañía de la sesión POS
         company_session = self.env["res.company"].sudo().create(
             {"name": "Compañía Sesión POS Test"}
@@ -986,6 +984,57 @@ class TestPosOrder(PosConventionalTestCommon):
 
         with self.assertRaises(UserError, msg="No se puede borrar un pedido pagado"):
             order_in_restricted_ctx.unlink()
+
+    def test_action_cancel_and_delete_order_cancels_empty_draft(self):
+        """El botón Cancelar debe reutilizar la acción nativa y dejar el pedido en cancelado."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order_id = order.id
+
+        action = order.with_context(skip_completeness_check=True).action_cancel_and_delete_order()
+
+        self.assertTrue(
+            self.env["pos.order"].sudo().browse(order_id).exists(),
+            "El pedido debe seguir existiendo tras cancelar para que aparezca el botón Eliminar",
+        )
+        self.assertEqual(order.state, "cancel")
+        self.assertEqual(action.get("type"), "ir.actions.client")
+        self.assertEqual(action.get("tag"), "reload")
+
+    def test_action_delete_cancelled_order_from_form_removes_empty_draft(self):
+        """El botón Eliminar debe borrar el pedido cancelado y volver a la lista."""
+        session = self._open_session()
+        order = self._make_draft_order(session)
+        order_id = order.id
+
+        order.with_context(skip_completeness_check=True).action_cancel_and_delete_order()
+        action = order.with_context(skip_completeness_check=True).action_delete_cancelled_order_from_form()
+
+        self.assertFalse(
+            self.env["pos.order"].sudo().browse(order_id).exists(),
+            "El pedido vacío debe haberse eliminado al pulsar Eliminar",
+        )
+        self.assertEqual(action.get("type"), "ir.actions.act_window")
+        self.assertEqual(action.get("res_model"), "pos.order")
+        self.assertEqual(action.get("target"), "main")
+        self.assertEqual(action.get("view_mode"), "list,form")
+        self.assertEqual(action.get("context", {}).get("default_session_id"), session.id)
+        domain = action.get("domain", [])
+        session_domain = next(
+            (item for item in domain if isinstance(item, tuple) and item[:2] == ("session_id", "in")),
+            None,
+        )
+        self.assertTrue(session_domain, f"Debe existir dominio por sesión. domain={domain}")
+        self.assertIn(session.id, session_domain[2])
+
+    def test_cancel_server_action_not_bound_to_form_view(self):
+        """La acción Cancel Order debe desaparecer del menú de acciones del formulario."""
+        action = self.env.ref("point_of_sale.pos_order_set_cancel")
+        self.assertEqual(
+            action.binding_view_types,
+            "list,kanban",
+            "Cancel Order solo debe estar disponible en lista/kanban, no en formulario",
+        )
 
     def test_64_barcode_accumulation_recomputes_order_totals_correctly(self):
         """Varios escaneos del mismo producto recalculan qty, impuestos y total del pedido."""

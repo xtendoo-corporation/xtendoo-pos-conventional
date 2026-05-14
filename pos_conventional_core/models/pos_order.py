@@ -138,6 +138,7 @@ class PosOrder(models.Model):
                 )
         return super(PosOrder, sudo_self).unlink()
 
+
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
         if "company_id" not in res or not res.get("company_id"):
