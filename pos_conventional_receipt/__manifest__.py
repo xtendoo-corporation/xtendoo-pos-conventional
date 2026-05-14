@@ -9,7 +9,6 @@
     'depends': ['point_of_sale', 'l10n_es_pos'],
     'assets': {
         'point_of_sale._assets_pos': [
-            'pos_conventional_receipt/static/src/css/pos_receipt.scss',
             'pos_conventional_receipt/static/src/xml/receipt_templates.xml',
             'pos_conventional_receipt/static/src/js/receipt_order.js',
         ],

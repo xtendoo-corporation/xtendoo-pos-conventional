@@ -16,8 +16,6 @@
     ],
     "assets": {
         "web.assets_backend": [
-            "pos_conventional_session_management/static/src/css/pos_conventional_wizards.css",
-            "pos_conventional_session_management/static/src/css/pos_session_closing.css",
             "pos_conventional_session_management/static/src/js/opening_popup.js",
             "pos_conventional_session_management/static/src/xml/opening_popup.xml",
             "pos_conventional_session_management/static/src/js/closing_popup.js",

@@ -45,7 +45,6 @@
             "point_of_sale/static/lib/qrcode.js",
             "point_of_sale/static/src/utils.js",
             "point_of_sale/static/src/css/pos_receipts.css",
-            "pos_conventional_receipt/static/src/css/pos_receipt.scss",
             "point_of_sale/static/src/app/utils/use_timed_press.js",
             "point_of_sale/static/src/app/components/centered_icon/centered_icon.js",
             "point_of_sale/static/src/app/screens/receipt_screen/receipt/order_receipt.js",

@@ -4,7 +4,7 @@
         <field name="name">pos.make.payment.wizard.form</field>
         <field name="model">pos.make.payment.wizard</field>
         <field name="arch" type="xml">
-            <form string="Realizar Pago">
+            <form string="Realizar Pago" class="o_pos_conventional_payment_wizard_form">
                 <sheet>
                     <field name="order_id" invisible="1" />
                     <field name="config_id" invisible="1" />
@@ -94,7 +94,7 @@
         <field name="name">pos.make.payment.wizard.cash.form</field>
         <field name="model">pos.make.payment.wizard</field>
         <field name="arch" type="xml">
-            <form string="Cobro en Efectivo">
+            <form string="Cobro en Efectivo" class="o_pos_conventional_payment_wizard_form">
                 <sheet>
                     <field name="is_cash_payment" invisible="1" />
                     <field name="currency_id" invisible="1" />

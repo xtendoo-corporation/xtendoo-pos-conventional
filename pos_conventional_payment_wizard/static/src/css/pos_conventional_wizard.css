@@ -3,13 +3,13 @@
  * Solo overrides de clases nativas Bootstrap/Odoo. No se definen clases nuevas.
  */
 
-/* Oculta el header nativo del modal en los wizards de pago */
-.modal-dialog .modal-header {
+/* Oculta el header nativo del modal solo en los wizards de pago POS */
+.modal-dialog:has(.o_pos_conventional_payment_wizard_form) .modal-header {
     display: none !important;
 }
 
-/* Compensar el padding-top */
-.modal-dialog .modal-body {
+/* Compensar el padding-top solo en los wizards de pago POS */
+.modal-dialog:has(.o_pos_conventional_payment_wizard_form) .modal-body {
     padding-top: 0 !important;
 }
 
