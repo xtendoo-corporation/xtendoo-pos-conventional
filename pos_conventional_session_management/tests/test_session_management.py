@@ -1,5 +1,7 @@
 # Copyright 2024 Xtendoo
 # License OPL-1
+from unittest.mock import patch
+
 from odoo import fields
 from odoo.tests.common import tagged
 from odoo.exceptions import UserError, ValidationError
@@ -140,6 +142,39 @@ class TestSessionManagement(PosConventionalTestCommon):
         )
         result = wizard._return_to_backend()
         self.assertEqual(result.get("res_model"), "pos.order")
+
+    def test_10a_opening_wizard_return_to_backend_requires_sudo_on_action_read(self):
+        """Regresión: _return_to_backend debe usar sudo() antes de read() en la acción."""
+        session = self._open_session()
+        wizard = self.env["pos.session.opening.wizard"].create(
+            {"session_id": session.id, "user_id": self.env.uid}
+        )
+
+        class FakeActionRef:
+            def __init__(self):
+                self.sudo_called = False
+
+            def sudo(self):
+                self.sudo_called = True
+                return self
+
+            def read(self):
+                if not self.sudo_called:
+                    raise AssertionError("_return_to_backend debe usar sudo() antes de read().")
+                return [{"type": "ir.actions.act_window", "res_model": "pos.order", "context": {}, "domain": []}]
+
+        fake_action = FakeActionRef()
+
+        def fake_ref(_env, xmlid, raise_if_not_found=True):
+            self.assertEqual(xmlid, "point_of_sale.action_pos_pos_form")
+            return fake_action
+
+        with patch.object(self.env.__class__, "ref", autospec=True, side_effect=fake_ref):
+            result = wizard._return_to_backend()
+
+        self.assertTrue(fake_action.sudo_called)
+        self.assertEqual(result.get("res_model"), "pos.order")
+        self.assertEqual(result.get("context", {}).get("default_session_id"), session.id)
 
     def test_10b_opening_wizard_return_to_backend_works_for_pos_user(self):
         """El wizard de apertura no debe fallar por ACL al leer la acción base con un usuario POS."""
