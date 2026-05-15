@@ -7,6 +7,26 @@ import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
+export function buildOpeningOrdersListAction(sessionId, configId) {
+    const parsedSessionId = Number.parseInt(sessionId, 10) || false;
+    const parsedConfigId = Number.parseInt(configId, 10) || false;
+
+    return {
+        type: "ir.actions.act_window",
+        res_model: "pos.order",
+        name: _t("Pedidos"),
+        target: "main",
+        view_mode: "list,form",
+        views: [[false, "list"], [false, "form"]],
+        domain: parsedConfigId ? [["config_id", "=", parsedConfigId]] : [],
+        context: {
+            default_session_id: parsedSessionId,
+            default_config_id: parsedConfigId,
+            search_default_current_session: parsedSessionId ? 1 : 0,
+        },
+    };
+}
+
 export class OpeningPopup extends Component {
     static template = "pos_conventional_session_management.OpeningPopup";
     static components = { Dialog };
@@ -74,9 +94,9 @@ export class OpeningPopup extends Component {
             if (this.props.onOpened) this.props.onOpened();
             if (this.props.close) await this.props.close();
 
-            await this.action.doAction("point_of_sale.action_pos_pos_form", {
-                viewType: 'list',
-                additionalContext: { default_session_id: this.sessionId, default_config_id: this.configId }
+            await this.action.doAction(buildOpeningOrdersListAction(this.sessionId, this.configId), {
+                clearBreadcrumbs: true,
+                viewType: "list",
             });
         } catch (e) {
             this.notification.add(_t("Error al abrir caja"), { type: "danger" });

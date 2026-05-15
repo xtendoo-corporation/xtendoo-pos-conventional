@@ -23,6 +23,9 @@
             "pos_conventional_session_management/static/src/js/cash_move_popup.js",
             "pos_conventional_session_management/static/src/xml/cash_move_popup.xml",
         ],
+        "web.assets_unit_tests": [
+            "pos_conventional_session_management/static/tests/opening_popup.test.js",
+        ],
     },
     "installable": True,
 }

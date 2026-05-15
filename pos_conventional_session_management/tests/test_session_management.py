@@ -143,6 +143,20 @@ class TestSessionManagement(PosConventionalTestCommon):
         result = wizard._return_to_backend()
         self.assertEqual(result.get("res_model"), "pos.order")
 
+    def test_10aa_opening_wizard_return_to_backend_keeps_current_config_domain_and_enables_current_session_default_filter(self):
+        """Regresión: al abrir caja, al quitar el filtro de sesión deben seguir viéndose sólo pedidos de la caja actual."""
+        session = self._open_session()
+        wizard = self.env["pos.session.opening.wizard"].create(
+            {"session_id": session.id, "user_id": self.env.uid}
+        )
+
+        result = wizard._return_to_backend()
+
+        self.assertEqual(result.get("domain"), [("config_id", "=", session.config_id.id)])
+        self.assertEqual(result.get("context", {}).get("default_session_id"), session.id)
+        self.assertEqual(result.get("context", {}).get("default_config_id"), session.config_id.id)
+        self.assertEqual(result.get("context", {}).get("search_default_current_session"), 1)
+
     def test_10a_opening_wizard_return_to_backend_requires_sudo_on_action_read(self):
         """Regresión: _return_to_backend debe usar sudo() antes de read() en la acción."""
         session = self._open_session()
@@ -375,6 +389,26 @@ class TestSessionManagement(PosConventionalTestCommon):
         self.assertIn("class OpeningPopupAction", content)
         self.assertIn('registry.category("actions").add("pos_conventional_opening_popup", OpeningPopupAction)', content)
         self.assertIn("cancel()", content)
+
+    def test_22ca_opening_popup_js_builds_a_current_config_domain_plus_current_session_filter(self):
+        """Regresión: el popup de apertura debe dejar la caja actual como dominio base y la sesión actual como filtro removible."""
+        import os
+
+        js_path = os.path.join(
+            os.path.dirname(__file__),
+            "..", "static", "src", "js", "opening_popup.js",
+        )
+        js_path = os.path.normpath(js_path)
+        self.assertTrue(os.path.exists(js_path), f"No se encontró {js_path}")
+
+        with open(js_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("buildOpeningOrdersListAction", content)
+        self.assertIn('domain: parsedConfigId ? [["config_id", "=", parsedConfigId]] : []', content)
+        self.assertIn('search_default_current_session: parsedSessionId ? 1 : 0', content)
+        self.assertIn('await this.action.doAction(buildOpeningOrdersListAction(this.sessionId, this.configId)', content)
+        self.assertNotIn('await this.action.doAction("point_of_sale.action_pos_pos_form"', content)
 
     def test_22d_opening_popup_xml_shows_blue_info_banner(self):
         """Regresión UX: apertura debe mostrar una banda azul con la caja y la sesión."""

@@ -99,6 +99,14 @@ class PosOrder(models.Model):
                     self.id,
                 )
 
+        if hasattr(self, "_get_amounts_from_lines"):
+            amount_tax, amount_total = self._get_amounts_from_lines()
+            self.write({
+                "amount_tax": amount_tax,
+                "amount_total": amount_total,
+            })
+            return
+
         refund_factor = -1 if self.is_refund else 1
         tax_total = refund_factor * sum(
             line.price_subtotal_incl - line.price_subtotal for line in self.lines

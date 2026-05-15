@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="view_pos_pos_form_payment_wizard_banner" model="ir.ui.view">
+        <field name="name">pos.order.form.payment.wizard.banner</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="pos_conventional_core.view_pos_pos_form_inherit_pos_conventional_core"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('oe_title')]" position="before">
+                <widget name="pos_cash_change_banner"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="view_pos_pos_form_payment_wizard" model="ir.ui.view">
         <field name="name">pos.order.form.payment.wizard</field>
         <field name="model">pos.order</field>
@@ -38,7 +49,4 @@
         </field>
     </record>
 
-    <record id="point_of_sale.pos_order_set_cancel" model="ir.actions.server">
-        <field name="binding_view_types">list,kanban</field>
-    </record>
 </odoo>

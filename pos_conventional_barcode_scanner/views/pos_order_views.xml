@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_order_form_inherit_pos_conventional_barcode_scanner" model="ir.ui.view">
+        <field name="name">pos.order.form.inherit.pos.conventional.barcode.scanner</field>
+        <field name="model">pos.order</field>
+        <field name="priority">120</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="after">
+                <field name="_barcode_scanned" widget="pos_conventional_barcode_scanner" class="d-none"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_pos_order_form_core_js_class_pos_conventional_barcode_scanner" model="ir.ui.view">
+        <field name="name">pos.order.form.core.js.class.pos.conventional.barcode.scanner</field>
+        <field name="model">pos.order</field>
+        <field name="priority">200</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="attributes">
+                <attribute name="js_class">pos_conventional_order_form</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+

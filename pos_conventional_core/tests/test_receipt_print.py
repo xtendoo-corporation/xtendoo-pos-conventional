@@ -42,6 +42,8 @@ class TestReceiptPrint(PosConventionalTestCommon):
         self.product_barcode.write({"taxes_id": [(6, 0, [self.tax_21.id])]})
         session = self._open_session()
         order = self._make_draft_order(session, partner=self.partner)
+        if not hasattr(order, "add_product_by_barcode"):
+            self.skipTest("pos_conventional_order_barcode no está instalado – test omitido")
 
         for _index in range(scan_count):
             result = order.add_product_by_barcode(barcode="TST0001BARCODE")

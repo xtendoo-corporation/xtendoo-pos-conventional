@@ -138,6 +138,71 @@ class PosOrder(models.Model):
                 )
         return super(PosOrder, sudo_self).unlink()
 
+    def action_cancel_and_delete_order(self):
+        """Cancela el pedido usando la misma acción del menú y permite eliminarlo después."""
+        self.ensure_one()
+        order_name = self.name or "/"
+        order = self.with_context(skip_completeness_check=True)
+
+        if order.state != "draft":
+            raise UserError(
+                _(
+                    "Solo se pueden cancelar y eliminar pedidos en borrador. "
+                    "El pedido '%(name)s' está en estado '%(state)s'.",
+                    name=order_name,
+                    state=order.state,
+                )
+            )
+
+        self.env.ref("point_of_sale.pos_order_set_cancel").with_context(
+            active_model="pos.order",
+            active_id=self.id,
+            active_ids=self.ids,
+            skip_completeness_check=True,
+        ).run()
+
+        return {"type": "ir.actions.client", "tag": "reload"}
+
+    def action_delete_cancelled_order_from_form(self):
+        """Elimina desde formulario un pedido ya cancelado y vuelve a la lista de la caja."""
+        self.ensure_one()
+        session = self.session_id
+        config = self.config_id
+        self.with_context(skip_completeness_check=True).action_delete_cancelled_order(self.id)
+
+        action = config._redirect_to_pos_orders(session)
+        action["target"] = "main"
+        action["view_mode"] = "list,form"
+        action["views"] = [[False, "list"], [False, "form"]]
+        return action
+
+    @api.model
+    def action_delete_cancelled_order(self, order_id):
+        """Elimina definitivamente un pedido cancelado (o borrador)."""
+        if not order_id:
+            return True
+        try:
+            order_id = int(order_id)
+        except (TypeError, ValueError):
+            return True
+
+        order = self.browse(order_id).exists().with_context(skip_completeness_check=True)
+        if not order:
+            return True
+        if order.state == "draft":
+            order.action_pos_order_cancel()
+        if order.state != "cancel":
+            raise UserError(
+                _(
+                    "Solo se pueden eliminar pedidos cancelados. "
+                    "El pedido '%(name)s' está en estado '%(state)s'.",
+                    name=order.name or "/",
+                    state=order.state,
+                )
+            )
+        order.unlink()
+        return True
+
 
     def default_get(self, fields_list):
         res = super().default_get(fields_list)

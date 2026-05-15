@@ -2,6 +2,7 @@ from . import common
 from . import test_pos_config
 from . import test_pos_order
 from . import test_pos_order_completeness
+from . import test_pos_order_form_core_controller_js
 from . import test_pos_order_line_cost_margin
 from . import test_pos_order_pricelist
 from . import test_product_label_section_and_note_field_js

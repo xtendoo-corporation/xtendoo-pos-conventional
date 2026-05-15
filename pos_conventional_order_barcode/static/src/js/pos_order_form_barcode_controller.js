@@ -2,28 +2,15 @@
 
 import { registry } from "@web/core/registry";
 import { formView } from "@web/views/form/form_view";
-import { FormController } from "@web/views/form/form_controller";
+import { PosConventionalOrderFormController } from "@pos_conventional_core/js/pos_order_form_core_controller";
 import { useService } from "@web/core/utils/hooks";
-import { onMounted, onWillUnmount, useSubEnv } from "@odoo/owl";
+import { onMounted, onWillUnmount } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 
-export class PosOrderBarcodeFormController extends FormController {
+export class PosOrderBarcodeFormController extends PosConventionalOrderFormController {
     setup() {
         super.setup();
-        useSubEnv({
-            config: {
-                ...this.env.config,
-                beforeLeave: async () => {
-                    if (window.bypassPosLeave) {
-                        return true;
-                    }
-                    return await this.model.root.save();
-                },
-            },
-        });
-
         this.orm = useService("orm");
-        this.notification = useService("notification");
         this.barcodeBuffer = "";
         this.lastKeyTime = 0;
         this.barcodeTimeout = null;
@@ -35,14 +22,9 @@ export class PosOrderBarcodeFormController extends FormController {
         this.manualLineFocusCleanupObserver = null;
         this.manualLineFocusCleanupAttempts = 0;
         this.boundKeydownHandler = this.onKeyDown.bind(this);
-        this.boundPaymentButtonClickHandler = this._onPaymentButtonClick.bind(this);
-        this.boundDocClickHandler = this._onDocClick.bind(this);
 
         onMounted(() => {
             document.addEventListener("keydown", this.boundKeydownHandler, true);
-            // Capturar clicks en el botón "Pago" antes de que Odoo los procese
-            document.addEventListener("click", this.boundPaymentButtonClickHandler, true);
-            document.addEventListener("click", this.boundDocClickHandler, true);
 
             // Quitar el foco automático si es un pedido nuevo
             if (this.model.root.isNew) {
@@ -57,8 +39,6 @@ export class PosOrderBarcodeFormController extends FormController {
 
         onWillUnmount(() => {
             document.removeEventListener("keydown", this.boundKeydownHandler, true);
-            document.removeEventListener("click", this.boundPaymentButtonClickHandler, true);
-            document.removeEventListener("click", this.boundDocClickHandler, true);
             if (this.barcodeTimeout) clearTimeout(this.barcodeTimeout);
             if (this.manualLineFocusCleanupTimeout) clearTimeout(this.manualLineFocusCleanupTimeout);
             this.manualLineFocusCleanupObserver?.disconnect();
@@ -69,11 +49,7 @@ export class PosOrderBarcodeFormController extends FormController {
     }
 
     _onDocClick(ev) {
-        if (ev.target.closest('button[name="action_open_stock_forecast"]')) {
-            window.bypassPosLeave = true;
-            setTimeout(() => { window.bypassPosLeave = false; }, 2000);
-        }
-
+        super._onDocClick(ev);
         if (this._isManualLineAddButton(ev.target)) {
             this._watchManualLineFocusCleanup();
         }
@@ -201,47 +177,6 @@ export class PosOrderBarcodeFormController extends FormController {
         this.manualLineFocusCleanupAttempts = 0;
     }
 
-    /**
-     * Intercepta los botones que legítimamente pueden sacar al usuario del pedido
-     * (Pago y Cancelar).
-     *
-     * - Cancelar: activa el bypass para permitir la recarga/transición.
-     * - Pago: solo activa el bypass si el pedido tiene productos e importe válido.
-     */
-    _onPaymentButtonClick(ev) {
-        const btn = ev.target.closest(
-            'button[name^="action_pay_"], button[name="action_open_payment_popup"], button[name="action_pos_convention_pay_with_method"], button[name="action_cancel_and_delete_order"]'
-        );
-        if (!btn) return;
-
-        const record = this.model.root;
-        const isCancelButton = btn.name === "action_cancel_and_delete_order";
-
-        if (isCancelButton) {
-            this._activateNavigationBypass(record);
-            return;
-        }
-
-        const amountTotal = record.data.amount_total || 0;
-        const hasProductLines = this._hasProductLines(record);
-
-        // Si intentamos cobrar algo vacío, bloqueamos
-        if (!hasProductLines || amountTotal <= 0) {
-            ev.preventDefault();
-            ev.stopImmediatePropagation();
-            this._playErrorBeep();
-            this.notification.add(
-                _t("No se puede cobrar un pedido sin productos o con importe cero."),
-                { type: "warning", title: _t("Importe inválido"), sticky: false }
-            );
-            return;
-        }
-
-        // Si el pedido es válido y vamos a pagar, activamos el bypass de navegación
-        // para permitir el cambio de pantalla fluido tras la validación.
-        this._activateNavigationBypass(record);
-    }
-
     onKeyDown(ev) {
         try {
             const target = ev.target || document.activeElement;
@@ -340,25 +275,6 @@ export class PosOrderBarcodeFormController extends FormController {
         }
     }
 
-    _playErrorBeep() {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = ctx.createOscillator();
-            const gainNode = ctx.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(ctx.destination);
-            oscillator.type = "square";
-            oscillator.frequency.setValueAtTime(380, ctx.currentTime);
-            oscillator.frequency.setValueAtTime(280, ctx.currentTime + 0.15);
-            gainNode.gain.setValueAtTime(0.25, ctx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-            oscillator.start(ctx.currentTime);
-            oscillator.stop(ctx.currentTime + 0.35);
-        } catch (e) {
-            // Fallback silencioso si Web Audio API no está disponible
-        }
-    }
-
     async _prepareOrderForBarcodeScan() {
         const record = this.model.root;
 
@@ -388,59 +304,6 @@ export class PosOrderBarcodeFormController extends FormController {
         }
 
         return !!record.dirty;
-    }
-
-    _getOrderLinesList(record) {
-        return record?.data?.lines || null;
-    }
-
-    _getOrderLineRecords(record = this.model.root) {
-        return this._getOrderLinesList(record)?.records || [];
-    }
-
-    _getRelationalValueId(value) {
-        if (!value) {
-            return false;
-        }
-        if (typeof value === "number") {
-            return value;
-        }
-        if (Array.isArray(value)) {
-            return value[0] || false;
-        }
-        if (typeof value === "object") {
-            return value.id || value.resId || false;
-        }
-        return false;
-    }
-
-    _hasProductLines(record = this.model.root) {
-        const lines = this._getOrderLinesList(record);
-        const lineRecords = this._getOrderLineRecords(record);
-
-        if (lineRecords.length) {
-            return lineRecords.some((line) => {
-                if (line?.data?.display_type) {
-                    return false;
-                }
-                return !!this._getRelationalValueId(line?.data?.product_id);
-            });
-        }
-
-        return (lines?.currentIds?.length || 0) > 0;
-    }
-
-    _activateNavigationBypass(record = this.model.root, timeout = 10000) {
-        window.bypassPosLeave = true;
-        setTimeout(() => {
-            if (
-                record?.resId &&
-                window.location.hash.includes("model=pos.order") &&
-                window.location.hash.includes(`id=${record.resId}`)
-            ) {
-                window.bypassPosLeave = false;
-            }
-        }, timeout);
     }
 
     async addProductToLines(product, lineVals, record = this.model.root) {
@@ -597,40 +460,6 @@ export class PosOrderBarcodeFormController extends FormController {
         setTimeout(blur, 100);
     }
 
-    async beforeLeave({ forceLeave } = {}) {
-        if (window.bypassPosLeave) {
-            // No reseteamos inmediatamente a false aquí, ya que Odoo puede llamar
-            // a beforeLeave varias veces durante una transición compleja.
-            // El flag se limpia solo tras 2 segundos o al entrar en un pedido nuevo.
-            return super.beforeLeave(...arguments);
-        }
-
-        const record = this.model.root;
-
-        // Solo bloqueamos la salida cuando el pedido sigue en borrador y ya contiene
-        // al menos una línea real de producto.
-        if (
-            record &&
-            record.data &&
-            record.data.state === 'draft' &&
-            !forceLeave &&
-            this._hasProductLines(record)
-        ) {
-            this._playErrorBeep();
-            this.notification.add(
-                _t("No puedes salir de un pedido que ya tiene productos. Por favor, finaliza el pago o cancélalo antes de salir."),
-                {
-                    type: "warning",
-                    title: _t("Pedido con productos"),
-                    sticky: false,
-                    autocloseDelay: 10000
-                }
-            );
-            return false;
-        }
-
-        return super.beforeLeave(...arguments);
-    }
 }
 
 export const posOrderBarcodeFormView = {

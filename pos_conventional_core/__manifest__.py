@@ -11,15 +11,8 @@
         "sale",
         "mail",
         "pos_conventional_receipt",
-        "pos_conventional_cash_calculator",
-        "pos_conventional_config_user_filter",
-        "pos_conventional_order_barcode",
-        "pos_conventional_payment_wizard",
-        "pos_conventional_picking_integration",
         "pos_conventional_receipt_custom",
-        "pos_conventional_sale_integration",
         "pos_conventional_session_management",
-        "pos_conventional_users_pin",
     ],
 
     "data": [
@@ -31,6 +24,8 @@
     "assets": {
         "web.assets_backend": [
             # Custom POS backend JS/CSS
+            "pos_conventional_core/static/src/js/pos_order_workflow_utils.js",
+            "pos_conventional_core/static/src/js/pos_order_form_core_controller.js",
             "pos_conventional_core/static/src/xml/pos_print_iframe_template.xml",
             "pos_conventional_core/static/src/js/pos_print_iframe.js",
             "pos_conventional_core/static/src/js/pos_print_client_action.js",
@@ -63,6 +58,8 @@
             "pos_conventional_core/static/src/js/pos_receipt_client_action.js",
         ],
         "web.assets_unit_tests": [
+            "pos_conventional_core/static/tests/pos_order_workflow_utils.test.js",
+            "pos_conventional_core/static/tests/pos_order_form_core_controller.test.js",
             "pos_conventional_core/static/tests/product_label_section_and_note_field_patch.test.js",
             "pos_conventional_core/static/tests/pos_new_order_action.test.js",
         ],

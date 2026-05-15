@@ -85,33 +85,9 @@ function _clearPreviousSaleSummary() {
     sessionStorage.removeItem(LEGACY_STORAGE_KEY_CURRENCY);
 }
 
-async function _getConfigSessionIds(orm, context) {
-    const configId = Number.parseInt(context.config_id, 10);
-    if (!configId || !orm) {
-        return [];
-    }
-
-    try {
-        const sessions = await orm.searchRead(
-            "pos.session",
-            [["config_id", "=", configId]],
-            ["id"]
-        );
-        return (sessions || []).map((session) => session.id).filter(Boolean);
-    } catch (error) {
-        console.warn("[NEW_ORDER] No se pudieron recuperar las sesiones de la caja actual:", error);
-        return [];
-    }
-}
-
 export async function buildPosOrdersListAction(orm, context) {
     const defaultSessionId = Number.parseInt(context.default_session_id, 10) || false;
-    const sessionIds = await _getConfigSessionIds(orm, context);
-    const domain = sessionIds.length
-        ? [["session_id", "in", sessionIds]]
-        : defaultSessionId
-            ? [["session_id", "=", defaultSessionId]]
-            : [];
+    const defaultConfigId = Number.parseInt(context.default_config_id || context.config_id, 10) || false;
 
     return {
         type: "ir.actions.act_window",
@@ -120,10 +96,12 @@ export async function buildPosOrdersListAction(orm, context) {
         target: "main",
         view_mode: "list,form",
         views: [[false, "list"], [false, "form"]],
-        domain,
+        domain: defaultConfigId ? [["config_id", "=", defaultConfigId]] : [],
         context: {
             ...context,
             default_session_id: defaultSessionId,
+            default_config_id: defaultConfigId,
+            search_default_current_session: defaultSessionId ? 1 : 0,
         },
     };
 }

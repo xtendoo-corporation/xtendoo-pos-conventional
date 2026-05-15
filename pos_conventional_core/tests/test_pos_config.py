@@ -98,14 +98,15 @@ class TestPosConfig(PosConventionalTestCommon):
         self.assertIn("domain", result)
         ctx = result.get("context", {})
         self.assertEqual(ctx.get("default_session_id"), session.id)
+        self.assertEqual(ctx.get("default_config_id"), session.config_id.id)
+        self.assertEqual(ctx.get("search_default_current_session"), 1)
 
-    def test_10_redirect_to_pos_orders_domain_contains_session(self):
-        """El dominio incluye el ID de sesión activa."""
+    def test_10_redirect_to_pos_orders_domain_contains_config(self):
+        """El dominio limita la lista a la caja de la sesión activa."""
         session = self._open_session()
         result = self.pos_config._redirect_to_pos_orders(session)
         domain = result["domain"]
-        session_ids_in_domain = [v for op, f, v in [domain[0]] if f == "session_id"]
-        self.assertTrue(session_ids_in_domain or len(domain) > 0)
+        self.assertIn(("config_id", "=", session.config_id.id), domain)
 
     def test_10a_redirect_to_pos_orders_requires_sudo_on_action_read(self):
         """Regresión: _redirect_to_pos_orders debe usar sudo() antes de read() en la acción."""
@@ -136,6 +137,7 @@ class TestPosConfig(PosConventionalTestCommon):
         self.assertTrue(fake_action.sudo_called)
         self.assertEqual(result.get("res_model"), "pos.order")
         self.assertEqual(result.get("context", {}).get("default_session_id"), session.id)
+        self.assertEqual(result.get("context", {}).get("search_default_current_session"), 1)
 
     def test_10b_open_ui_opened_session_works_for_pos_user_without_action_acl(self):
         """Un usuario POS normal puede continuar la venta sin leer ir.actions.act_window con su ACL."""
@@ -160,6 +162,7 @@ class TestPosConfig(PosConventionalTestCommon):
         self.assertEqual(result.get("type"), "ir.actions.act_window")
         self.assertEqual(result.get("res_model"), "pos.order")
         self.assertEqual(result.get("context", {}).get("default_session_id"), session.id)
+        self.assertEqual(result.get("context", {}).get("search_default_current_session"), 1)
 
     def test_11_open_ui_opening_control_returns_opening_popup(self):
         """open_ui en modo non-touch con sesión en 'opening_control' muestra el popup de apertura.

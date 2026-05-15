@@ -26,6 +26,7 @@
         <field name="arch" type="xml">
             <xpath expr="//form" position="attributes">
                 <attribute name="default_focus">0</attribute>
+                <attribute name="js_class">pos_conventional_order_form</attribute>
             </xpath>
 
             <!-- Añadir campos técnicos al header (ocultos) -->
@@ -43,9 +44,6 @@
 
             <!-- Reemplazar el grupo de campos del pedido con layout de dos columnas -->
             <xpath expr="//group[@name='order_fields']" position="replace">
-
-                <!-- Banner de cambio de la operación anterior (se oculta al añadir líneas) -->
-                <widget name="pos_cash_change_banner"/>
 
                 <!-- Título principal -->
                 <div class="oe_title">
@@ -130,5 +128,22 @@
             <xpath expr="//page[@name='payments']/group[@name='order_total']" position="replace" />
 
         </field>
+    </record>
+
+    <record id="view_pos_order_filter_inherit_pos_conventional_core" model="ir.ui.view">
+        <field name="name">pos.order.search.inherit.pos.conventional.core</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search/field[@name='session_id']" position="after">
+                <filter string="Sesión actual"
+                        name="current_session"
+                        domain="[('session_id', '=', context.get('default_session_id'))]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="point_of_sale.pos_order_set_cancel" model="ir.actions.server">
+        <field name="binding_view_types">list,kanban</field>
     </record>
 </odoo>

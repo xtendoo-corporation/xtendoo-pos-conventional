@@ -44,11 +44,47 @@ class TestPosProductLabelSectionAndNoteFieldAssets(TransactionCase):
             "El bundle backend debe incluir el parche del widget de producto.",
         )
 
+    def test_backend_assets_include_order_form_core_controller(self):
+        self._assert_bundle_contains_suffix(
+            "web.assets_backend",
+            "pos_conventional_core/static/src/js/pos_order_form_core_controller.js",
+            "El bundle backend debe incluir el controlador base del formulario POS convencional.",
+        )
+
+    def test_backend_assets_include_order_workflow_utils(self):
+        self._assert_bundle_contains_suffix(
+            "web.assets_backend",
+            "pos_conventional_core/static/src/js/pos_order_workflow_utils.js",
+            "El bundle backend debe incluir el helper compartido del workflow POS convencional.",
+        )
+
+    def test_form_view_uses_core_js_class(self):
+        view = self.env.ref("pos_conventional_core.view_pos_pos_form_inherit_pos_conventional_core")
+        self.assertIn(
+            'js_class="pos_conventional_order_form"',
+            view.arch_db,
+            "La vista base del formulario POS debe montar el controlador core para aplicar la guardia de salida.",
+        )
+
     def test_unit_test_assets_include_product_field_patch_test(self):
         self._assert_bundle_contains_suffix(
             "web.assets_unit_tests",
             "pos_conventional_core/static/tests/product_label_section_and_note_field_patch.test.js",
             "El bundle de unit tests debe incluir el test frontend del parche.",
+        )
+
+    def test_unit_test_assets_include_order_form_core_controller_test(self):
+        self._assert_bundle_contains_suffix(
+            "web.assets_unit_tests",
+            "pos_conventional_core/static/tests/pos_order_form_core_controller.test.js",
+            "El bundle de unit tests debe incluir el test frontend del controlador base del formulario.",
+        )
+
+    def test_unit_test_assets_include_order_workflow_utils_test(self):
+        self._assert_bundle_contains_suffix(
+            "web.assets_unit_tests",
+            "pos_conventional_core/static/tests/pos_order_workflow_utils.test.js",
+            "El bundle de unit tests debe incluir el test frontend del helper compartido del workflow.",
         )
 
 

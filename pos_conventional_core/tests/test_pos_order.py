@@ -11,6 +11,10 @@ from .common import PosConventionalTestCommon
 class TestPosOrder(PosConventionalTestCommon):
     """Tests para pos.order (pos_conventional_core)."""
 
+    def _skip_if_no_barcode_module(self, order):
+        if not hasattr(order, "add_product_by_barcode"):
+            self.skipTest("pos_conventional_order_barcode no está instalado – test omitido")
+
     # ── payment_method_ribbon ─────────────────────────────────────────────
 
     def test_01_ribbon_no_payments(self):
@@ -1019,13 +1023,10 @@ class TestPosOrder(PosConventionalTestCommon):
         self.assertEqual(action.get("target"), "main")
         self.assertEqual(action.get("view_mode"), "list,form")
         self.assertEqual(action.get("context", {}).get("default_session_id"), session.id)
+        self.assertEqual(action.get("context", {}).get("default_config_id"), session.config_id.id)
+        self.assertEqual(action.get("context", {}).get("search_default_current_session"), 1)
         domain = action.get("domain", [])
-        session_domain = next(
-            (item for item in domain if isinstance(item, tuple) and item[:2] == ("session_id", "in")),
-            None,
-        )
-        self.assertTrue(session_domain, f"Debe existir dominio por sesión. domain={domain}")
-        self.assertIn(session.id, session_domain[2])
+        self.assertIn(("config_id", "=", session.config_id.id), domain)
 
     def test_cancel_server_action_not_bound_to_form_view(self):
         """La acción Cancel Order debe desaparecer del menú de acciones del formulario."""
@@ -1041,6 +1042,7 @@ class TestPosOrder(PosConventionalTestCommon):
         self.product_barcode.write({"taxes_id": [(6, 0, [self.tax_21.id])]})
         session = self._open_session()
         order = self._make_draft_order(session, partner=self.partner)
+        self._skip_if_no_barcode_module(order)
 
         for _index in range(3):
             result = order.add_product_by_barcode(barcode="TST0001BARCODE")
@@ -1066,6 +1068,7 @@ class TestPosOrder(PosConventionalTestCommon):
         self.product_barcode.write({"taxes_id": [(6, 0, [self.tax_21.id])]})
         session = self._open_session()
         order = self._make_draft_order(session, partner=self.partner)
+        self._skip_if_no_barcode_module(order)
 
         for _index in range(4):
             result = order.add_product_by_barcode(barcode="TST0001BARCODE")
