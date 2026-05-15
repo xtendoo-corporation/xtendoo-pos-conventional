@@ -1,4 +1,5 @@
 import { barcodeService as barcodeServiceDefinition } from "@barcodes/barcode_service";
+import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useBus, useService } from "@web/core/utils/hooks";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
@@ -81,9 +82,39 @@ export class PosConventionalBarcodeScannerField extends Component {
     setup() {
         this.rootRef = useRef("root");
         this.barcodeService = useService("barcode");
+        this.notification = useService("notification");
         useBus(this.barcodeService.bus, "barcode_scanned", this.onBarcodeScanned.bind(this));
         onMounted(() => this._mountBarcodeScope());
         onWillUnmount(() => this._unmountBarcodeScope());
+    }
+
+    _getOrderLinesSignature() {
+        const lines = this.props.record?.data?.lines;
+        const lineRecords = lines?.records || [];
+        if (lineRecords.length) {
+            return JSON.stringify(
+                lineRecords.map((line) => ({
+                    id: line.resId || line.id || null,
+                    productId:
+                        line.data?.product_id?.id ||
+                        line.data?.product_id?.resId ||
+                        (Array.isArray(line.data?.product_id) ? line.data.product_id[0] : null),
+                    qty: line.data?.qty || 0,
+                }))
+            );
+        }
+        return JSON.stringify({
+            currentIds: lines?.currentIds || [],
+            amountTotal: this.props.record?.data?.amount_total || 0,
+        });
+    }
+
+    _notifySuccessfulScan(barcode) {
+        this.notification.add(_t("Código escaneado: %s", barcode), {
+            type: "success",
+            title: _t("Escáner"),
+            sticky: false,
+        });
     }
 
     _mountBarcodeScope() {
@@ -233,7 +264,12 @@ export class PosConventionalBarcodeScannerField extends Component {
             return;
         }
         this._clearPendingBarcodeCapture();
+        const previousLinesSignature = this._getOrderLinesSignature();
         await this.props.record.update({ [this.props.name]: barcode });
+        const nextLinesSignature = this._getOrderLinesSignature();
+        if (previousLinesSignature !== nextLinesSignature) {
+            this._notifySuccessfulScan(barcode);
+        }
     }
 }
 
