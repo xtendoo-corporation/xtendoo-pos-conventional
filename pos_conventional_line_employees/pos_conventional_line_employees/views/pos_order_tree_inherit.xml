@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pos_conventional_line_employees_inherit_pos_order_tree" model="ir.ui.view">
+        <field name="name">pos.order.tree.employees_summary</field>
+        <field name="model">pos.order</field>
+        <field name="priority">100</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_order_tree"/>
+        <field name="arch" type="xml">
+            <!-- Insert employees_summary column (visible by default) -->
+            <xpath expr="//list/field[@name='partner_id']" position="after">
+                <field name="employees_summary" string="Empleado/s"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

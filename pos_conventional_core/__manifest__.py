@@ -13,6 +13,7 @@
         "pos_conventional_receipt",
         "pos_conventional_receipt_custom",
         "pos_conventional_session_management",
+        "pos_conventional_users_pin"
     ],
 
     "data": [

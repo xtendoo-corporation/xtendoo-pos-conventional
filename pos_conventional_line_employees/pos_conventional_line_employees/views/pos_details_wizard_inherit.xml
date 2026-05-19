@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pos_conventional_line_employees_view_pos_details_wizard_inherit" model="ir.ui.view">
+        <field name="name">pos.details.wizard.employee.filter</field>
+        <field name="model">pos.details.wizard</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_details_wizard"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='end_date']" position="after">
+                <field name="pos_order_ids" widget="many2many_tags" placeholder="Filtrar por pedidos concretos..."/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

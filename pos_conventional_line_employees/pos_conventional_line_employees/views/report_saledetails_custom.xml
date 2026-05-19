@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- New report action pointing to our custom template -->
+    <record id="sale_details_custom_report" model="ir.actions.report">
+        <field name="name">Detalles de ventas</field>
+        <field name="model">pos.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pos_conventional_line_employees.sale_custom</field>
+    </record>
+
+    <!-- Our custom template, completely independent from the base -->
+    <template id="sale_custom">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <!-- Header -->
+                    <div class="text-center mb-3">
+                        <t t-if="pos_order_names">
+                            <h5 class="text-muted">Pedidos: <t t-out="', '.join(pos_order_names)"/></h5>
+                        </t>
+                        <div class="col-12 text-end mt-2">
+                            <span class="badge bg-light text-dark border border-dark p-2">
+                                <t t-if="date_start and date_stop">
+                                    <strong>
+                                        Desde: <span t-out="date_start" t-options="{'widget': 'datetime'}"/>
+                                        &#160;&#160;|&#160;&#160;
+                                        Hasta: <span t-out="date_stop" t-options="{'widget': 'datetime'}"/>
+                                    </strong>
+                                </t>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Employee sales detail tables -->
+                    <t t-if="employee_sales_grouped">
+                        <t t-foreach="employee_sales_grouped" t-as="emp_data">
+                            <h6 class="bg-secondary p-1 fw-bold mt-3">
+                                Detalle de Ventas - <span t-out="emp_data['employee_name']"/>
+                            </h6>
+                            <table class="table table-sm table-borderless">
+                                <thead>
+                                    <tr>
+                                        <th class="text-start">Pedido</th>
+                                        <th class="text-start">Producto</th>
+                                        <th class="text-start">Fecha</th>
+                                        <th class="text-end">Precio Total</th>
+                                        <th class="text-end">Importe Empleado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="emp_data['lines']" t-as="row" class="border-bottom border-secondary">
+                                        <td class="ps-2"><span t-out="row['order_name']"/></td>
+                                        <td><span t-out="row['product_name']"/></td>
+                                        <td><span t-out="row['date']"/></td>
+                                        <td class="text-end">
+                                            <t t-if="currency['position'] == 'after'">
+                                                <span t-out="row['line_total']" t-options="{'widget': 'float', 'precision': currency['precision']}"/>
+                                                <span t-out="currency['symbol']"/>
+                                            </t>
+                                            <t t-else="">
+                                                <span t-out="currency['symbol']"/>
+                                                <span t-out="row['line_total']" t-options="{'widget': 'float', 'precision': currency['precision']}"/>
+                                            </t>
+                                        </td>
+                                        <td class="text-end fw-bold">
+                                            <t t-if="currency['position'] == 'after'">
+                                                <span t-out="row['employee_amount']" t-options="{'widget': 'float', 'precision': currency['precision']}"/>
+                                                <span t-out="currency['symbol']"/>
+                                            </t>
+                                            <t t-else="">
+                                                <span t-out="currency['symbol']"/>
+                                                <span t-out="row['employee_amount']" t-options="{'widget': 'float', 'precision': currency['precision']}"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-top border-dark border-2">
+                                        <td colspan="4" class="text-end fw-bold">
+                                            Total <span t-out="emp_data['employee_name']"/>:
+                                        </td>
+                                        <td class="text-end fw-bold">
+                                            <t t-if="currency['position'] == 'after'">
+                                                <span t-out="emp_data['total_amount']" t-options="{'widget': 'float', 'precision': currency['precision']}"/>
+                                                <span t-out="currency['symbol']"/>
+                                            </t>
+                                            <t t-else="">
+                                                <span t-out="currency['symbol']"/>
+                                                <span t-out="emp_data['total_amount']" t-options="{'widget': 'float', 'precision': currency['precision']}"/>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                    </t>
+                    <t t-else="">
+                        <p class="text-muted text-center mt-5">No se encontraron líneas de pedido con empleados asignados para el rango seleccionado.</p>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>
