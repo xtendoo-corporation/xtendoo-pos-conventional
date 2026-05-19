@@ -16,6 +16,7 @@
     "assets": {
         "web.assets_backend": [
             "pos_conventional_cash_drawer/static/src/js/cash_drawer_action.js",
+            "pos_conventional_cash_drawer/static/src/js/pos_order_list_cash_move_open_drawer.js",
             "pos_conventional_cash_drawer/static/src/js/pos_payment_buttons_cash_drawer.js",
             "pos_conventional_cash_drawer/static/src/xml/pos_payment_buttons_cash_drawer.xml",
         ],

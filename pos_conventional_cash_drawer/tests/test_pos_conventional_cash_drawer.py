@@ -181,6 +181,7 @@ class TestPosConventionalCashDrawer(PosConventionalTestCommon):
         self.assertIn('"pos_conventional_payment_wizard"', manifest)
         self.assertIn('"point_of_sale._assets_pos"', manifest)
         self.assertIn("cash_drawer_action.js", manifest)
+        self.assertIn("pos_order_list_cash_move_open_drawer.js", manifest)
         self.assertIn("pos_cash_move_open_drawer.js", manifest)
         self.assertIn("pos_payment_buttons_cash_drawer", manifest)
         self.assertIn("Abrir cajón", template)

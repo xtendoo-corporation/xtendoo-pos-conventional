@@ -12,6 +12,6 @@ Módulo puente para Odoo 19 que añade un botón **Abrir cajón** junto a los bo
 - Sustituye el widget de botones rápidos de pago por una versión extendida.
 - Añade el botón **Abrir cajón** al lado de los métodos de pago.
 - Abre automáticamente el cajón al validar un cobro con método de efectivo en el POS convencional, tanto en el wizard rápido como en el popup de registro de pagos.
-- Abre el cajón al pulsar **Cash In/Out / Entrada-Salida de caja** en el TPV, reutilizando el bridge local.
+- Abre el cajón al pulsar **Cash In/Out / Entrada-Salida de caja** tanto en el TPV como en el backend convencional, reutilizando el bridge local e iniciando la apertura en el mismo clic que muestra el popup.
 - Reutiliza `pos.config.action_test_cash_drawer()` para mantener el mismo flujo del bridge local ya implementado en `xtendoo_cash_drawer`.
 
