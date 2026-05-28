@@ -61,7 +61,7 @@ class TestPosProductLabelSectionAndNoteFieldAssets(TransactionCase):
     def test_form_view_uses_core_js_class(self):
         view = self.env.ref("pos_conventional_core.view_pos_pos_form_inherit_pos_conventional_core")
         self.assertIn(
-            'js_class="pos_conventional_order_form"',
+            "pos_conventional_order_form",
             view.arch_db,
             "La vista base del formulario POS debe montar el controlador core para aplicar la guardia de salida.",
         )

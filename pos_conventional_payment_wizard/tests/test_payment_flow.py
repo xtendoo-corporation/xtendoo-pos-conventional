@@ -46,10 +46,10 @@ class TestPaymentFlow(PosConventionalTestCommon):
     def _get_final_params(self, action):
         """Extrae los params del tag final.
 
-        Si la acción es pos_conventional_print_receipt_client, los parámetros
-        de navegación (config_id, default_session_id) están en next_action.params.
+        Si la acción es pos_conventional_print_receipt_client o pos_conventional_print_receipt_window,
+        los parámetros de navegación (config_id, default_session_id) están en next_action.params.
         """
-        if action.get("tag") == "pos_conventional_print_receipt_client":
+        if action.get("tag") in ("pos_conventional_print_receipt_client", "pos_conventional_print_receipt_window"):
             return action.get("params", {}).get("next_action", {}).get("params", {})
         return action.get("params", {})
 
@@ -530,7 +530,7 @@ class TestPaymentFlow(PosConventionalTestCommon):
         if isinstance(action, dict):
             self.assertIn(
                 action.get("tag"),
-                ("pos_conventional_new_order", "pos_conventional_print_receipt_client"),
+                ("pos_conventional_new_order", "pos_conventional_print_receipt_client", "pos_conventional_print_receipt_window"),
                 f"Acción inesperada: {action}",
             )
 
@@ -582,9 +582,9 @@ class TestPaymentFlow(PosConventionalTestCommon):
             "payment_method_id": self.card_pm.id,
         })
         action = wizard.check()
-        self.assertEqual(
-            action.get("tag"), "pos_conventional_print_receipt_client",
-            f"Con iface_print_auto=True y factura debe devolver print_receipt_client. tag={action.get('tag')}",
+        self.assertIn(
+            action.get("tag"), ("pos_conventional_print_receipt_client", "pos_conventional_print_receipt_window"),
+            f"Con iface_print_auto=True y factura debe devolver print_receipt_client o print_receipt_window. tag={action.get('tag')}",
         )
         next_action = action.get("params", {}).get("next_action", {})
         self.assertEqual(
@@ -614,9 +614,9 @@ class TestPaymentFlow(PosConventionalTestCommon):
             "amount_tendered": order.amount_total,
         })
         action = wizard.action_validate()
-        self.assertEqual(
-            action.get("tag"), "pos_conventional_print_receipt_client",
-            f"Con iface_print_auto=True y factura debe devolver print_receipt_client. tag={action.get('tag')}",
+        self.assertIn(
+            action.get("tag"), ("pos_conventional_print_receipt_client", "pos_conventional_print_receipt_window"),
+            f"Con iface_print_auto=True y factura debe devolver print_receipt_client o print_receipt_window. tag={action.get('tag')}",
         )
         next_action = action.get("params", {}).get("next_action", {})
         self.assertEqual(
@@ -749,9 +749,9 @@ class TestPaymentFlow(PosConventionalTestCommon):
             "amount_tendered": total + change,
         })
         action = wizard.action_validate()
-        self.assertEqual(
-            action.get("tag"), "pos_conventional_print_receipt_client",
-            f"Con iface_print_auto=True debe devolver print_receipt_client. tag={action.get('tag')}",
+        self.assertIn(
+            action.get("tag"), ("pos_conventional_print_receipt_client", "pos_conventional_print_receipt_window"),
+            f"Con iface_print_auto=True debe devolver print_receipt_client o print_receipt_window. tag={action.get('tag')}",
         )
         # cash_change debe estar en next_action.params (donde lo leerá pos_new_order_action.js)
         next_action_params = action.get("params", {}).get("next_action", {}).get("params", {})

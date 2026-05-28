@@ -106,9 +106,13 @@ class PosMakePaymentConventional(models.TransientModel):
             # _process_saved_order generates the invoice if to_invoice=True and state='paid'.
             # This must be set BEFORE calling _process_saved_order.
             if order.partner_id and not order.account_move:
-                order.with_context(skip_completeness_check=True).write({"to_invoice": True})
+                vals = {"to_invoice": True}
+                if "is_l10n_es_simplified_invoice" in order._fields:
+                    vals["is_l10n_es_simplified_invoice"] = True
+                order.with_context(skip_completeness_check=True).write(vals)
                 _logger.info(
-                    "POS: to_invoice=True for order %s with customer %s",
+                    "POS: to_invoice=True (simplified=%s) for order %s with customer %s",
+                    vals.get("is_l10n_es_simplified_invoice", False),
                     order.name, order.partner_id.name,
                 )
 

@@ -480,6 +480,10 @@ class PosMakePaymentWizard(models.TransientModel):
                 },
             }
 
+            if previous_sale_params.get("previous_sale_change", 0.0) > 0.005:
+                next_action["params"]["cash_change"] = previous_sale_params["previous_sale_change"]
+                next_action["params"]["cash_change_currency"] = previous_sale_params["previous_sale_currency"]
+
 
             # Print receipt if iface_print_auto is enabled (or explicitly requested)
             # and an invoice has been generated.

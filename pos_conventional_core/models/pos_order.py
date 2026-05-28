@@ -434,7 +434,10 @@ class PosOrder(models.Model):
                 )
 
         # 2. Mark for invoicing
-        self.with_context(skip_completeness_check=True).write({"to_invoice": True})
+        vals = {"to_invoice": True}
+        if "is_l10n_es_simplified_invoice" in self._fields:
+            vals["is_l10n_es_simplified_invoice"] = True
+        self.with_context(skip_completeness_check=True).write(vals)
 
         # 3. Validate order (transitions to 'paid' state)
         self.action_pos_order_paid()
