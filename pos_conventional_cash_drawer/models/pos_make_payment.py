@@ -4,7 +4,7 @@ from odoo import models
 class PosMakePayment(models.TransientModel):
     _inherit = "pos.make.payment"
 
-    def check(self, payment_method_id=None):
+    def check(self, payment_method_id=None, force_print=False):
         self.ensure_one()
         order = self.env["pos.order"].browse(self.env.context.get("active_id")).exists()
         payment_method = (
@@ -13,7 +13,10 @@ class PosMakePayment(models.TransientModel):
             else self.payment_method_id
         )
 
-        result = super().check(payment_method_id=payment_method_id)
+        result = super().check(
+            payment_method_id=payment_method_id,
+            force_print=force_print,
+        )
 
         if (
             not order
