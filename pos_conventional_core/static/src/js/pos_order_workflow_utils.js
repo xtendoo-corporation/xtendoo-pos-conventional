@@ -150,10 +150,14 @@ export async function loadPaymentMethods(orm, fieldData) {
     const ids = fieldData.currentIds;
     try {
         const methods = await orm.read("pos.payment.method", ids, ["name"]);
-        return methods.map((method) => ({
-            id: method.id,
-            name: method.name,
-        }));
+        const methodsById = new Map(methods.map((method) => [method.id, method]));
+        return ids
+            .map((id) => methodsById.get(id))
+            .filter(Boolean)
+            .map((method) => ({
+                id: method.id,
+                name: method.name,
+            }));
     } catch (error) {
         console.error("Error al leer nombres de métodos de pago:", error);
         return ids.map((id) => ({ id, name: "Metodo " + id }));

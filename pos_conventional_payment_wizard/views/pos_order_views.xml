@@ -21,7 +21,8 @@
                 <attribute name="class">me-2</attribute>
             </xpath>
             <xpath expr="//header/button[1]" position="after">
-                <field name="available_payment_method_ids" invisible="1"/>
+                <field name="use_fast_payment" invisible="1"/>
+                <field name="available_fast_payment_method_ids" invisible="1"/>
                 <button name="action_open_payment_popup"
                         string="Pago"
                         type="object"
@@ -33,18 +34,16 @@
                         class="btn-secondary me-1"
                         context="{'skip_completeness_check': True}"
                         invisible="state != 'draft'"/>
+                <widget name="pos_fast_payment_buttons"
+                        methods_field="available_fast_payment_method_ids"
+                        class="me-1"
+                        invisible="state != 'draft' or not use_fast_payment"/>
                 <button name="action_delete_cancelled_order_from_form"
                         string="Eliminar"
                         type="object"
                         class="btn-danger me-1"
                         context="{'skip_completeness_check': True}"
                         invisible="state != 'cancel'"/>
-
-                <field name="available_payment_method_ids"
-                       widget="pos_payment_buttons"
-                       nolabel="1"
-                       invisible="state != 'draft'"
-                       class="oe_inline d-inline-flex align-items-center gap-1"/>
             </xpath>
         </field>
     </record>

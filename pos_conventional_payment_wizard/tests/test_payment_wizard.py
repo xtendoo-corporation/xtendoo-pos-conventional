@@ -28,6 +28,47 @@ class TestPosPaymentWizard(PosConventionalTestCommon):
         # El valor puede ser los métodos del config o vacío; simplemente verificamos que es válido
         self.assertIsNotNone(order.available_payment_method_ids)
 
+    def test_02b_available_fast_payment_methods_matches_config_fast_methods(self):
+        """Los botones rápidos deben salir de fast_payment_method_ids, como en Odoo 19."""
+        self.pos_config.write({
+            "use_fast_payment": True,
+            "fast_payment_method_ids": [(6, 0, [self.cash_pm.id, self.card_pm.id])],
+        })
+        session = self._open_session()
+        order = self._make_draft_order(session)
+
+        self.assertEqual(
+            order.available_fast_payment_method_ids,
+            self.pos_config.fast_payment_method_ids,
+        )
+
+    def test_02c_available_fast_payment_methods_empty_when_disabled(self):
+        """Si el pago con un clic está desactivado, no deben aparecer botones rápidos."""
+        self.pos_config.write({
+            "use_fast_payment": False,
+            "fast_payment_method_ids": [(6, 0, [self.cash_pm.id, self.card_pm.id])],
+        })
+        session = self._open_session()
+        order = self._make_draft_order(session)
+
+        self.assertFalse(order.available_fast_payment_method_ids)
+
+    def test_02d_available_fast_payment_methods_excludes_split_transactions(self):
+        """Los botones rápidos deben ignorar métodos no soportados por el pago con un clic."""
+        split_pm = self.env["pos.payment.method"].create({
+            "name": "Cuenta Cliente Test",
+            "split_transactions": True,
+        })
+        self.pos_config.write({
+            "use_fast_payment": True,
+            "payment_method_ids": [(6, 0, [self.cash_pm.id, self.card_pm.id, split_pm.id])],
+            "fast_payment_method_ids": [(6, 0, [self.cash_pm.id, split_pm.id])],
+        })
+        session = self._open_session()
+        order = self._make_draft_order(session)
+
+        self.assertEqual(order.available_fast_payment_method_ids, self.cash_pm)
+
     # ── action_pay_cash ───────────────────────────────────────────────────
 
     def test_03_action_pay_cash_returns_wizard_action(self):

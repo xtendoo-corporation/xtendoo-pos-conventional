@@ -1,6 +1,6 @@
 import logging
 
-from odoo import api, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
 from odoo.tools.translate import _
@@ -10,6 +10,38 @@ _logger = logging.getLogger(__name__)
 
 class PosOrder(models.Model):
     _inherit = "pos.order"
+
+    use_fast_payment = fields.Boolean(
+        related="config_id.use_fast_payment",
+        string="Pago con un solo clic",
+        readonly=True,
+        store=False,
+    )
+    available_fast_payment_method_ids = fields.Many2many(
+        "pos.payment.method",
+        compute="_compute_available_fast_payment_method_ids",
+        string="Métodos de pago rápido disponibles",
+        store=False,
+        readonly=True,
+    )
+
+    @api.depends(
+        "config_id.use_fast_payment",
+        "config_id.fast_payment_method_ids",
+        "config_id.fast_payment_method_ids.use_payment_terminal",
+        "config_id.fast_payment_method_ids.split_transactions",
+    )
+    def _compute_available_fast_payment_method_ids(self):
+        for order in self:
+            config = order.config_id
+            if not config or not config.use_fast_payment:
+                order.available_fast_payment_method_ids = False
+                continue
+
+            order.available_fast_payment_method_ids = config.fast_payment_method_ids.filtered(
+                lambda payment_method: not payment_method.use_payment_terminal
+                and not payment_method.split_transactions
+            )
 
     def _get_previous_sale_banner_params(self):
         """Datos a mostrar en la siguiente venta como resumen de la operación anterior."""
@@ -165,25 +197,18 @@ class PosOrder(models.Model):
                 },
             }
 
-        is_bank = (
-            getattr(payment_method, "type", False) == "bank"
-            or payment_method.journal_id.type == "bank"
-            or payment_method.use_payment_terminal
-            or "tarjeta" in name_lower
-            or "banco" in name_lower
-            or "card" in name_lower
-        )
-
-        if not is_bank:
+        if payment_method.use_payment_terminal:
             return False
 
         amount_due = self.amount_total - self.amount_paid
-        if amount_due <= 0:
+        if float_compare(
+            amount_due,
+            0.0,
+            precision_rounding=self.currency_id.rounding or 0.01,
+        ) <= 0:
             raise UserError(_("The order is already fully paid."))
 
-        wizard = self.env["pos.make.payment"].with_context(
-            active_id=self.id, card_payment=True
-        ).create({
+        wizard = self.env["pos.make.payment"].with_context(active_id=self.id).create({
             "amount": amount_due,
             "payment_method_id": payment_method.id,
         })

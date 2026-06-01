@@ -1,7 +1,6 @@
 /** @odoo-module **/
 
 import { registry } from "@web/core/registry";
-import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { useService } from "@web/core/utils/hooks";
 import { Component, useState, onWillStart, onWillUpdateProps } from "@odoo/owl";
 import {
@@ -9,9 +8,14 @@ import {
     payOrderWithMethod,
 } from "@pos_conventional_core/js/pos_order_workflow_utils";
 
-export class PosPaymentButtons extends Component {
-    static template = "pos_conventional_payment_wizard.PosPaymentButtons";
-    static props = { ...standardFieldProps };
+export class PosFastPaymentButtons extends Component {
+    static template = "pos_conventional_payment_wizard.PosFastPaymentButtons";
+    static props = {
+        record: { type: Object },
+        readonly: { type: Boolean, optional: true },
+        name: { type: String, optional: true },
+        methodsField: { type: String, optional: true },
+    };
 
     setup() {
         this.orm = useService("orm");
@@ -31,8 +35,16 @@ export class PosPaymentButtons extends Component {
     }
 
     async updateMethods(props) {
-        const fieldData = props.record.data[props.name];
+        const fieldData = props.record?.data?.[this.getMethodsFieldName(props)];
+        if (!fieldData) {
+            this.state.methods = [];
+            return;
+        }
         this.state.methods = await loadPaymentMethods(this.orm, fieldData);
+    }
+
+    getMethodsFieldName(props = this.props) {
+        return props.methodsField || props.name;
     }
 
     get paymentMethods() {
@@ -50,7 +62,15 @@ export class PosPaymentButtons extends Component {
     }
 }
 
+registry.category("view_widgets").add("pos_fast_payment_buttons", {
+    component: PosFastPaymentButtons,
+    extractProps: ({ attrs }) => ({
+        methodsField: attrs.methods_field,
+    }),
+});
+
 registry.category("fields").add("pos_payment_buttons", {
-    component: PosPaymentButtons,
+    component: PosFastPaymentButtons,
     supportedTypes: ["many2many"],
 });
+
