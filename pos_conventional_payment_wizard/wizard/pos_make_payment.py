@@ -1,5 +1,6 @@
-from odoo import api, fields, models, _
+from odoo import api, fields, models
 from odoo.tools import float_is_zero
+from odoo.tools.translate import _
 from odoo.exceptions import UserError
 import logging
 
@@ -51,9 +52,10 @@ class PosMakePaymentConventional(models.TransientModel):
             # Para efectivo, por defecto poner el importe exacto
             self.amount_received = self.amount
 
-    def check(self, payment_method_id=None):
+    def check(self, payment_method_id=None, force_print=False):
         """
-        Permite forzar el método de pago si se pasa como argumento.
+        Permite forzar el método de pago si se pasa como argumento y, opcionalmente,
+        la impresión del recibo tras validar el pedido.
         """
         self.ensure_one()
 
@@ -143,7 +145,7 @@ class PosMakePaymentConventional(models.TransientModel):
 
             # Print receipt if iface_print_auto is enabled ("Automatic Receipt Printing")
             # and an invoice has been generated.
-            if order.config_id.iface_print_auto and order.account_move:
+            if (force_print or order.config_id.iface_print_auto) and order.account_move:
                 return {
                     "type": "ir.actions.client",
                     "tag": "pos_conventional_print_receipt_client",

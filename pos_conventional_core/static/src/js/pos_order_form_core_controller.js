@@ -60,12 +60,21 @@ export class PosConventionalOrderFormController extends FormController {
         const btn = ev.target.closest(
             'button[name^="action_pay_"], button[name="action_open_payment_popup"], button[name="action_pos_convention_pay_with_method"], button[name="action_cancel_and_delete_order"]'
         );
-        if (!btn) {
+        const wizardValidateBtn = ev.target.closest(
+            '.o_pos_conventional_payment_wizard_form button[name="action_validate"], .o_pos_conventional_payment_wizard_form button[name="action_validate_print"]'
+        );
+        const targetButton = btn || wizardValidateBtn;
+        if (!targetButton) {
             return;
         }
 
         const record = this.model.root;
-        const isCancelButton = btn.name === "action_cancel_and_delete_order";
+        if (wizardValidateBtn) {
+            activateNavigationBypass(record);
+            return;
+        }
+
+        const isCancelButton = targetButton.name === "action_cancel_and_delete_order";
         if (isCancelButton) {
             activateNavigationBypass(record);
             return;

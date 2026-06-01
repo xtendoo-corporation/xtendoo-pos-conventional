@@ -109,6 +109,22 @@ class PosOrder(models.Model):
 
         return payment_method
 
+    def _is_cash_payment_method(self, payment_method):
+        self.ensure_one()
+        payment_method = self._get_fast_payment_method(payment_method)
+        if not payment_method:
+            return False
+
+        name_lower = (payment_method.name or "").lower()
+        return bool(
+            getattr(payment_method, "type", False) == "cash"
+            or payment_method.is_cash_count
+            or payment_method.journal_id.type == "cash"
+            or "efectivo" in name_lower
+            or "cash" in name_lower
+            or "caja" in name_lower
+        )
+
     def _ensure_fast_payment_order_is_valid(self):
         self.ensure_one()
         if not self.has_order_lines:
@@ -144,7 +160,10 @@ class PosOrder(models.Model):
         self._ensure_fast_payment_order_is_valid()
         payment_method = self._get_fast_payment_method(payment_method_id)
         self._ensure_fast_payment_method_is_allowed(payment_method)
-        return self.action_pos_convention_pay_with_method(payment_method)
+        return self.action_pos_convention_pay_with_method(
+            payment_method,
+            force_print=not self._is_cash_payment_method(payment_method),
+        )
 
     def action_pay_cash(self):
         self.ensure_one()
@@ -197,9 +216,9 @@ class PosOrder(models.Model):
         if not card_method:
             raise UserError(_("No se encontró método de pago bancario para este TPV."))
 
-        return self.action_pos_convention_pay_with_method(card_method)
+        return self.action_pos_convention_pay_with_method(card_method, force_print=True)
 
-    def action_pos_convention_pay_with_method(self, payment_method_id):
+    def action_pos_convention_pay_with_method(self, payment_method_id, force_print=False):
         self.ensure_one()
         self._ensure_fast_payment_order_is_valid()
 
@@ -210,15 +229,7 @@ class PosOrder(models.Model):
         if self._is_negative_payment_flow():
             return self._action_standard_payment_wizard(payment_method)
 
-        name_lower = (payment_method.name or "").lower()
-        is_cash = (
-            getattr(payment_method, "type", False) == "cash"
-            or payment_method.is_cash_count
-            or payment_method.journal_id.type == "cash"
-            or "efectivo" in name_lower
-            or "cash" in name_lower
-            or "caja" in name_lower
-        )
+        is_cash = self._is_cash_payment_method(payment_method)
 
         if is_cash:
             view = self.env.ref(
@@ -256,7 +267,7 @@ class PosOrder(models.Model):
             "amount": amount_due,
             "payment_method_id": payment_method.id,
         })
-        return wizard.check()
+        return wizard.check(force_print=force_print)
 
     def action_open_payment_popup(self):
         self.ensure_one()

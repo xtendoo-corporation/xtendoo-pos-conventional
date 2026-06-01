@@ -3,6 +3,10 @@
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { Component, useState, onWillStart, onWillUpdateProps } from "@odoo/owl";
+import {
+    activateNavigationBypass,
+    clearNavigationBypass,
+} from "@pos_conventional_core/js/pos_order_workflow_utils";
 
 export class PosFastPaymentButtons extends Component {
     static template = "pos_conventional_payment_wizard.PosActionpadFastPaymentButtons";
@@ -64,17 +68,19 @@ export class PosFastPaymentButtons extends Component {
     }
 
     async onPaymentMethodClick(methodId) {
-        const saved = await this.props.record.save();
-        if (!saved && !this.props.record.resId) {
+        const record = this.props.record;
+        const saved = await record.save();
+        if (!saved && !record.resId) {
             return;
         }
 
-        const orderId = this.props.record.resId;
+        const orderId = record.resId;
         if (!orderId) {
             return;
         }
 
         try {
+            activateNavigationBypass(record);
             const actionResult = await this.orm.call(
                 "pos.order",
                 "action_validate_fast_payment",
@@ -84,8 +90,10 @@ export class PosFastPaymentButtons extends Component {
                 await this.action.doAction(actionResult);
                 return;
             }
-            await this.props.record.load();
+            clearNavigationBypass();
+            await record.load();
         } catch (error) {
+            clearNavigationBypass();
             const message = error?.data?.message || error?.message;
             if (message) {
                 this.notification.add(message, {
@@ -93,7 +101,7 @@ export class PosFastPaymentButtons extends Component {
                     title: "Pago rápido",
                 });
             }
-            await this.props.record.load();
+            await record.load();
         }
     }
 }

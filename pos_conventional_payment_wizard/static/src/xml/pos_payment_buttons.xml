@@ -1,17 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="pos_conventional_payment_wizard.PosActionpadFastPaymentButtons">
-        <div class="actionpad d-flex flex-column gap-2">
-            <div class="validation">
-                <div class="d-flex gap-2 flex-wrap align-items-stretch">
-                    <t t-foreach="paymentMethods" t-as="paymentMethod" t-key="paymentMethod.id">
-                        <button type="button"
-                                class="fast-pay-button button btn btn-secondary btn-lg py-3 d-flex align-items-center justify-content-center flex-fill"
-                                t-on-click="() => this.fastValidate(paymentMethod)"
-                                t-out="paymentMethod.name"/>
-                    </t>
-                </div>
-            </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <t t-foreach="paymentMethods" t-as="paymentMethod" t-key="paymentMethod.id">
+                <button type="button"
+                        class="fast-pay-button button btn btn-secondary text-nowrap"
+                        t-on-click="() => this.fastValidate(paymentMethod)"
+                        t-out="paymentMethod.name"/>
+            </t>
         </div>
     </t>
 </templates>
