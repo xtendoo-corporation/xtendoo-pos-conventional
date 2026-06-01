@@ -120,9 +120,6 @@ class PosOrder(models.Model):
             getattr(payment_method, "type", False) == "cash"
             or payment_method.is_cash_count
             or payment_method.journal_id.type == "cash"
-            or "efectivo" in name_lower
-            or "cash" in name_lower
-            or "caja" in name_lower
         )
 
     def _ensure_fast_payment_order_is_valid(self):
