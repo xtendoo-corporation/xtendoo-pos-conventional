@@ -3,13 +3,9 @@
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { Component, useState, onWillStart, onWillUpdateProps } from "@odoo/owl";
-import {
-    loadPaymentMethods,
-    payOrderWithMethod,
-} from "@pos_conventional_core/js/pos_order_workflow_utils";
 
 export class PosFastPaymentButtons extends Component {
-    static template = "pos_conventional_payment_wizard.PosFastPaymentButtons";
+    static template = "pos_conventional_payment_wizard.PosActionpadFastPaymentButtons";
     static props = {
         record: { type: Object },
         readonly: { type: Boolean, optional: true },
@@ -36,11 +32,20 @@ export class PosFastPaymentButtons extends Component {
 
     async updateMethods(props) {
         const fieldData = props.record?.data?.[this.getMethodsFieldName(props)];
-        if (!fieldData) {
+        if (!fieldData?.currentIds?.length) {
             this.state.methods = [];
             return;
         }
-        this.state.methods = await loadPaymentMethods(this.orm, fieldData);
+        const ids = fieldData.currentIds;
+        const methods = await this.orm.read("pos.payment.method", ids, ["name"]);
+        const methodsById = new Map(methods.map((method) => [method.id, method]));
+        this.state.methods = ids
+            .map((id) => methodsById.get(id))
+            .filter(Boolean)
+            .map((method) => ({
+                id: method.id,
+                name: method.name,
+            }));
     }
 
     getMethodsFieldName(props = this.props) {
@@ -51,26 +56,53 @@ export class PosFastPaymentButtons extends Component {
         return this.state.methods;
     }
 
+    async fastValidate(paymentMethod) {
+        if (!paymentMethod?.id) {
+            return;
+        }
+        await this.onPaymentMethodClick(paymentMethod.id);
+    }
+
     async onPaymentMethodClick(methodId) {
-        await payOrderWithMethod({
-            record: this.props.record,
-            methodId,
-            orm: this.orm,
-            action: this.action,
-            notification: this.notification,
-        });
+        const saved = await this.props.record.save();
+        if (!saved && !this.props.record.resId) {
+            return;
+        }
+
+        const orderId = this.props.record.resId;
+        if (!orderId) {
+            return;
+        }
+
+        try {
+            const actionResult = await this.orm.call(
+                "pos.order",
+                "action_validate_fast_payment",
+                [orderId, methodId]
+            );
+            if (actionResult) {
+                await this.action.doAction(actionResult);
+                return;
+            }
+            await this.props.record.load();
+        } catch (error) {
+            const message = error?.data?.message || error?.message;
+            if (message) {
+                this.notification.add(message, {
+                    type: "warning",
+                    title: "Pago rápido",
+                });
+            }
+            await this.props.record.load();
+        }
     }
 }
 
-registry.category("view_widgets").add("pos_fast_payment_buttons", {
+registry.category("view_widgets").add("pos_actionpad_fast_payment_buttons", {
     component: PosFastPaymentButtons,
     extractProps: ({ attrs }) => ({
         methodsField: attrs.methods_field,
     }),
 });
 
-registry.category("fields").add("pos_payment_buttons", {
-    component: PosFastPaymentButtons,
-    supportedTypes: ["many2many"],
-});
 

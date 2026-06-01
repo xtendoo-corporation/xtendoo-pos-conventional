@@ -34,7 +34,7 @@
                         class="btn-secondary me-1"
                         context="{'skip_completeness_check': True}"
                         invisible="state != 'draft'"/>
-                <widget name="pos_fast_payment_buttons"
+                <widget name="pos_actionpad_fast_payment_buttons"
                         methods_field="available_fast_payment_method_ids"
                         class="me-1"
                         invisible="state != 'draft' or not use_fast_payment"/>

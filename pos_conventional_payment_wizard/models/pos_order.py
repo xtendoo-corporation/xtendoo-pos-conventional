@@ -91,6 +91,61 @@ class PosOrder(models.Model):
         ).create(wizard_vals)
         return wizard.check()
 
+    def _get_fast_payment_methods(self):
+        self.ensure_one()
+        return self.available_fast_payment_method_ids
+
+    def _get_fast_payment_method(self, payment_method_id):
+        self.ensure_one()
+        payment_method = payment_method_id
+        if not hasattr(payment_method, "id"):
+            try:
+                payment_method = self.env["pos.payment.method"].browse(int(payment_method_id))
+            except (ValueError, TypeError):
+                return self.env["pos.payment.method"]
+
+        if not payment_method or not payment_method.exists():
+            return self.env["pos.payment.method"]
+
+        return payment_method
+
+    def _ensure_fast_payment_order_is_valid(self):
+        self.ensure_one()
+        if not self.has_order_lines:
+            raise UserError(
+                _("No se puede cobrar un pedido sin líneas. Añada productos al pedido.")
+            )
+        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
+            raise UserError(
+                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
+            )
+
+    def _ensure_fast_payment_method_is_allowed(self, payment_method):
+        self.ensure_one()
+        if not self.use_fast_payment:
+            raise UserError(_("El pago rápido no está habilitado en este TPV."))
+        if not payment_method:
+            raise UserError(_("No se encontró el método de pago rápido solicitado."))
+        if payment_method not in self._get_fast_payment_methods():
+            raise UserError(_("El método de pago seleccionado no está configurado para pago rápido."))
+
+    def get_fast_payment_methods_data(self):
+        self.ensure_one()
+        return [
+            {
+                "id": payment_method.id,
+                "name": payment_method.name,
+            }
+            for payment_method in self._get_fast_payment_methods()
+        ]
+
+    def action_validate_fast_payment(self, payment_method_id):
+        self.ensure_one()
+        self._ensure_fast_payment_order_is_valid()
+        payment_method = self._get_fast_payment_method(payment_method_id)
+        self._ensure_fast_payment_method_is_allowed(payment_method)
+        return self.action_pos_convention_pay_with_method(payment_method)
+
     def action_pay_cash(self):
         self.ensure_one()
         if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
@@ -146,21 +201,10 @@ class PosOrder(models.Model):
 
     def action_pos_convention_pay_with_method(self, payment_method_id):
         self.ensure_one()
-        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
-            raise UserError(
-                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
-            )
+        self._ensure_fast_payment_order_is_valid()
 
-        payment_method = payment_method_id
-        if not hasattr(payment_method, "id"):
-            try:
-                payment_method = self.env["pos.payment.method"].browse(
-                    int(payment_method_id)
-                )
-            except (ValueError, TypeError):
-                return False
-
-        if not payment_method or not payment_method.exists():
+        payment_method = self._get_fast_payment_method(payment_method_id)
+        if not payment_method:
             return False
 
         if self._is_negative_payment_flow():
