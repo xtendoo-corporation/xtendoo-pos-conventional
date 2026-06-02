@@ -43,8 +43,8 @@
                                         <th class="text-start">Pedido</th>
                                         <th class="text-start">Producto</th>
                                         <th class="text-start">Fecha</th>
-                                        <th class="text-end">Precio Total</th>
-                                        <th class="text-end">Importe Empleado</th>
+                                        <th class="text-end">Precio</th>
+                                        <th class="text-end">Importe</th>
                                     </tr>
                                 </thead>
                                 <tbody>
