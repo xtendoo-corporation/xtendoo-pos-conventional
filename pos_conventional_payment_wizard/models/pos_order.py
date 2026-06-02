@@ -128,10 +128,6 @@ class PosOrder(models.Model):
             raise UserError(
                 _("No se puede cobrar un pedido sin líneas. Añada productos al pedido.")
             )
-        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
-            raise UserError(
-                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
-            )
 
     def _ensure_fast_payment_method_is_allowed(self, payment_method):
         self.ensure_one()
@@ -164,10 +160,6 @@ class PosOrder(models.Model):
 
     def action_pay_cash(self):
         self.ensure_one()
-        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
-            raise UserError(
-                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
-            )
 
         cash_method = self.config_id.payment_method_ids.filtered("is_cash_count")[:1]
         if not cash_method:
@@ -177,8 +169,6 @@ class PosOrder(models.Model):
         if not cash_method:
             raise UserError(_("No se encontró método de pago en efectivo para este TPV."))
 
-        if self._is_negative_payment_flow():
-            return self._action_standard_payment_wizard(cash_method)
 
         view = self.env.ref(
             "pos_conventional_payment_wizard.view_pos_make_payment_wizard_cash_form",
@@ -202,10 +192,6 @@ class PosOrder(models.Model):
 
     def action_pay_card(self):
         self.ensure_one()
-        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
-            raise UserError(
-                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
-            )
 
         card_method = self.config_id.payment_method_ids.filtered(
             lambda p: p.journal_id.type == "bank"
@@ -223,8 +209,6 @@ class PosOrder(models.Model):
         if not payment_method:
             return False
 
-        if self._is_negative_payment_flow():
-            return self._action_standard_payment_wizard(payment_method)
 
         is_cash = self._is_cash_payment_method(payment_method)
 
@@ -253,11 +237,13 @@ class PosOrder(models.Model):
             return False
 
         amount_due = self.amount_total - self.amount_paid
-        if float_compare(
-            amount_due,
-            0.0,
-            precision_rounding=self.currency_id.rounding or 0.01,
-        ) <= 0:
+        is_paid = False
+        if float_compare(self.amount_total, 0.0, precision_rounding=self.currency_id.rounding or 0.01) >= 0:
+            is_paid = float_compare(amount_due, 0.0, precision_rounding=self.currency_id.rounding or 0.01) <= 0
+        else:
+            is_paid = float_compare(amount_due, 0.0, precision_rounding=self.currency_id.rounding or 0.01) >= 0
+
+        if is_paid:
             raise UserError(_("The order is already fully paid."))
 
         wizard = self.env["pos.make.payment"].with_context(active_id=self.id).create({
@@ -268,25 +254,6 @@ class PosOrder(models.Model):
 
     def action_open_payment_popup(self):
         self.ensure_one()
-        if float_is_zero(self.amount_total, precision_rounding=self.currency_id.rounding):
-            raise UserError(
-                _("No se puede cobrar un pedido con importe cero. Por favor, añada productos.")
-            )
-
-        if self._is_negative_payment_flow():
-            return {
-                "type": "ir.actions.act_window",
-                "res_model": "pos.make.payment",
-                "name": _("Make Payment"),
-                "view_mode": "form",
-                "view_id": False,
-                "target": "new",
-                "views": False,
-                "context": {
-                    **self.env.context,
-                    "active_id": self.id,
-                },
-            }
 
         view = self.env.ref(
             "pos_conventional_payment_wizard.view_pos_make_payment_wizard_form", False

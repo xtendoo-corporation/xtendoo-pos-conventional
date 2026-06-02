@@ -2,7 +2,7 @@ import logging
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, MissingError
-from odoo.tools import float_compare
+from odoo.tools import float_compare, float_is_zero
 
 _logger = logging.getLogger(__name__)
 
@@ -23,10 +23,10 @@ class PosMakePaymentWizard(models.TransientModel):
     def _get_order_amounts(self, order, ignore_existing_payments=False):
         """Devuelve total, pagado y pendiente recalculados desde el pedido."""
         order = order.sudo()
-        total = sum(order.lines.mapped("price_subtotal_incl")) or order.amount_total
+        total = order.amount_total
         paid = 0.0 if ignore_existing_payments else sum(order.payment_ids.mapped("amount"))
         due = total - paid
-        return total, paid, due if due > 0 else 0.0
+        return total, paid, due
 
     # check_company=False: el wizard puede operar sobre pedidos de cualquier
     # compañía activa del usuario. La regla multi-compañía estándar de pos.order
@@ -135,7 +135,7 @@ class PosMakePaymentWizard(models.TransientModel):
             paid = sum(wizard.payment_ids.mapped("amount"))
             wizard.amount_paid = paid
             due = wizard.amount_total - paid
-            wizard.amount_due = due if due > 0 else 0.0
+            wizard.amount_due = due
 
     @api.depends("payment_method_id")
     def _compute_is_cash_payment(self):
@@ -275,8 +275,9 @@ class PosMakePaymentWizard(models.TransientModel):
 
     def _add_payment(self, payment_method_id):
         self.ensure_one()
-        if self.amount_tendered <= 0.0:
-            raise UserError(_("Debe ingresar un importe mayor a cero o el pedido ya está pagado."))
+        rounding = self.currency_id.rounding or 0.01
+        if float_compare(self.amount_tendered, 0.0, precision_rounding=rounding) == 0:
+            raise UserError(_("Debe ingresar un importe distinto de cero."))
 
         payment_method = self.env["pos.payment.method"].browse(payment_method_id)
         if not payment_method.exists():
@@ -292,7 +293,7 @@ class PosMakePaymentWizard(models.TransientModel):
         )
 
         due = order.amount_total - order.amount_paid
-        self.amount_tendered = due if due > 0 else 0.0
+        self.amount_tendered = due
 
         return {
             "type": "ir.actions.act_window",
@@ -354,8 +355,6 @@ class PosMakePaymentWizard(models.TransientModel):
                 _("El pedido no es accesible. Compruebe que tiene los permisos necesarios.")
             ) from exc
 
-        if self.amount_total <= 0:
-            raise UserError(_("No se puede cobrar un pedido con importe cero. Por favor, añada productos."))
 
         rounding = (
             order.currency_id.rounding
@@ -365,16 +364,32 @@ class PosMakePaymentWizard(models.TransientModel):
         )
 
         # amount_change = amount_due - amount_tendered:
-        #   > 0.01  → importe insuficiente (falta por pagar)
-        #   < -0.01 → hay cambio que devolver al cliente
+        #   Si amount_total > 0 (venta):
+        #     amount_change > 0  → importe insuficiente (falta por pagar)
+        #     amount_change <= 0 → ok (cambio si < 0)
+        #   Si amount_total < 0 (devolución):
+        #     amount_change < 0  → importe insuficiente (falta devolver dinero)
+        #     amount_change >= 0 → ok (cambio si > 0)
         if self.is_cash_payment:
-            if float_compare(self.amount_change, 0.0, precision_rounding=rounding) > 0:
+            is_insufficient = False
+            if float_compare(self.amount_total, 0.0, precision_rounding=rounding) >= 0:
+                is_insufficient = float_compare(self.amount_change, 0.0, precision_rounding=rounding) > 0
+            else:
+                is_insufficient = float_compare(self.amount_change, 0.0, precision_rounding=rounding) < 0
+
+            if is_insufficient:
                 return self._warning_notification_action(
                     _("Importe insuficiente para completar el pago.")
                 )
         else:
             total_covered = self.amount_paid + self.amount_tendered
-            if float_compare(total_covered, self.amount_total, precision_rounding=rounding) < 0:
+            is_insufficient = False
+            if float_compare(self.amount_total, 0.0, precision_rounding=rounding) >= 0:
+                is_insufficient = float_compare(total_covered, self.amount_total, precision_rounding=rounding) < 0
+            else:
+                is_insufficient = float_compare(total_covered, self.amount_total, precision_rounding=rounding) > 0
+
+            if is_insufficient:
                 return self._warning_notification_action(
                     _("Importe insuficiente para completar el pago.")
                 )
@@ -419,7 +434,7 @@ class PosMakePaymentWizard(models.TransientModel):
                     })
             else:
                 _total, _paid, due = self._get_order_amounts(order)
-                if float_compare(due, 0.0, precision_rounding=rounding) > 0:
+                if not float_is_zero(due, precision_rounding=rounding):
                     order.add_payment({
                         "pos_order_id": order.id,
                         "amount": due,

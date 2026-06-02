@@ -82,13 +82,13 @@ export class PosConventionalOrderFormController extends FormController {
 
         const amountTotal = record?.data?.amount_total || 0;
         const hasProductLines = hasRealProductLines(record);
-        if (!hasProductLines || amountTotal <= 0) {
+        if (!hasProductLines) {
             ev.preventDefault();
             ev.stopImmediatePropagation();
             playErrorBeep();
             this.notification.add(
-                _t("No se puede cobrar un pedido sin productos o con importe cero."),
-                { type: "warning", title: _t("Importe inválido"), sticky: false }
+                _t("No se puede cobrar un pedido sin líneas. Añada productos al pedido."),
+                { type: "warning", title: _t("Pedido vacío"), sticky: false }
             );
             return;
         }

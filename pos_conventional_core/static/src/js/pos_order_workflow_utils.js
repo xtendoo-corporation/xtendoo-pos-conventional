@@ -99,22 +99,11 @@ export function playErrorBeep() {
 }
 
 export function notifyInvalidOrderForPayment(record, notification) {
-    const amountTotal = record?.data?.amount_total || 0;
-
     if (!hasRealProductLines(record)) {
         playErrorBeep();
         notification.add(
             _t("No se puede cobrar un pedido sin líneas. Añada productos al pedido."),
             { type: "warning", title: _t("Pedido vacío"), sticky: false }
-        );
-        return false;
-    }
-
-    if (isZeroAmount(amountTotal)) {
-        playErrorBeep();
-        notification.add(
-            _t("No se puede cobrar un pedido con importe cero."),
-            { type: "warning", title: _t("Importe inválido"), sticky: false }
         );
         return false;
     }
