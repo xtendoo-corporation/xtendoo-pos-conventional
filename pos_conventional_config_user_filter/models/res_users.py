@@ -15,6 +15,12 @@ class ResUsers(models.Model):
 
     def _has_limited_pos_config_access(self):
         self.ensure_one()
+        # Los administradores globales nunca tienen acceso limitado
+        if self.has_group("base.group_system"):
+            return False
+        # Si tiene cajas permitidas asignadas, está limitado
+        if self.allowed_pos_config_ids:
+            return True
         return self.has_group("point_of_sale.group_pos_user") and not self.has_group(
             "point_of_sale.group_pos_manager"
         )
@@ -34,4 +40,3 @@ class ResUsers(models.Model):
         if not self._has_limited_pos_config_access():
             return True
         return pos_config.id in self._get_effective_allowed_pos_config_ids()
-

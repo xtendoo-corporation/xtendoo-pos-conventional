@@ -9,7 +9,8 @@
                 <field name="allowed_pos_config_ids"
                        widget="many2many_tags"
                        options="{'no_create': True}"
-                       domain="[('company_id', 'in', company_ids)]"
+                       context="{'active_test': False, 'allow_all_pos': True}"
+                       domain="[]"
                        groups="point_of_sale.group_pos_manager"/>
             </xpath>
         </field>
