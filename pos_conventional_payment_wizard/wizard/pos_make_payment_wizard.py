@@ -231,7 +231,7 @@ class PosMakePaymentWizard(models.TransientModel):
 
         res["amount_tendered"] = self.env.context.get(
             "default_amount_tendered",
-            amount_total if ignore_existing_payments else due,
+            0.0,
         )
 
         payment_methods = order.config_id.payment_method_ids
@@ -292,8 +292,7 @@ class PosMakePaymentWizard(models.TransientModel):
             }
         )
 
-        due = order.amount_total - order.amount_paid
-        self.amount_tendered = due
+        self.amount_tendered = 0.0
 
         return {
             "type": "ir.actions.act_window",
@@ -421,11 +420,12 @@ class PosMakePaymentWizard(models.TransientModel):
             )
 
             if self.is_cash_payment and float_compare(self.amount_change, 0.0, precision_rounding=rounding) < 0:
-                order.add_payment({
-                    "pos_order_id": order.id,
-                    "amount": self.amount_tendered,
-                    "payment_method_id": self.payment_method_id.id,
-                })
+                if not float_is_zero(self.amount_tendered, precision_rounding=rounding):
+                    order.add_payment({
+                        "pos_order_id": order.id,
+                        "amount": self.amount_tendered,
+                        "payment_method_id": self.payment_method_id.id,
+                    })
                 if cash_method:
                     order.add_payment({
                         "pos_order_id": order.id,
