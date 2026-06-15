@@ -26,9 +26,9 @@
                         <label class="form-label fw-bold">Notas</label>
                         <textarea class="form-control" rows="3" t-model="state.notes" placeholder="Opcional..."/>
                     </div>
-                    <div class="d-flex justify-content-end gap-2 mt-4">
-                        <button class="btn btn-secondary btn-lg" t-on-click="cancel">Cancelar</button>
+                    <div class="d-flex justify-content-start gap-2 mt-4">
                         <button class="btn btn-primary btn-lg" t-on-click="confirm">Abrir caja</button>
+                        <button class="btn btn-secondary btn-lg" t-on-click="cancel">Cancelar</button>
                     </div>
                 </div>
             </div>

@@ -177,7 +177,7 @@ class PosOrder(models.Model):
         return {
             "type": "ir.actions.act_window",
             "res_model": "pos.make.payment.wizard",
-            "name": _("Cash Payment"),
+            "name": _("Pago en efectivo"),
             "view_mode": "form",
             "views": [[view.id if view else False, "form"]],
             "target": "new",
@@ -220,7 +220,7 @@ class PosOrder(models.Model):
             return {
                 "type": "ir.actions.act_window",
                 "res_model": "pos.make.payment.wizard",
-                "name": _("Cash Payment"),
+                "name": _("Pago en efectivo"),
                 "view_mode": "form",
                 "views": [[view.id if view else False, "form"]],
                 "target": "new",
