@@ -5,66 +5,68 @@
         <field name="model">pos.make.payment.wizard</field>
         <field name="arch" type="xml">
             <form string="Realizar Pago" class="o_pos_conventional_payment_wizard_form">
-                <sheet>
-                    <field name="order_id" invisible="1" />
-                    <field name="config_id" invisible="1" />
-                    <field name="currency_id" invisible="1" />
-                    <field name="currency_symbol" invisible="1" />
-                    <field name="available_payment_method_ids" invisible="1" />
+                <field name="order_id" invisible="1" />
+                <field name="config_id" invisible="1" />
+                <field name="currency_id" invisible="1" />
+                <field name="currency_symbol" invisible="1" />
+                <field name="available_payment_method_ids" invisible="1" />
 
-                    <!-- Resumen del ticket: filas apiladas, etiqueta e importe del mismo tamaño -->
-                    <div class="p-3 bg-light rounded mb-3">
-                        <!-- Fila 1: Total del ticket (fijo, nunca baja) -->
-                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
-                            <span class="fs-2 fw-bold">Total a pagar</span>
-                            <field name="amount_total" widget="monetary"
+                <!-- Resumen del ticket: filas apiladas, etiqueta e importe del mismo tamaño -->
+                <div class="p-3 mb-3">
+                    <!-- Fila 1: Total del ticket (fijo, nunca baja) -->
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                        <span class="fs-2 fw-bold">Total a pagar</span>
+                        <field name="amount_total" widget="monetary"
+                            options="{'currency_field': 'currency_id'}"
+                            readonly="1" nolabel="1"
+                            class="fs-2 fw-bold text-end"/>
+                    </div>
+                    <!-- Fila 2: Pagado — rojo si no cubre el total, verde si lo cubre -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fs-2 fw-bold">Pagado</span>
+                        <div class="text-end">
+                            <field name="amount_paid" widget="monetary"
                                 options="{'currency_field': 'currency_id'}"
                                 readonly="1" nolabel="1"
-                                class="fs-2 fw-bold text-end"/>
+                                class="fs-2 fw-bold text-danger"
+                                invisible="not (amount_total &gt; 0 and amount_paid &lt; amount_total or amount_total &lt; 0 and amount_paid &gt; amount_total)"/>
+                            <field name="amount_paid" widget="monetary"
+                                options="{'currency_field': 'currency_id'}"
+                                readonly="1" nolabel="1"
+                                class="fs-2 fw-bold text-success"
+                                invisible="amount_total &gt; 0 and amount_paid &lt; amount_total or amount_total &lt; 0 and amount_paid &gt; amount_total"/>
                         </div>
-                        <!-- Fila 2: Pagado — rojo si no cubre el total, verde si lo cubre -->
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="fs-2 fw-bold">Pagado</span>
-                            <div class="text-end">
-                                <field name="amount_paid" widget="monetary"
-                                    options="{'currency_field': 'currency_id'}"
-                                    readonly="1" nolabel="1"
-                                    class="fs-2 fw-bold text-danger"
-                                    invisible="not (amount_total &gt; 0 and amount_paid &lt; amount_total or amount_total &lt; 0 and amount_paid &gt; amount_total)"/>
-                                <field name="amount_paid" widget="monetary"
-                                    options="{'currency_field': 'currency_id'}"
-                                    readonly="1" nolabel="1"
-                                    class="fs-2 fw-bold text-success"
-                                    invisible="amount_total &gt; 0 and amount_paid &lt; amount_total or amount_total &lt; 0 and amount_paid &gt; amount_total"/>
-                            </div>
+                    </div>
+                </div>
+
+                <div class="px-3">
+                    <separator string="Registrar Pago" />
+                    <field name="is_cash_payment" invisible="1" />
+
+                    <div class="mb-3">
+                        <div class="o_form_label fw-bold mb-1">Método de pago</div>
+                        <field name="payment_method_id"
+                            options="{'no_create': True, 'no_open': True}"
+                            required="1"
+                            nolabel="1"
+                            class="fs-4 w-100"/>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="amount_tendered" class="form-label fw-bold">Importe a entregar</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text"><field name="currency_symbol" nolabel="1"/></span>
+                            <field name="amount_tendered"
+                                widget="monetary"
+                                options="{'currency_field': 'currency_id', 'no_symbol': True}"
+                                nolabel="1"
+                                class="form-control text-end fs-2 fw-bold text-primary"/>
                         </div>
                     </div>
 
-                    <separator string="Registrar Pago" />
-
-                    <group>
-                        <field name="is_cash_payment" invisible="1" />
-                        <field name="payment_method_id"
-                            options="{'no_create': True, 'no_open': True}"
-                            required="1" />
-                        <label for="amount_tendered" />
-                        <div class="o_row o_pos_cash_amount_input_row">
-                            <field name="amount_tendered" widget="monetary"
-                                options="{'currency_field': 'currency_id', 'no_symbol': True}"
-                                nolabel="1"
-                                class="text-end o_pos_cash_amount_input"/>
-                            <field name="currency_symbol"
-                                readonly="1" nolabel="1"
-                                class="oe_inline o_pos_cash_currency_symbol"/>
-                        </div>
-                        <field name="amount_change"
-                            invisible="not is_cash_payment"
-                            readonly="1" />
-                        <button name="action_add_payment" type="object" string="Añadir" />
-                    </group>
+                    <button name="action_add_payment" type="object" string="Añadir Pago" class="btn-secondary mb-3" icon="fa-plus"/>
 
                     <separator string="Pagos registrados" />
-
                     <field name="payment_ids"
                            nolabel="1"
                            mode="list"
@@ -74,17 +76,19 @@
                             <field name="amount" sum="Total" />
                         </list>
                     </field>
-
                     <separator string="Aún no hay pagos registrados para este pedido." invisible="payment_ids" />
-                </sheet>
+                </div>
+
                 <footer>
-                    <!-- amount_due sigue controlando si queda saldo pendiente -->
-                    <button name="action_validate" type="object"
-                        string="Confirmar Pago"
-                        class="btn-primary"
-                        icon="fa-check"
-                        invisible="amount_total &gt; 0 and amount_due &gt; 0.01" />
-                    <button string="Descartar" special="cancel" />
+                    <div class="d-flex justify-content-start gap-2 w-100">
+                        <!-- amount_due sigue controlando si queda saldo pendiente -->
+                        <button name="action_validate" type="object"
+                            string="Confirmar Pago"
+                            class="btn-primary btn-lg"
+                            icon="fa-check"
+                            invisible="amount_total &gt; 0 and amount_due &gt; 0.01" />
+                        <button string="Descartar" special="cancel" class="btn-secondary btn-lg" />
+                    </div>
                 </footer>
             </form>
         </field>

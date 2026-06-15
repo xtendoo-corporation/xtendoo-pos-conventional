@@ -261,7 +261,7 @@ class PosOrder(models.Model):
         return {
             "type": "ir.actions.act_window",
             "res_model": "pos.make.payment.wizard",
-            "name": _("Make Payment"),
+            "name": _("Pago combinado"),
             "view_mode": "form",
             "views": [[view.id if view else False, "form"]],
             "target": "new",
