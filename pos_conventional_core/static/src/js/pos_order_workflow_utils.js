@@ -70,9 +70,17 @@ export function hasRecordedPayments(record, epsilon = 0.00001) {
 }
 
 export function shouldBlockDraftOrderLeave(record) {
+    if (!record || !record.data) {
+        return false;
+    }
+
+    // Si el check "Permitir ventas en borrador" está marcado, no bloqueamos la salida.
+    if (record.data.allow_draft_orders) {
+        return false;
+    }
+
+    // Si no está marcado, bloqueamos la salida si el pedido está en borrador con productos y sin pagos.
     return !!(
-        record &&
-        record.data &&
         record.data.state === "draft" &&
         hasRealProductLines(record) &&
         !hasRecordedPayments(record)

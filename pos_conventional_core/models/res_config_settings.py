@@ -19,6 +19,12 @@ class ResConfigSettings(models.TransientModel):
         domain="[('customer_rank', '>', 0)]",
     )
 
+    pos_allow_draft_orders = fields.Boolean(
+        related="pos_config_id.allow_draft_orders",
+        readonly=False,
+        string="Permitir ventas en borrador",
+    )
+
     has_open_pos_sessions = fields.Boolean(
         string="Tiene sesiones POS abiertas",
         compute="_compute_has_open_pos_sessions",

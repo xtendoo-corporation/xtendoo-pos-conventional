@@ -1,4 +1,5 @@
-from odoo import fields, models, _
+from odoo import fields, models, api
+from odoo.tools.translate import _
 
 
 class PosConfig(models.Model):
@@ -15,6 +16,12 @@ class PosConfig(models.Model):
         string="Cliente por Defecto",
         help="Cliente que se asignará automáticamente a los nuevos pedidos POS creados desde el backend.",
         domain="[('customer_rank', '>', 0)]",
+    )
+
+    allow_draft_orders = fields.Boolean(
+        string="Permitir ventas en borrador",
+        default=False,
+        help="Si está marcado, se permite salir de un pedido en borrador sin finalizar el pago.",
     )
 
     def _get_or_create_non_touch_session(self):

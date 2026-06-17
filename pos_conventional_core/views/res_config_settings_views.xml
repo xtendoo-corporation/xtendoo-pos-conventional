@@ -17,6 +17,10 @@
                         placeholder="Seleccionar cliente por defecto..."
                         options="{'no_create': True}" />
                 </setting>
+                <setting id="pos_allow_draft_orders_setting" string="Ventas en borrador"
+                    help="Si está marcado, se permite salir de un pedido en borrador sin finalizar el pago. Si no está marcado, el sistema obligará a finalizar el pago o cancelar el pedido antes de salir.">
+                    <field name="pos_allow_draft_orders" />
+                </setting>
                 <div invisible="not has_open_pos_sessions" class="alert alert-warning mt-2" role="alert">
                     No se puede cambiar el modo táctil/no táctil mientras existan sesiones POS
                     abiertas.

@@ -28,6 +28,12 @@ class PosOrder(models.Model):
         help="Subtotal excluding taxes, computed from order lines.",
     )
 
+    allow_draft_orders = fields.Boolean(
+        related="config_id.allow_draft_orders",
+        string="Permitir ventas en borrador",
+        readonly=True,
+    )
+
     @api.depends("lines")
     def _compute_has_order_lines(self):
         for order in self:
@@ -591,4 +597,3 @@ class PosOrder(models.Model):
                         result[key] = val
 
         return result
-
