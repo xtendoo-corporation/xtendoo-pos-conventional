@@ -15,6 +15,11 @@ class TestReceiptCustom(PosConventionalTestCommon):
         content, _report_type = report._render_qweb_html(move.ids)
         return content.decode() if isinstance(content, bytes) else content
 
+    def _render_pos_order_80mm_html(self, order):
+        report = self.env.ref("pos_conventional_receipt_custom.action_report_pos_order_80mm")
+        content, _report_type = report._render_qweb_html(order.ids)
+        return content.decode() if isinstance(content, bytes) else content
+
     # ── get_factura_report_url ────────────────────────────────────────────
 
     def test_01_get_factura_report_url_no_invoice_returns_false(self):
@@ -195,6 +200,24 @@ class TestReceiptCustom(PosConventionalTestCommon):
         self.assertIn("FACTURA SIMPLIFICADA:", html)
         self.assertNotIn("FACTURA SIMPLIFICADA RECTIFICATIVA", html)
 
+    def test_16b_report_shows_invoice_date_below_simplified_invoice_number(self):
+        """La fecha debe ir en cabecera, bajo el número de factura simplificada."""
+        session = self._open_session()
+        order = self._make_draft_order(session, self.partner)
+        self._add_line(order)
+        order.write({"to_invoice": True})
+        self._add_payment(order)
+        order.action_pos_order_paid()
+
+        html = self._render_factura_simplificada_html(order.account_move)
+        title_pos = html.find("FACTURA SIMPLIFICADA:")
+        date_pos = html.find("FECHA:")
+        client_pos = html.find("CLIENTE:")
+
+        self.assertGreaterEqual(title_pos, 0)
+        self.assertGreater(date_pos, title_pos)
+        self.assertGreater(client_pos, date_pos)
+
     def test_17_report_shows_rectificativa_title_for_refund_invoice(self):
         """Una factura rectificativa debe mostrar el título específico."""
         session = self._open_session()
@@ -258,3 +281,17 @@ class TestReceiptCustom(PosConventionalTestCommon):
         self.assertTrue(move.invoice_payments_widget)
         self.assertIn(self.cash_pm.journal_id.name, html)
 
+    def test_19_pos_order_report_shows_date_below_ticket_number(self):
+        """El ticket POS no facturado también muestra la fecha bajo el número."""
+        session = self._open_session()
+        order = self._make_draft_order(session, self.partner)
+        self._add_line(order)
+
+        html = self._render_pos_order_80mm_html(order)
+        ticket_pos = html.find("TICKET:")
+        date_pos = html.find("FECHA:")
+        client_pos = html.find("CLIENTE:")
+
+        self.assertGreaterEqual(ticket_pos, 0)
+        self.assertGreater(date_pos, ticket_pos)
+        self.assertGreater(client_pos, date_pos)
