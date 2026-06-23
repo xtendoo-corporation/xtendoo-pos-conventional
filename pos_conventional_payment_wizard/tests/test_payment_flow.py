@@ -635,6 +635,35 @@ class TestPaymentFlow(PosConventionalTestCommon):
             f"next_action debe ser pos_conventional_new_order. next_action={next_action}",
         )
 
+    def test_31b_action_pay_card_without_iface_print_auto_does_not_print(self):
+        """El botón de tarjeta no debe imprimir si la caja no tiene impresión automática."""
+        self.pos_config.write({
+            "iface_print_auto": False,
+            "invoice_journal_id": self.invoice_journal.id,
+            "default_partner_id": self.partner.id,
+        })
+        order = self._order_with_line()
+        action = order.action_pay_card()
+
+        self.assertEqual(action.get("tag"), "pos_conventional_new_order")
+
+    def test_31c_card_print_action_contains_without_preview_flag(self):
+        """La acción de tarjeta propaga el modo global sin previsualización."""
+        self.pos_config.write({
+            "iface_print_auto": True,
+            "pos_print_receipt_without_preview": True,
+            "invoice_journal_id": self.invoice_journal.id,
+            "default_partner_id": self.partner.id,
+        })
+        order = self._order_with_line()
+        action = self._pay_card_check(order)
+
+        self.assertIn(
+            action.get("tag"),
+            ("pos_conventional_print_receipt_client", "pos_conventional_print_receipt_window"),
+        )
+        self.assertTrue(action.get("params", {}).get("print_without_preview"))
+
     def test_32_cash_with_iface_print_auto_returns_print_receipt(self):
         """Con iface_print_auto=True y factura generada, action_validate() CASH devuelve
         pos_conventional_print_receipt_client con next_action=pos_conventional_new_order."""

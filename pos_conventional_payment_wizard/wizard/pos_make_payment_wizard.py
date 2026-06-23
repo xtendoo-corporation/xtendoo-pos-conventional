@@ -521,6 +521,7 @@ class PosMakePaymentWizard(models.TransientModel):
                         "previous_sale_change": self.amount_change,
                         "previous_sale_currency": order.currency_id.symbol,
                         "previous_sale_is_cash": is_cash,
+                        "print_without_preview": order.config_id.pos_print_receipt_without_preview,
                         "next_action": next_action,
                     },
                 }

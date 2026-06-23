@@ -24,6 +24,14 @@ class PosConfig(models.Model):
         help="Si está marcado, se permite salir de un pedido en borrador sin finalizar el pago.",
     )
 
+    pos_print_receipt_without_preview = fields.Boolean(
+        string="Imprimir tickets sin previsualización",
+        help=(
+            "Cuando la impresión automática está activa, carga el ticket en segundo "
+            "plano para lanzar la impresión sin abrir la vista previa del informe."
+        ),
+    )
+
     def _get_or_create_non_touch_session(self):
         self.ensure_one()
 

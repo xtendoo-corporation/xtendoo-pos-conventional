@@ -44,6 +44,12 @@ class TestPosConfig(PosConventionalTestCommon):
         self.pos_config.default_partner_id = non_customer
         self.assertEqual(self.pos_config.default_partner_id, non_customer)
 
+    def test_04b_print_without_preview_default_false_and_assignable(self):
+        """La impresión sin previsualización es configurable por caja."""
+        self.assertFalse(self.pos_config.pos_print_receipt_without_preview)
+        self.pos_config.pos_print_receipt_without_preview = True
+        self.assertTrue(self.pos_config.pos_print_receipt_without_preview)
+
     # ── _get_or_create_non_touch_session ───────────────────────────────
 
     def test_05_get_or_create_session_creates_new(self):
@@ -357,4 +363,3 @@ class TestPosConfig(PosConventionalTestCommon):
         self.assertEqual(result, block_action)
         # No se debe haber creado ninguna sesión
         self.assertFalse(config.current_session_id)
-

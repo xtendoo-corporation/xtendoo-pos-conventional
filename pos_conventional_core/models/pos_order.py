@@ -492,6 +492,7 @@ class PosOrder(models.Model):
                 "params": {
                     "order_id": self.id,
                     "move_id": self.account_move.id if self.account_move else False,
+                    "print_without_preview": self.config_id.pos_print_receipt_without_preview,
                     "next_action": next_action,
                 },
             }

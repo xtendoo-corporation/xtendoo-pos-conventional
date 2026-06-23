@@ -155,6 +155,7 @@ class PosMakePaymentConventional(models.TransientModel):
                     "params": {
                         "order_id": order.id,
                         "move_id": order.account_move.id,
+                        "print_without_preview": order.config_id.pos_print_receipt_without_preview,
                         "next_action": next_action,
                     },
                 }

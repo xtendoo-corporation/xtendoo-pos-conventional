@@ -45,6 +45,12 @@ class TestResConfigSettings(PosConventionalTestCommon):
         self.assertEqual(settings.pos_default_partner_id, self.partner)
         self.pos_config.default_partner_id = False
 
+    def test_03b_settings_print_without_preview_propagates(self):
+        """El check de impresión sin previsualización en settings escribe en pos.config."""
+        settings = self._get_settings()
+        settings.pos_print_receipt_without_preview = True
+        self.assertTrue(self.pos_config.pos_print_receipt_without_preview)
+
     # ── has_open_pos_sessions ─────────────────────────────────────────────
 
     def test_04_has_open_sessions_false_without_sessions(self):
@@ -180,4 +186,3 @@ class TestResConfigSettings(PosConventionalTestCommon):
         settings.set_values()
         # El config no debe haber cambiado (valores iguales → sin error)
         self.assertTrue(config.pos_non_touch)
-

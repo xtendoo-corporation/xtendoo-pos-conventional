@@ -25,6 +25,12 @@ class ResConfigSettings(models.TransientModel):
         string="Permitir ventas en borrador",
     )
 
+    pos_print_receipt_without_preview = fields.Boolean(
+        related="pos_config_id.pos_print_receipt_without_preview",
+        readonly=False,
+        string="Imprimir tickets sin previsualización",
+    )
+
     has_open_pos_sessions = fields.Boolean(
         string="Tiene sesiones POS abiertas",
         compute="_compute_has_open_pos_sessions",

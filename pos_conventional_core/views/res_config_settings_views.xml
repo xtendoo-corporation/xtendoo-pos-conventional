@@ -26,6 +26,14 @@
                     abiertas.
                 </div>
             </xpath>
+            <xpath expr="//setting[@id='auto_printing']" position="after">
+                <setting id="pos_print_receipt_without_preview_setting"
+                    string="Impresión sin previsualización"
+                    help="Si la impresión automática está activa, lanza la impresión del ticket en segundo plano sin abrir la vista previa del informe. El navegador puede seguir mostrando su diálogo nativo de impresión."
+                    invisible="not pos_iface_print_auto">
+                    <field name="pos_print_receipt_without_preview" />
+                </setting>
+            </xpath>
         </field>
     </record>
 </odoo>

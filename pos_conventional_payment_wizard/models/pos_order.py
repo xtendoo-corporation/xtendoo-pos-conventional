@@ -155,7 +155,10 @@ class PosOrder(models.Model):
         self._ensure_fast_payment_method_is_allowed(payment_method)
         return self.action_pos_convention_pay_with_method(
             payment_method,
-            force_print=not self._is_cash_payment_method(payment_method),
+            force_print=bool(
+                self.config_id.iface_print_auto
+                and not self._is_cash_payment_method(payment_method)
+            ),
         )
 
     def action_pay_cash(self):
@@ -199,7 +202,10 @@ class PosOrder(models.Model):
         if not card_method:
             raise UserError(_("No se encontró método de pago bancario para este TPV."))
 
-        return self.action_pos_convention_pay_with_method(card_method, force_print=True)
+        return self.action_pos_convention_pay_with_method(
+            card_method,
+            force_print=bool(self.config_id.iface_print_auto),
+        )
 
     def action_pos_convention_pay_with_method(self, payment_method_id, force_print=False):
         self.ensure_one()
