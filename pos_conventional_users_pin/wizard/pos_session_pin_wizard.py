@@ -75,7 +75,7 @@ class PosSessionPinWizard(models.TransientModel):
             "type": "ir.actions.client",
             "tag": "pos_conventional_opening_popup",
             "name": _("Control de apertura"),
-            "target": "new",
+            "target": "current",
             "context": {
                 "session_id": self.session_id.id,
                 "config_id": self.session_id.config_id.id,
