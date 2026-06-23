@@ -82,6 +82,11 @@ class TestPaymentFlow(PosConventionalTestCommon):
         self._add_line(order)
         return order
 
+    def _enable_pin_after_order_or_skip(self):
+        if "pos_force_employee_login_after_order" not in self.pos_config._fields:
+            self.skipTest("pos_conventional_users_pin no está instalado.")
+        self.pos_config.write({"pos_force_employee_login_after_order": True})
+
     # ══════════════════════════════════════════════════════════════════════
     # BLOQUE 1 — CARD: pos.make.payment.check() con card_payment=True
     # ══════════════════════════════════════════════════════════════════════
@@ -125,6 +130,14 @@ class TestPaymentFlow(PosConventionalTestCommon):
             order.state, ("paid", "done"),
             f"Estado esperado 'paid'/'done', actual: {order.state}",
         )
+
+    def test_04b_card_check_propagates_force_login_after_order(self):
+        """Tras pago con tarjeta, el siguiente pedido debe pedir PIN si está configurado."""
+        self._enable_pin_after_order_or_skip()
+        order = self._order_with_line()
+        action = self._pay_card_check(order)
+        params = self._get_final_params(action)
+        self.assertTrue(params.get("force_login_after_order"), params)
 
     def test_05_card_check_params_has_config_id(self):
         """Los params del action CARD contienen config_id válido.
@@ -253,6 +266,36 @@ class TestPaymentFlow(PosConventionalTestCommon):
         self.assertAlmostEqual(params["previous_sale_total"], order.amount_total, places=2)
         self.assertAlmostEqual(params["previous_sale_change"], 0.0, places=2)
         self.assertEqual(params["previous_sale_currency"], order.currency_id.symbol or "€")
+
+    def test_13b_cash_wizard_propagates_force_login_after_order(self):
+        """Tras pago en efectivo, el siguiente pedido debe pedir PIN si está configurado."""
+        self._enable_pin_after_order_or_skip()
+        order = self._order_with_line()
+        _wizard, action = self._pay_cash_wizard_validate(order)
+        params = self._get_final_params(action)
+        self.assertTrue(params.get("force_login_after_order"), params)
+
+    def test_13c_combined_wizard_propagates_force_login_after_order(self):
+        """Tras pago combinado, el siguiente pedido debe pedir PIN si está configurado."""
+        self._enable_pin_after_order_or_skip()
+        order = self._order_with_line()
+        partial_amount = order.currency_id.round(order.amount_total / 2.0)
+        order.add_payment({
+            "pos_order_id": order.id,
+            "payment_method_id": self.card_pm.id,
+            "amount": partial_amount,
+        })
+        order.invalidate_recordset(["payment_ids", "amount_paid"])
+        amount_due = order.amount_total - order.amount_paid
+
+        wizard = self.env["pos.make.payment.wizard"].with_context(active_id=order.id).create({
+            "order_id": order.id,
+            "payment_method_id": self.cash_pm.id,
+            "amount_tendered": amount_due,
+        })
+        action = wizard.action_validate()
+        params = self._get_final_params(action)
+        self.assertTrue(params.get("force_login_after_order"), params)
 
     def test_14_cash_wizard_with_change_returns_new_order(self):
         """Con importe entregado > total (cambio), sigue devolviendo new_order (iface_print_auto=False)."""
@@ -767,4 +810,3 @@ class TestPaymentFlow(PosConventionalTestCommon):
         )
         self.assertAlmostEqual(next_action_params["previous_sale_total"], order.amount_total, places=2)
         self.assertAlmostEqual(next_action_params["previous_sale_change"], change, places=2)
-

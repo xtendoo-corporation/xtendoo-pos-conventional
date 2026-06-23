@@ -143,6 +143,9 @@ class PosMakePaymentConventional(models.TransientModel):
                 next_action["params"]["cash_change"] = previous_sale_params["previous_sale_change"]
                 next_action["params"]["cash_change_currency"] = previous_sale_params["previous_sale_currency"]
 
+            if getattr(order.config_id, "pos_force_employee_login_after_order", False):
+                next_action["params"]["force_login_after_order"] = True
+
             # Print receipt if iface_print_auto is enabled ("Automatic Receipt Printing")
             # and an invoice has been generated.
             if (force_print or order.config_id.iface_print_auto) and order.account_move:

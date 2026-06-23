@@ -499,6 +499,8 @@ class PosMakePaymentWizard(models.TransientModel):
                 next_action["params"]["cash_change"] = previous_sale_params["previous_sale_change"]
                 next_action["params"]["cash_change_currency"] = previous_sale_params["previous_sale_currency"]
 
+            if getattr(order.config_id, "pos_force_employee_login_after_order", False):
+                next_action["params"]["force_login_after_order"] = True
 
             # Print receipt if iface_print_auto is enabled (or explicitly requested)
             # and an invoice has been generated.
@@ -519,7 +521,6 @@ class PosMakePaymentWizard(models.TransientModel):
                         "previous_sale_change": self.amount_change,
                         "previous_sale_currency": order.currency_id.symbol,
                         "previous_sale_is_cash": is_cash,
-                        "force_login_after_order": getattr(self.config_id, "pos_force_employee_login_after_order", False),
                         "next_action": next_action,
                     },
                 }
