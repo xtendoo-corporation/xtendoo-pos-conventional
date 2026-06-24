@@ -54,6 +54,8 @@
                             font-size: 4.8mm;
                             line-height: 1.15;
                             color: #000;
+                            transform: scaleX(1.16);
+                            transform-origin: top left;
                         }
                         .center { text-align: center; }
                         .right { text-align: right; }
