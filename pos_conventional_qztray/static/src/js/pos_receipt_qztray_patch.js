@@ -11,6 +11,30 @@ import { PosReceiptClientAction } from "@pos_conventional_core/js/pos_receipt_cl
 
 const DEFAULT_REPORT_NAME = "pos_conventional_receipt_custom.report_factura_simplificada_80mm";
 
+async function getQzTrayParamsFromOrder(env, params = {}) {
+    if (params.use_qztray || !params.order_id) {
+        return params;
+    }
+    try {
+        const qzParams = await env.services.orm.call(
+            "pos.order",
+            "_get_pos_conventional_qztray_print_params",
+            [[params.order_id]]
+        );
+        return {
+            ...params,
+            ...qzParams,
+            next_action: params.next_action,
+            clear_breadcrumbs: params.clear_breadcrumbs,
+            url: params.url,
+            report_autoprints: params.report_autoprints,
+        };
+    } catch (error) {
+        console.warn("[PosReceiptQzTray] No se pudieron recuperar parámetros QZ.", error);
+        return params;
+    }
+}
+
 function printUrlInBackground(url, env, { reportAutoprints = false } = {}) {
     return new Promise((resolve) => {
         const iframe = document.createElement("iframe");
@@ -144,8 +168,8 @@ patch(PosReceiptClientAction.prototype, {
         }
     },
 
-    _printReportBackground(moveId) {
-        const params = this.props.action.params || {};
+    async _printReportBackground(moveId) {
+        const params = await getQzTrayParamsFromOrder(this.env, this.props.action.params || {});
         if (!params.use_qztray) {
             return super._printReportBackground(moveId);
         }
@@ -164,7 +188,7 @@ patch(PosReceiptClientAction.prototype, {
 });
 
 async function printReceiptWindowQzTrayAction(env, action) {
-    const params = action.params || {};
+    const params = await getQzTrayParamsFromOrder(env, action.params || {});
     const clearBreadcrumbs = params.clear_breadcrumbs !== undefined
         ? !!params.clear_breadcrumbs
         : true;
