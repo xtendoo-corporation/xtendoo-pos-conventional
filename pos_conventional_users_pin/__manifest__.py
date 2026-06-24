@@ -13,5 +13,12 @@
         "views/res_config_settings_views.xml",
         "views/pos_session_pin_wizard_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "pos_conventional_users_pin/static/src/js/pos_pin_masked_field.js",
+            "pos_conventional_users_pin/static/src/xml/pos_pin_masked_field.xml",
+            "pos_conventional_users_pin/static/src/scss/pos_pin_masked_field.scss",
+        ],
+    },
     "installable": True,
 }

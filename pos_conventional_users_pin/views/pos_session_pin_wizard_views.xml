@@ -16,7 +16,7 @@
                         <field name="session_id" invisible="1"/>
                         <field name="user_id" invisible="1"/>
                         <label for="pos_pin" string="PIN"/>
-                        <field name="pos_pin" required="1" placeholder="Ingrese su PIN (ej: 1234)" nolabel="1"/>
+                        <field name="pos_pin" required="1" placeholder="Ingrese su PIN (ej: 1234)" nolabel="1" widget="pos_pin_masked"/>
                     </group>
                 </sheet>
                     <footer>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="pos_conventional_users_pin.PosPinMaskedField">
+        <t t-if="props.readonly">
+            <span class="o_pos_pin_masked_value" t-esc="'•'.repeat((props.record.data[props.name] || '').length)" />
+        </t>
+        <t t-else="">
+            <input
+                class="o_input o_pos_pin_masked_input"
+                t-att-id="props.id"
+                type="text"
+                autocomplete="off"
+                inputmode="numeric"
+                t-att-maxlength="maxLength > 0 and maxLength"
+                t-att-placeholder="props.placeholder"
+                t-on-blur="onBlur"
+                t-ref="input"
+            />
+        </t>
+    </t>
+</templates>
