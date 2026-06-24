@@ -16,18 +16,26 @@
         <xpath expr="//div[contains(concat(' ', normalize-space(@class), ' '), ' article ')]/style" position="after">
             <style>
                 .page {
-                    padding-left: 1.5mm !important;
-                    padding-right: 1.5mm !important;
+                    padding-left: 0.5mm !important;
+                    padding-right: 0.5mm !important;
                     width: 80mm !important;
                     margin-left: 0 !important;
                     margin-right: 0 !important;
+                    font-size: 15px !important;
+                    line-height: 1.35 !important;
                 }
                 table {
                     width: 100% !important;
                 }
-                .col-name { width: 66% !important; }
+                th {
+                    font-size: 14px !important;
+                }
+                td {
+                    font-size: 15px !important;
+                }
+                .col-name { width: 65% !important; }
                 .col-ud { width: 10% !important; }
-                .col-total { width: 24% !important; }
+                .col-total { width: 25% !important; }
             </style>
         </xpath>
     </template>
