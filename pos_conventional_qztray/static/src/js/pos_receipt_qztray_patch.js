@@ -152,14 +152,13 @@ patch(PosReceiptClientAction.prototype, {
 
         this._printReportWithQzTray(moveId, params).catch((error) => {
             console.warn(
-                "[PosReceiptQzTray] No se pudo imprimir con QZ Tray. Se usa el flujo normal.",
+                "[PosReceiptQzTray] No se pudo imprimir con QZ Tray.",
                 error
             );
             this.notification.add(
-                _t("No se pudo imprimir con QZ Tray. Se usará la impresión del navegador."),
-                { type: "warning" }
+                _t("No se pudo imprimir el ticket QZ Tray: %s", error?.message || error),
+                { type: "danger", sticky: true }
             );
-            super._printReportBackground(moveId);
         });
     },
 });
@@ -183,12 +182,10 @@ async function printReceiptWindowQzTrayAction(env, action) {
                 "[PosReceiptQzTray] No se pudo imprimir con QZ Tray desde window action.",
                 error
             );
-            if (params.url) {
-                const absoluteUrl = new URL(params.url, window.location.origin).toString();
-                await printUrlInBackground(absoluteUrl, env, {
-                    reportAutoprints: !!params.report_autoprints,
-                });
-            }
+            env.services.notification.add(
+                _t("No se pudo imprimir el ticket QZ Tray: %s", error?.message || error),
+                { type: "danger", sticky: true }
+            );
         }
     } else {
         if (params.url) {

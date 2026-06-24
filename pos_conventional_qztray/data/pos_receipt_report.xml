@@ -33,19 +33,25 @@
                 <div class="article" t-att-data-oe-model="o._name" t-att-data-oe-id="o.id">
                     <style>
                         @page { size: 80mm auto; margin: 0; }
+                        html,
                         body {
                             margin: 0 !important;
                             padding: 0 !important;
                             width: 80mm !important;
                             color: #000;
                         }
+                        main {
+                            width: 80mm !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
                         .article {
                             width: 80mm !important;
-                            margin: 0 auto !important;
+                            margin: 0 !important;
                             padding: 0 !important;
                         }
                         .ticket {
-                            width: 78mm;
+                            width: 79mm;
                             box-sizing: border-box;
                             margin: 0 auto;
                             padding: 1mm 0 4mm 0;
@@ -65,17 +71,27 @@
                         }
                         table {
                             width: 100%;
-                            border-collapse: collapse;
+                            border-collapse: separate !important;
+                            border-spacing: 0 !important;
                             table-layout: fixed;
                             border: 0 !important;
                         }
+                        thead,
+                        tbody,
+                        tr,
                         th {
                             border: 0 !important;
+                            outline: 0 !important;
+                            background: transparent !important;
+                        }
+                        th {
                             font-size: 15px;
                             padding: 2px 0;
                         }
                         td {
                             border: 0 !important;
+                            outline: 0 !important;
+                            background: transparent !important;
                             font-size: 16px;
                             padding: 2px 0;
                             vertical-align: top;
@@ -240,6 +256,7 @@
                         </t>
                         <div class="center" style="margin-top: 6px;">Gracias por su visita</div>
                         <div class="center">Atendido por: <span t-field="o.user_id.name"/></div>
+                        <div class="right" style="font-size: 9px; margin-top: 2px;">QZ</div>
                     </div>
                 </div>
             </t>
