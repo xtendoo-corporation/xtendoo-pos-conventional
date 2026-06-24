@@ -27,7 +27,8 @@
     </record>
 
     <template id="report_pos_order_80mm_qztray">
-        <t t-call="web.html_container">
+        <t t-set="full_width" t-value="True"/>
+        <t t-call="web.report_layout">
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o.company_id"/>
                 <div class="article" t-att-data-oe-model="o._name" t-att-data-oe-id="o.id">
