@@ -19,10 +19,11 @@ class PosOrder(models.Model):
             self.config_id.iface_print_auto
             and self.config_id.pos_print_receipt_with_qztray
         )
-        params.setdefault(
-            "report_name",
-            "pos_conventional_receipt_custom.report_factura_simplificada_80mm",
-        )
+        original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
+        params.setdefault("report_name", original_report_name)
+        if params["use_qztray"]:
+            params["printer_report_name"] = original_report_name
+            params["report_name"] = "pos_conventional_qztray.report_factura_simplificada_80mm_qztray"
         action["params"] = params
         if params["use_qztray"] and action.get("tag") == "pos_conventional_print_receipt_window":
             action["tag"] = "pos_conventional_print_receipt_qztray_window"

@@ -73,10 +73,11 @@ patch(PosReceiptClientAction.prototype, {
         }
 
         const reportName = params.report_name || DEFAULT_REPORT_NAME;
+        const printerReportName = params.printer_report_name || reportName;
         const printAction = await this.orm.call(
             "ir.actions.report",
             "print_action_for_report_name",
-            [reportName],
+            [printerReportName],
             { context: { skip_printer_exception: true } }
         );
 
