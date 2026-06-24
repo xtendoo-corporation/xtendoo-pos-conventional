@@ -128,7 +128,7 @@ patch(PosReceiptClientAction.prototype, {
 
         try {
             const qzPrinter = await qz.printers.find(printerName);
-            const config = qz.configs.create(qzPrinter);
+            const config = qz.configs.create(qzPrinter, params.qztray_options || {});
             await qz.print(config, data);
             this.notification.add(_t("Ticket enviado a QZ Tray: %s", printerName), {
                 type: "success",
