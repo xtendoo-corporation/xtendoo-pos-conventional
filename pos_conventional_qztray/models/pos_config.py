@@ -32,13 +32,17 @@ class PosConfig(models.Model):
 
     def _get_pos_qztray_print_options(self):
         self.ensure_one()
-        options = {
-            "units": "mm",
+        config_options = {
             "margins": 0,
-            "scaleContent": True,
         }
-        if self.pos_qztray_paper_width_mm:
-            options["size"] = {"width": self.pos_qztray_paper_width_mm}
         if self.pos_qztray_rasterize_pdf:
-            options["rasterize"] = True
-        return options
+            config_options["rasterize"] = True
+
+        data_options = {}
+        if self.pos_qztray_paper_width_mm:
+            data_options["pageWidth"] = self.pos_qztray_paper_width_mm
+
+        return {
+            "config": config_options,
+            "data": data_options,
+        }
