@@ -15,84 +15,90 @@
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o.company_id"/>
                 <div class="article" t-att-data-oe-model="o._name" t-att-data-oe-id="o.id">
-<!--                    <style>-->
-<!--                        body {-->
-<!--                            margin: 0 !important;-->
-<!--                            padding: 0 !important;-->
-<!--                            color: #000;-->
-<!--                        }-->
-<!--                        main {-->
-<!--                            margin: 0 !important;-->
-<!--                            padding: 0 !important;-->
-<!--                        }-->
-<!--                        .article {-->
-<!--                            margin: 0 !important;-->
-<!--                            padding: 0 !important;-->
-<!--                        }-->
-<!--                        .ticket {-->
-<!--                            width: 100%;-->
-<!--                            box-sizing: border-box;-->
-<!--                            margin: 0 auto;-->
-<!--                            padding: 0.25mm 0 4mm 0;-->
-<!--                            font-family: Arial, Helvetica, sans-serif;-->
-<!--                            font-size: 8mm;-->
-<!--                            line-height: 1.12;-->
-<!--                            color: #000;-->
-<!--                        }-->
-<!--                        .center { text-align: center; }-->
-<!--                        .right { text-align: right; }-->
-<!--                        .bold { font-weight: 700; }-->
-<!--                        .upper { text-transform: uppercase; }-->
-<!--                        .line {-->
-<!--                            border: 0;-->
-<!--                            border-top: 1px solid #000;-->
-<!--                            margin: 5px 0;-->
-<!--                        }-->
-<!--                        table {-->
-<!--                            width: 100%;-->
-<!--                            border-collapse: separate !important;-->
-<!--                            border-spacing: 0 !important;-->
-<!--                            table-layout: fixed;-->
-<!--                            border: 0 !important;-->
-<!--                        }-->
-<!--                        thead,-->
-<!--                        tbody,-->
-<!--                        tr,-->
-<!--                        th {-->
-<!--                            border: 0 !important;-->
-<!--                            outline: 0 !important;-->
-<!--                            background: transparent !important;-->
-<!--                        }-->
-<!--                        th {-->
-<!--                            font-size: 7mm;-->
-<!--                            padding: 3px 0;-->
-<!--                        }-->
-<!--                        td {-->
-<!--                            border: 0 !important;-->
-<!--                            outline: 0 !important;-->
-<!--                            background: transparent !important;-->
-<!--                            font-size: 8mm;-->
-<!--                            padding: 3px 0;-->
-<!--                            vertical-align: top;-->
-<!--                        }-->
-<!--                        .col-name { width: 62%; }-->
-<!--                        .col-qty { width: 10%; text-align: center; }-->
-<!--                        .col-total { width: 28%; text-align: right; }-->
-<!--                        .name-cell {-->
-<!--                            white-space: nowrap;-->
-<!--                            overflow: hidden;-->
-<!--                            text-overflow: ellipsis;-->
-<!--                            padding-right: 1mm;-->
-<!--                        }-->
-<!--                        .tax-table td,-->
-<!--                        .tax-table th {-->
-<!--                            font-size: 7mm;-->
-<!--                        }-->
-<!--                        .total {-->
-<!--                            font-size: 12mm;-->
-<!--                            margin: 10px 0 8px 0;-->
-<!--                        }-->
-<!--                    </style>-->
+                    <style>
+                        body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            color: #000;
+                        }
+                        main {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                        .article {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                        .ticket {
+                            width: 100%;
+                            box-sizing: border-box;
+                            margin: 0 auto;
+                            padding: 0.25mm 0 4mm 0;
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 8.8mm;
+                            line-height: 1.12;
+                            color: #000;
+                        }
+                        .center { text-align: center; }
+                        .right { text-align: right; }
+                        .bold { font-weight: 700; }
+                        .upper { text-transform: uppercase; }
+                        .line {
+                            border: 0;
+                            border-top: 1px solid #000;
+                            margin: 5px 0;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: separate !important;
+                            border-spacing: 0 !important;
+                            table-layout: fixed;
+                            border: 0 !important;
+                        }
+                        thead,
+                        tbody,
+                        tr,
+                        th {
+                            border: 0 !important;
+                            outline: 0 !important;
+                            background: transparent !important;
+                        }
+                        th {
+                            font-size: 7.6mm;
+                            padding: 3px 0;
+                        }
+                        td {
+                            border: 0 !important;
+                            outline: 0 !important;
+                            background: transparent !important;
+                            font-size: 8.8mm;
+                            padding: 3px 0;
+                            vertical-align: top;
+                        }
+                        .col-name { width: 62%; }
+                        .col-qty { width: 10%; text-align: center; }
+                        .col-total { width: 28%; text-align: right; }
+                        .name-cell {
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            padding-right: 1mm;
+                        }
+                        .tax-table td,
+                        .tax-table th {
+                            font-size: 7.6mm;
+                        }
+                        .total {
+                            font-size: 13mm;
+                            margin: 10px 0 8px 0;
+                        }
+                        .block-gap {
+                            margin-top: 5mm;
+                        }
+                        .section-gap {
+                            margin-top: 4mm;
+                        }
+                    </style>
 
                     <div class="ticket">
                         <div class="center" style="margin-bottom: 6px;">
@@ -134,14 +140,14 @@
                         </div>
 
                         <t t-if="o.partner_id">
-                            <div style="margin-top: 4px;">
+                            <div class="block-gap">
                                 <div class="bold">CLIENTE:</div>
                                 <div><span t-field="o.partner_id.name"/></div>
                                 <div t-if="o.partner_id.vat">NIF: <span t-field="o.partner_id.vat"/></div>
                             </div>
                         </t>
 
-                        <hr class="line"/>
+                        <hr class="line section-gap"/>
 
                         <table class="lines-table">
                             <thead>
@@ -169,7 +175,7 @@
                             </tbody>
                         </table>
 
-                        <hr class="line"/>
+                        <hr class="line section-gap"/>
 
                         <table class="tax-table">
                             <thead>
@@ -213,7 +219,7 @@
                             </tbody>
                         </table>
 
-                        <hr class="line"/>
+                        <hr class="line section-gap"/>
 
                         <div class="right bold total">
                             TOTAL <span t-field="o.amount_total"/>
