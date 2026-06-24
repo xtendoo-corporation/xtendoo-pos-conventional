@@ -164,22 +164,31 @@ patch(PosReceiptClientAction.prototype, {
 
 async function printReceiptWindowQzTrayAction(env, action) {
     const params = action.params || {};
-    if (!params.use_qztray) {
-        return false;
-    }
+    const clearBreadcrumbs = params.clear_breadcrumbs !== undefined
+        ? !!params.clear_breadcrumbs
+        : true;
 
-    const clientAction = Object.create(PosReceiptClientAction.prototype);
-    clientAction.orm = env.services.orm;
-    clientAction.notification = env.services.notification;
-    clientAction.props = { action };
+    if (params.use_qztray) {
+        const clientAction = Object.create(PosReceiptClientAction.prototype);
+        clientAction.orm = env.services.orm;
+        clientAction.notification = env.services.notification;
+        clientAction.props = { action };
 
-    try {
-        await clientAction._printReportWithQzTray(params.move_id, params);
-    } catch (error) {
-        console.warn(
-            "[PosReceiptQzTray] No se pudo imprimir con QZ Tray desde window action.",
-            error
-        );
+        try {
+            await clientAction._printReportWithQzTray(params.move_id, params);
+        } catch (error) {
+            console.warn(
+                "[PosReceiptQzTray] No se pudo imprimir con QZ Tray desde window action.",
+                error
+            );
+            if (params.url) {
+                const absoluteUrl = new URL(params.url, window.location.origin).toString();
+                await printUrlInBackground(absoluteUrl, env, {
+                    reportAutoprints: !!params.report_autoprints,
+                });
+            }
+        }
+    } else {
         if (params.url) {
             const absoluteUrl = new URL(params.url, window.location.origin).toString();
             await printUrlInBackground(absoluteUrl, env, {
@@ -188,9 +197,6 @@ async function printReceiptWindowQzTrayAction(env, action) {
         }
     }
 
-    const clearBreadcrumbs = params.clear_breadcrumbs !== undefined
-        ? !!params.clear_breadcrumbs
-        : true;
     if (params.next_action) {
         return env.services.action.doAction(params.next_action, { clearBreadcrumbs });
     }
@@ -200,4 +206,9 @@ async function printReceiptWindowQzTrayAction(env, action) {
 registry.category("actions").add(
     "pos_conventional_print_receipt_qztray_window",
     printReceiptWindowQzTrayAction
+);
+registry.category("actions").add(
+    "pos_conventional_print_receipt_window",
+    printReceiptWindowQzTrayAction,
+    { force: true }
 );
