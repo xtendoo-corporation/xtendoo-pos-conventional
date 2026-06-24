@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_pos_conventional_qztray" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.pos.conventional.qztray</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="point_of_sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//setting[@id='auto_printing']" position="after">
+                <setting id="pos_print_receipt_with_qztray_setting"
+                    string="Impresión con QZ Tray"
+                    help="Si la impresión automática está activa, envía el ticket a QZ Tray usando la impresora configurada para el informe. Si falla, se usa el flujo normal del navegador."
+                    invisible="not pos_iface_print_auto">
+                    <field name="pos_print_receipt_with_qztray"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>
