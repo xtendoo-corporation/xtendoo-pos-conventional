@@ -88,10 +88,11 @@ patch(PosReceiptClientAction.prototype, {
             throw new Error(_t("La impresora configurada no usa el backend QZ Tray."));
         }
 
+        const reportResId = params.report_res_id || moveId;
         const data = await rpc("/web/dataset/call_kw", {
             model: "ir.actions.report",
             method: "get_qz_tray_data",
-            args: [printAction.id, [moveId], "pdf", reportName],
+            args: [printAction.id, [reportResId], "pdf", reportName],
             kwargs: { data: {} },
             context: {},
         });

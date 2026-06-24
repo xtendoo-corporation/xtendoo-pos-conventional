@@ -1,44 +1,240 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="action_factura_simplificada_80mm_qztray" model="ir.actions.report">
-        <field name="name">Factura Simplificada 80mm QZ Tray</field>
-        <field name="model">account.move</field>
-        <field name="report_type">qweb-html</field>
-        <field name="report_name">pos_conventional_qztray.report_factura_simplificada_80mm_qztray</field>
-        <field name="report_file">pos_conventional_qztray.report_factura_simplificada_80mm_qztray</field>
-        <field name="print_report_name">'Ticket_QZ_%s' % object.name.replace('/', '_')</field>
-        <field name="paperformat_id" ref="pos_conventional_receipt_custom.paperformat_receipt_80mm"/>
+    <record id="paperformat_pos_order_80mm_qztray" model="report.paperformat">
+        <field name="name">POS Order 80mm QZ Tray</field>
+        <field name="default" eval="False"/>
+        <field name="format">custom</field>
+        <field name="page_width">80</field>
+        <field name="page_height">297</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
     </record>
 
-    <template id="report_factura_simplificada_80mm_qztray"
-        inherit_id="pos_conventional_receipt_custom.report_factura_simplificada_80mm"
-        primary="True">
-        <xpath expr="//div[contains(concat(' ', normalize-space(@class), ' '), ' article ')]/style" position="after">
-            <style>
-                .page {
-                    padding-left: 0.5mm !important;
-                    padding-right: 0.5mm !important;
-                    width: 62mm !important;
-                    margin-left: 0 !important;
-                    margin-right: 0 !important;
-                    font-size: 15px !important;
-                    line-height: 1.35 !important;
-                    transform: scale(1.28);
-                    transform-origin: top left;
-                }
-                table {
-                    width: 100% !important;
-                }
-                th {
-                    font-size: 14px !important;
-                }
-                td {
-                    font-size: 15px !important;
-                }
-                .col-name { width: 65% !important; }
-                .col-ud { width: 10% !important; }
-                .col-total { width: 25% !important; }
-            </style>
-        </xpath>
+    <record id="action_pos_order_80mm_qztray" model="ir.actions.report">
+        <field name="name">Ticket POS 80mm QZ Tray</field>
+        <field name="model">pos.order</field>
+        <field name="report_type">qweb-html</field>
+        <field name="report_name">pos_conventional_qztray.report_pos_order_80mm_qztray</field>
+        <field name="report_file">pos_conventional_qztray.report_pos_order_80mm_qztray</field>
+        <field name="print_report_name">'Ticket_QZ_%s' % object.name.replace('/', '_')</field>
+        <field name="paperformat_id" ref="pos_conventional_qztray.paperformat_pos_order_80mm_qztray"/>
+    </record>
+
+    <template id="report_pos_order_80mm_qztray">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o.company_id"/>
+                <div class="article" t-att-data-oe-model="o._name" t-att-data-oe-id="o.id">
+                    <style>
+                        @page { size: 80mm auto; margin: 0; }
+                        body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            width: 80mm !important;
+                            color: #000;
+                        }
+                        .ticket {
+                            width: 80mm;
+                            box-sizing: border-box;
+                            padding: 1mm 1mm 4mm 1mm;
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 15px;
+                            line-height: 1.25;
+                            color: #000;
+                        }
+                        .center { text-align: center; }
+                        .right { text-align: right; }
+                        .bold { font-weight: 700; }
+                        .upper { text-transform: uppercase; }
+                        .line {
+                            border: 0;
+                            border-top: 1px solid #000;
+                            margin: 4px 0;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                        }
+                        th {
+                            border-bottom: 1px solid #000;
+                            font-size: 14px;
+                            padding: 2px 0;
+                        }
+                        td {
+                            font-size: 15px;
+                            padding: 2px 0;
+                            vertical-align: top;
+                        }
+                        .col-name { width: 64%; }
+                        .col-qty { width: 11%; text-align: center; }
+                        .col-total { width: 25%; text-align: right; }
+                        .name-cell {
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            padding-right: 2px;
+                        }
+                        .tax-table td,
+                        .tax-table th {
+                            font-size: 14px;
+                        }
+                        .total {
+                            font-size: 24px;
+                            margin: 8px 0;
+                        }
+                    </style>
+
+                    <div class="ticket">
+                        <div class="center" style="margin-bottom: 6px;">
+                            <img t-if="company.logo"
+                                t-att-src="'/logo.png?company=%s' % company.id"
+                                style="max-height: 55px; max-width: 75mm; filter: brightness(0); -webkit-filter: brightness(0);"/>
+                        </div>
+
+                        <t t-if="o.config_id and o.config_id.receipt_header">
+                            <div style="white-space: pre-line; margin-bottom: 4px;">
+                                <span t-out="o.config_id.receipt_header"/>
+                            </div>
+                        </t>
+
+                        <div class="bold upper" style="font-size: 17px;">
+                            <span t-field="company.name"/>
+                        </div>
+                        <div t-if="company.street"><span t-field="company.street"/></div>
+                        <div>
+                            <span t-if="company.zip" t-field="company.zip"/>
+                            <span t-if="company.city" t-field="company.city"/>
+                        </div>
+                        <div t-if="company.vat"><span t-field="company.vat"/></div>
+
+                        <hr class="line"/>
+
+                        <t t-set="move" t-value="o.account_move"/>
+                        <div class="bold upper">
+                            <t t-if="move and move.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
+                            <t t-else="">FACTURA SIMPLIFICADA:</t>
+                        </div>
+                        <div>
+                            <span t-if="move" t-field="move.name"/>
+                            <span t-else="" t-field="o.name"/>
+                        </div>
+                        <div>
+                            <span class="bold">FECHA:</span>
+                            <span t-field="o.date_order" t-options='{"format": "dd/MM/yyyy HH:mm"}'/>
+                        </div>
+
+                        <t t-if="o.partner_id">
+                            <div style="margin-top: 4px;">
+                                <div class="bold">CLIENTE:</div>
+                                <div><span t-field="o.partner_id.name"/></div>
+                                <div t-if="o.partner_id.vat">NIF: <span t-field="o.partner_id.vat"/></div>
+                            </div>
+                        </t>
+
+                        <hr class="line"/>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="col-name" style="text-align: left;">Nombre</th>
+                                    <th class="col-qty">UD</th>
+                                    <th class="col-total">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.lines" t-as="line">
+                                    <tr>
+                                        <td class="col-name name-cell">
+                                            <t t-set="line_name" t-value="line.full_product_name or line.product_id.display_name"/>
+                                            <span t-out="line_name"/>
+                                        </td>
+                                        <td class="col-qty">
+                                            <span t-esc="'%.0f' % line.qty"/>
+                                        </td>
+                                        <td class="col-total">
+                                            <span t-esc="'%.2f' % line.price_subtotal_incl"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <hr class="line"/>
+
+                        <table class="tax-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">Base</th>
+                                    <th>IMPUESTO</th>
+                                    <th class="right">Cuota</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="move and move.tax_totals">
+                                    <t t-foreach="move.tax_totals['subtotals']" t-as="subtotal">
+                                        <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
+                                            <tr>
+                                                <td>
+                                                    <span t-out="tax_group['base_amount_currency']"
+                                                        t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                </td>
+                                                <td class="center"><span t-out="tax_group['group_name']"/></td>
+                                                <td class="right">
+                                                    <span t-out="tax_group['tax_amount_currency']"
+                                                        t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </t>
+                                </t>
+                                <t t-else="">
+                                    <tr>
+                                        <td>
+                                            <span t-out="o.amount_total - o.amount_tax"
+                                                t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                        <td class="center">IVA</td>
+                                        <td class="right">
+                                            <span t-out="o.amount_tax"
+                                                t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <hr class="line"/>
+
+                        <div class="right bold total">
+                            TOTAL <span t-field="o.amount_total"/>
+                        </div>
+
+                        <div class="center">
+                            Pagado:
+                            <t t-foreach="o.payment_ids" t-as="payment">
+                                <span t-field="payment.payment_method_id.name"/>
+                            </t>
+                        </div>
+
+                        <hr class="line"/>
+
+                        <t t-if="o.config_id and o.config_id.receipt_footer">
+                            <div class="center" style="white-space: pre-line; margin-top: 5px;">
+                                <span t-out="o.config_id.receipt_footer"/>
+                            </div>
+                        </t>
+                        <div class="center" style="margin-top: 6px;">Gracias por su visita</div>
+                        <div class="center">Atendido por: <span t-field="o.user_id.name"/></div>
+                    </div>
+                </div>
+            </t>
+        </t>
     </template>
 </odoo>

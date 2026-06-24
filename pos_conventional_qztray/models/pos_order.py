@@ -23,7 +23,8 @@ class PosOrder(models.Model):
         params.setdefault("report_name", original_report_name)
         if params["use_qztray"]:
             params["printer_report_name"] = original_report_name
-            params["report_name"] = "pos_conventional_qztray.report_factura_simplificada_80mm_qztray"
+            params["report_name"] = "pos_conventional_qztray.report_pos_order_80mm_qztray"
+            params["report_res_id"] = self.id
         action["params"] = params
         if params["use_qztray"] and action.get("tag") == "pos_conventional_print_receipt_window":
             action["tag"] = "pos_conventional_print_receipt_qztray_window"
