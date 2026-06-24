@@ -19,7 +19,10 @@ function isEditable(element) {
 }
 
 function isSpecialKey(key, event) {
-    return !["Control", "Alt"].includes(key) && (key.length > 1 || event.metaKey);
+    return (
+        !["Control", "Alt", "Meta"].includes(key) &&
+        (key.length > 1 || event.ctrlKey || event.metaKey || event.altKey)
+    );
 }
 
 function isEndCharacter(key) {
@@ -276,4 +279,3 @@ export class PosConventionalBarcodeScannerField extends Component {
 registry.category("fields").add("pos_conventional_barcode_scanner", {
     component: PosConventionalBarcodeScannerField,
 });
-

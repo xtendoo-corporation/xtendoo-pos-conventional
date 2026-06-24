@@ -164,6 +164,32 @@ test("scanner widget keeps the original field value while the barcode is process
     expect(view.model.root.data._barcode_scanned).toBe("SCAN001");
 });
 
+test("scanner widget does not block browser paste shortcuts", async () => {
+    await mountView({
+        type: "form",
+        resModel: "sale.order",
+        resId: 1,
+        arch: /* xml */ `
+            <form>
+                <field name="name"/>
+                <field name="partner_name"/>
+                <field name="_barcode_scanned" widget="pos_conventional_barcode_scanner"/>
+            </form>
+        `,
+    });
+
+    const internalInput = document.querySelector(".o_field_widget[name=partner_name] input");
+    const event = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+        key: "v",
+    });
+    internalInput.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+});
+
 test("scanner widget does not require cleanBarcode on the started barcode service", async () => {
     const view = await mountView({
         type: "form",
@@ -196,5 +222,4 @@ test("scanner widget does not require cleanBarcode on the started barcode servic
 
     expect(view.model.root.data._barcode_scanned).toBe("123");
 });
-
 
