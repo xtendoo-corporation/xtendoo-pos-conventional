@@ -19,7 +19,7 @@
     <record id="action_pos_order_80mm_qztray" model="ir.actions.report">
         <field name="name">Ticket POS 80mm QZ Tray</field>
         <field name="model">pos.order</field>
-        <field name="report_type">qweb-pdf</field>
+        <field name="report_type">qweb-html</field>
         <field name="report_name">pos_conventional_qztray.report_pos_order_80mm_qztray</field>
         <field name="report_file">pos_conventional_qztray.report_pos_order_80mm_qztray</field>
         <field name="print_report_name">'Ticket_QZ_%s' % object.name.replace('/', '_')</field>
@@ -27,36 +27,37 @@
     </record>
 
     <template id="report_pos_order_80mm_qztray">
-        <t t-set="full_width" t-value="True"/>
-        <t t-call="web.report_layout">
+        <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o.company_id"/>
                 <div class="article" t-att-data-oe-model="o._name" t-att-data-oe-id="o.id">
                     <style>
+                        @page { size: 80mm auto; margin: 0mm; }
                         body {
                             margin: 0 !important;
                             padding: 0 !important;
+                            width: 512px !important;
                             color: #000;
                         }
                         main {
+                            width: 512px !important;
                             margin: 0 !important;
                             padding: 0 !important;
                         }
                         .article {
+                            width: 512px !important;
                             margin: 0 !important;
                             padding: 0 !important;
                         }
                         .ticket {
-                            width: 100%;
+                            width: 512px;
                             box-sizing: border-box;
-                            margin: 0 auto;
-                            padding: 0.25mm 0 4mm 0;
+                            margin: 0;
+                            padding: 8px 8px 24px 8px;
                             font-family: Arial, Helvetica, sans-serif;
-                            font-size: 4.8mm;
+                            font-size: 30px;
                             line-height: 1.15;
                             color: #000;
-                            transform: scaleX(1.16);
-                            transform-origin: top left;
                         }
                         .center { text-align: center; }
                         .right { text-align: right; }
@@ -83,15 +84,15 @@
                             background: transparent !important;
                         }
                         th {
-                            font-size: 4.3mm;
-                            padding: 2px 0;
+                            font-size: 26px;
+                            padding: 4px 0;
                         }
                         td {
                             border: 0 !important;
                             outline: 0 !important;
                             background: transparent !important;
-                            font-size: 4.8mm;
-                            padding: 2px 0;
+                            font-size: 30px;
+                            padding: 4px 0;
                             vertical-align: top;
                         }
                         .col-name { width: 62%; }
@@ -105,10 +106,10 @@
                         }
                         .tax-table td,
                         .tax-table th {
-                            font-size: 4.2mm;
+                            font-size: 25px;
                         }
                         .total {
-                            font-size: 7.5mm;
+                            font-size: 44px;
                             margin: 8px 0 6px 0;
                         }
                     </style>

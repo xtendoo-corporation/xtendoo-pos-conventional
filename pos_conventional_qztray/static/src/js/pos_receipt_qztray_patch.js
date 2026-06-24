@@ -89,13 +89,18 @@ patch(PosReceiptClientAction.prototype, {
         }
 
         const reportResId = params.report_res_id || moveId;
-        const data = await rpc("/web/dataset/call_kw", {
-            model: "ir.actions.report",
-            method: "get_qz_tray_data",
-            args: [printAction.id, [reportResId], "pdf", reportName],
-            kwargs: { data: {} },
-            context: {},
-        });
+        const reportUrl = `/report/html/${reportName}/${reportResId}`;
+        const response = await fetch(reportUrl, { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(_t("No se pudo renderizar el ticket QZ Tray."));
+        }
+        const html = await response.text();
+        const data = [{
+            type: "pixel",
+            format: "html",
+            flavor: "plain",
+            data: html,
+        }];
 
         qz.security.setCertificatePromise((resolve, reject) => {
             fetch("/qz-certificate", {
