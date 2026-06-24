@@ -11,24 +11,6 @@ import { PosReceiptClientAction } from "@pos_conventional_core/js/pos_receipt_cl
 
 const DEFAULT_REPORT_NAME = "pos_conventional_receipt_custom.report_factura_simplificada_80mm";
 
-function applyQzTrayDataOptions(data, options = {}) {
-    if (!options || !Object.keys(options).length || !Array.isArray(data)) {
-        return data;
-    }
-    return data.map((item) => {
-        if (!item || typeof item !== "object" || item.format !== "pdf") {
-            return item;
-        }
-        return {
-            ...item,
-            options: {
-                ...(item.options || {}),
-                ...options,
-            },
-        };
-    });
-}
-
 function printUrlInBackground(url, env, { reportAutoprints = false } = {}) {
     return new Promise((resolve) => {
         const iframe = document.createElement("iframe");
@@ -105,15 +87,13 @@ patch(PosReceiptClientAction.prototype, {
             throw new Error(_t("La impresora configurada no usa el backend QZ Tray."));
         }
 
-        let data = await rpc("/web/dataset/call_kw", {
+        const data = await rpc("/web/dataset/call_kw", {
             model: "ir.actions.report",
             method: "get_qz_tray_data",
             args: [printAction.id, [moveId], "pdf", reportName],
             kwargs: { data: {} },
             context: {},
         });
-        const qztrayOptions = params.qztray_options || {};
-        data = applyQzTrayDataOptions(data, qztrayOptions.data || {});
 
         qz.security.setCertificatePromise((resolve, reject) => {
             fetch("/qz-certificate", {
@@ -148,16 +128,8 @@ patch(PosReceiptClientAction.prototype, {
 
         try {
             const qzPrinter = await qz.printers.find(printerName);
-            const config = qz.configs.create(qzPrinter, qztrayOptions.config || {});
-            try {
-                await qz.print(config, data);
-            } catch (error) {
-                console.warn(
-                    "[PosReceiptQzTray] Error imprimiendo con opciones QZ. Reintento sin opciones.",
-                    error
-                );
-                await qz.print(qz.configs.create(qzPrinter), data);
-            }
+            const config = qz.configs.create(qzPrinter);
+            await qz.print(config, data);
             this.notification.add(_t("Ticket enviado a QZ Tray: %s", printerName), {
                 type: "success",
             });

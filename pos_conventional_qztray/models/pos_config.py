@@ -12,37 +12,3 @@ class PosConfig(models.Model):
             "cliente web vuelve al flujo de impresión del navegador."
         ),
     )
-    pos_qztray_paper_width_mm = fields.Float(
-        string="Ancho de ticket QZ Tray (mm)",
-        default=80.0,
-        help=(
-            "Ancho del papel enviado a QZ Tray. Si el ticket sale demasiado pequeño, "
-            "normalmente el driver está usando A4/Letter y hay que indicar aquí el "
-            "ancho real del rollo."
-        ),
-    )
-    pos_qztray_rasterize_pdf = fields.Boolean(
-        string="Rasterizar PDF en QZ Tray",
-        default=True,
-        help=(
-            "Convierte el PDF a imagen antes de enviarlo a la impresora. Suele evitar "
-            "problemas de escala en impresoras térmicas."
-        ),
-    )
-
-    def _get_pos_qztray_print_options(self):
-        self.ensure_one()
-        config_options = {
-            "margins": 0,
-        }
-        if self.pos_qztray_rasterize_pdf:
-            config_options["rasterize"] = True
-
-        data_options = {}
-        if self.pos_qztray_paper_width_mm:
-            data_options["pageWidth"] = self.pos_qztray_paper_width_mm
-
-        return {
-            "config": config_options,
-            "data": data_options,
-        }

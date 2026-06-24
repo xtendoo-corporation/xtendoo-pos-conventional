@@ -9,9 +9,11 @@
     "depends": [
         "pos_conventional_core",
         "pos_conventional_payment_wizard",
+        "pos_conventional_receipt_custom",
         "base_report_to_printer_qztray",
     ],
     "data": [
+        "data/pos_receipt_report.xml",
         "views/res_config_settings_views.xml",
     ],
     "assets": {

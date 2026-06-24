@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pos_conventional_receipt_custom.action_factura_simplificada_80mm" model="ir.actions.report">
+        <field name="paperformat_id" ref="pos_conventional_receipt_custom.paperformat_receipt_80mm"/>
+    </record>
+</odoo>

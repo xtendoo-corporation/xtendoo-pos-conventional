@@ -19,8 +19,6 @@ class PosOrder(models.Model):
             self.config_id.iface_print_auto
             and self.config_id.pos_print_receipt_with_qztray
         )
-        if params["use_qztray"]:
-            params["qztray_options"] = self.config_id._get_pos_qztray_print_options()
         params.setdefault(
             "report_name",
             "pos_conventional_receipt_custom.report_factura_simplificada_80mm",
