@@ -1,61 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="paperformat_pos_order_80mm_qztray" model="report.paperformat">
-        <field name="name">POS Order 80mm QZ Tray</field>
-        <field name="default" eval="False"/>
-        <field name="format">custom</field>
-        <field name="page_width">80</field>
-        <field name="page_height">297</field>
-        <field name="orientation">Portrait</field>
-        <field name="margin_top">0</field>
-        <field name="margin_bottom">0</field>
-        <field name="margin_left">0</field>
-        <field name="margin_right">0</field>
-        <field name="header_line" eval="False"/>
-        <field name="header_spacing">0</field>
-        <field name="dpi">96</field>
-    </record>
-
     <record id="action_pos_order_80mm_qztray" model="ir.actions.report">
         <field name="name">Ticket POS 80mm QZ Tray</field>
         <field name="model">pos.order</field>
-        <field name="report_type">qweb-html</field>
+        <field name="report_type">qweb-pdf</field>
         <field name="report_name">pos_conventional_qztray.report_pos_order_80mm_qztray</field>
         <field name="report_file">pos_conventional_qztray.report_pos_order_80mm_qztray</field>
         <field name="print_report_name">'Ticket_QZ_%s' % object.name.replace('/', '_')</field>
-        <field name="paperformat_id" ref="pos_conventional_qztray.paperformat_pos_order_80mm_qztray"/>
     </record>
 
     <template id="report_pos_order_80mm_qztray">
-        <t t-call="web.html_container">
+        <t t-set="full_width" t-value="True"/>
+        <t t-call="web.report_layout">
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o.company_id"/>
                 <div class="article" t-att-data-oe-model="o._name" t-att-data-oe-id="o.id">
                     <style>
-                        @page { size: 80mm auto; margin: 0mm; }
                         body {
                             margin: 0 !important;
                             padding: 0 !important;
-                            width: 512px !important;
                             color: #000;
                         }
                         main {
-                            width: 512px !important;
                             margin: 0 !important;
                             padding: 0 !important;
                         }
                         .article {
-                            width: 512px !important;
                             margin: 0 !important;
                             padding: 0 !important;
                         }
                         .ticket {
-                            width: 512px;
+                            width: 100%;
                             box-sizing: border-box;
-                            margin: 0;
-                            padding: 8px 8px 24px 8px;
+                            margin: 0 auto;
+                            padding: 0.25mm 0 4mm 0;
                             font-family: Arial, Helvetica, sans-serif;
-                            font-size: 30px;
+                            font-size: 4.8mm;
                             line-height: 1.15;
                             color: #000;
                         }
@@ -84,15 +64,15 @@
                             background: transparent !important;
                         }
                         th {
-                            font-size: 26px;
-                            padding: 4px 0;
+                            font-size: 4.3mm;
+                            padding: 2px 0;
                         }
                         td {
                             border: 0 !important;
                             outline: 0 !important;
                             background: transparent !important;
-                            font-size: 30px;
-                            padding: 4px 0;
+                            font-size: 4.8mm;
+                            padding: 2px 0;
                             vertical-align: top;
                         }
                         .col-name { width: 62%; }
@@ -106,10 +86,10 @@
                         }
                         .tax-table td,
                         .tax-table th {
-                            font-size: 25px;
+                            font-size: 4.2mm;
                         }
                         .total {
-                            font-size: 44px;
+                            font-size: 7.5mm;
                             margin: 8px 0 6px 0;
                         }
                     </style>
