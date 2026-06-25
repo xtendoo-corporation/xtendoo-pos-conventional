@@ -167,6 +167,27 @@ class PosOrder(models.Model):
             action["tag"] = "pos_conventional_print_receipt_qztray_window"
         return action
 
+    def action_print_factura_simplificada(self):
+        self.ensure_one()
+        if not (
+            self.config_id.iface_print_auto
+            and self.config_id.pos_print_receipt_with_qztray
+        ):
+            return super().action_print_factura_simplificada()
+        return {
+            "type": "ir.actions.client",
+            "tag": "pos_conventional_print_receipt_qztray_window",
+            "params": {
+                "use_qztray": True,
+                "raw_receipt": True,
+                "order_id": self.id,
+                "report_res_id": self.id,
+                "move_id": self.account_move.id if self.account_move else False,
+                "printer_report_name": "pos_conventional_receipt_custom.report_factura_simplificada_80mm",
+                "report_name": "pos_conventional_qztray.report_pos_order_80mm_qztray",
+            },
+        }
+
     def _get_pos_conventional_qztray_print_params(self):
         self.ensure_one()
         original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"

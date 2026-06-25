@@ -191,29 +191,22 @@ patch(PosReceiptClientAction.prototype, {
         const printAction = await getQzPrintAction(this.orm, printerReportName);
         const parsedPrinter = parsePrinterName(printAction.printer_name);
 
-        const reportResId = params.report_res_id || moveId;
-        if (params.raw_receipt && reportResId) {
-            const rawReceipt = await this.orm.call(
-                "pos.order",
-                "get_pos_conventional_qztray_raw_receipt",
-                [[reportResId]]
-            );
-            configureQzSecurity();
-            await ensureQzConnection(parsedPrinter.host);
-            const config = await getQzPrintConfig(parsedPrinter.printerName);
-            await qz.print(config, [{
-                type: "raw",
-                format: "command",
-                flavor: "plain",
-                data: rawReceipt,
-            }]);
-            return;
+        const reportResId = params.report_res_id || params.order_id;
+        if (params.use_qztray) {
+            if (!reportResId) {
+                throw new Error(_t("No se pudo identificar el pedido para imprimir en modo rápido."));
+            }
+            if (!params.raw_receipt) {
+                console.warn("[PosReceiptQzTray] Forzando impresión RAW para evitar QWeb/PDF lento.");
+            }
+            return this._printRawReceiptWithQzTray(reportResId, parsedPrinter);
         }
 
+        const pdfResId = params.report_res_id || moveId;
         const data = await rpc("/web/dataset/call_kw", {
             model: "ir.actions.report",
             method: "get_qz_tray_data",
-            args: [printAction.id, [reportResId], "pdf", reportName],
+            args: [printAction.id, [pdfResId], "pdf", reportName],
             kwargs: { data: {} },
             context: {},
         });
@@ -222,6 +215,23 @@ patch(PosReceiptClientAction.prototype, {
         await ensureQzConnection(parsedPrinter.host);
         const config = await getQzPrintConfig(parsedPrinter.printerName);
         await qz.print(config, data);
+    },
+
+    async _printRawReceiptWithQzTray(orderId, parsedPrinter) {
+        const rawReceipt = await this.orm.call(
+            "pos.order",
+            "get_pos_conventional_qztray_raw_receipt",
+            [[orderId]]
+        );
+        configureQzSecurity();
+        await ensureQzConnection(parsedPrinter.host);
+        const config = await getQzPrintConfig(parsedPrinter.printerName);
+        await qz.print(config, [{
+            type: "raw",
+            format: "command",
+            flavor: "plain",
+            data: rawReceipt,
+        }]);
     },
 
     async _printReportBackground(moveId) {
