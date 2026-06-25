@@ -142,7 +142,7 @@ class PosOrder(models.Model):
             lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name}", width))
         lines.extend(["", "", "", "\x1bd\x08", "\x1dV\x00"])
         centered_lines = [
-            line if not line or line[0] in ("\x1b", "\x1d") else f" {line}"
+            line if not line or line[0] in ("\x1b", "\x1d") else f"   {line}"
             for line in lines
         ]
         return "\n".join(centered_lines)
