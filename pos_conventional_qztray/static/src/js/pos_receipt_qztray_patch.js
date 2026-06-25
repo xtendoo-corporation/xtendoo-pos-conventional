@@ -146,7 +146,7 @@ async function getQzPrintConfig(printerName) {
         scaleContent: false,
         rasterize: false,
         interpolation: "nearest-neighbor",
-        encoding: "CP850",
+        encoding: "CP858",
         jobName: "Ticket POS",
     });
     qzPrintConfigCache.set(printerName, config);

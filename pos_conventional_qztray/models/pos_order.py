@@ -7,7 +7,7 @@ class PosOrder(models.Model):
     _inherit = "pos.order"
 
     def _qztray_receipt_line_width(self):
-        return 42
+        return 40
 
     def _qztray_receipt_clean(self, value):
         value = str(value or "")
@@ -60,14 +60,16 @@ class PosOrder(models.Model):
         company = self.company_id
         move = self.account_move
         separator = "-" * width
-        lines = ["\x1b@", "\x1bt\x02", "\x1bE\x01"]
+        lines = ["\x1b@", "\x1bt\x13"]
 
         if self.config_id.receipt_header:
             for header_line in self.config_id.receipt_header.splitlines():
                 lines.extend(self._qztray_receipt_wrap(header_line, width))
                 lines.append("")
 
+        lines.append("\x1bE\x01")
         lines.append(self._qztray_receipt_clean(company.name).upper()[:width])
+        lines.append("\x1bE\x00")
         if company.street:
             lines.extend(self._qztray_receipt_wrap(company.street, width))
         city_line = " ".join(part for part in [company.zip, company.city] if part)
@@ -78,7 +80,9 @@ class PosOrder(models.Model):
         lines.append(separator)
 
         title = "FACTURA SIMPLIFICADA RECTIFICATIVA:" if move and move.move_type == "out_refund" else "FACTURA SIMPLIFICADA:"
+        lines.append("\x1bE\x01")
         lines.append(title[:width])
+        lines.append("\x1bE\x00")
         lines.append((move.name if move else self.name)[:width])
         date_order = fields.Datetime.context_timestamp(self, self.date_order)
         lines.append(f"FECHA: {date_order.strftime('%d/%m/%Y %H:%M')}")
@@ -120,7 +124,9 @@ class PosOrder(models.Model):
             lines.append(self._qztray_receipt_pair(left, right, width))
 
         lines.append(separator)
+        lines.append("\x1bE\x01")
         lines.append(self._qztray_receipt_pair("TOTAL", self._qztray_receipt_money(self.amount_total), width))
+        lines.append("\x1bE\x00")
         payment_names = ", ".join(self.payment_ids.mapped("payment_method_id.name"))
         if payment_names:
             lines.append(self._qztray_receipt_center(f"Pagado: {payment_names}", width))
@@ -134,8 +140,12 @@ class PosOrder(models.Model):
         lines.append(self._qztray_receipt_center("Gracias por su visita", width))
         if self.user_id:
             lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name}", width))
-        lines.extend(["", "", "", "\x1bE\x00", "\x1dV\x00"])
-        return "\n".join(lines)
+        lines.extend(["", "", "", "\x1dV\x00"])
+        centered_lines = [
+            line if not line or line[0] in ("\x1b", "\x1d") else f" {line}"
+            for line in lines
+        ]
+        return "\n".join(centered_lines)
 
     def get_pos_conventional_qztray_raw_receipt(self):
         self.ensure_one()
