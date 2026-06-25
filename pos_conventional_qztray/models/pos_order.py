@@ -51,7 +51,8 @@ class PosOrder(models.Model):
         return lines
 
     def _qztray_receipt_money(self, amount):
-        return f"{amount:.2f} {self.currency_id.symbol or ''}".strip()
+        symbol = "\xd5" if self.currency_id.name == "EUR" else (self.currency_id.symbol or "")
+        return f"{amount:.2f} {symbol}".strip()
 
     def _get_pos_conventional_qztray_raw_receipt(self):
         self.ensure_one()
@@ -59,7 +60,7 @@ class PosOrder(models.Model):
         company = self.company_id
         move = self.account_move
         separator = "-" * width
-        lines = ["\x1b@", "\x1bt\x02", "\x1b!\x10", "\x1d!\x01"]
+        lines = ["\x1b@", "\x1bt\x02", "\x1bE\x01"]
 
         if self.config_id.receipt_header:
             for header_line in self.config_id.receipt_header.splitlines():
@@ -133,7 +134,7 @@ class PosOrder(models.Model):
         lines.append(self._qztray_receipt_center("Gracias por su visita", width))
         if self.user_id:
             lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name}", width))
-        lines.extend(["", "", "", "\x1d!\x00", "\x1b!\x00", "\x1dV\x00"])
+        lines.extend(["", "", "", "\x1bE\x00", "\x1dV\x00"])
         return "\n".join(lines)
 
     def get_pos_conventional_qztray_raw_receipt(self):
