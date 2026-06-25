@@ -72,11 +72,12 @@ class PosOrder(models.Model):
         lines.append("\x1bE\x01")
         lines.append(self._qztray_receipt_clean(company.name).upper()[:width])
         lines.append("\x1bE\x00")
+        address_parts = []
         if company.street:
-            lines.extend(self._qztray_receipt_wrap(company.street, width))
-        city_line = " ".join(part for part in [company.zip, company.city] if part)
-        if city_line:
-            lines.extend(self._qztray_receipt_wrap(city_line, width))
+            address_parts.append(company.street)
+        address_parts.extend(part for part in [company.zip, company.city] if part)
+        if address_parts:
+            lines.extend(self._qztray_receipt_wrap(" ".join(address_parts), width))
         if company.vat:
             lines.append(self._qztray_receipt_clean(company.vat)[:width])
         lines.append(separator)
@@ -85,9 +86,9 @@ class PosOrder(models.Model):
         document_name = move.name if move else self.name
         lines.append("\x1bE\x01")
         lines.append(f"{title} {document_name}"[:width])
-        lines.append("\x1bE\x00")
         date_order = fields.Datetime.context_timestamp(self, self.date_order)
         lines.append(f"FECHA: {date_order.strftime('%d/%m/%Y %H:%M')}")
+        lines.append("\x1bE\x00")
 
         if self.partner_id:
             lines.append("")
@@ -108,7 +109,7 @@ class PosOrder(models.Model):
             lines.extend(wrapped_name[1:])
 
         lines.append(separator)
-        lines.append(self._qztray_receipt_pair("Base", "Impuesto Cuota", width))
+        lines.append(f"{'Base':<12}{'Impuesto':>16}  {'Cuota':>10}"[:width])
         tax_rows = []
         if move and move.tax_totals:
             for subtotal in move.tax_totals.get("subtotals", []):
@@ -121,9 +122,10 @@ class PosOrder(models.Model):
         else:
             tax_rows.append((self.amount_total - self.amount_tax, "IVA", self.amount_tax))
         for base, tax_name, tax_amount in tax_rows:
-            left = self._qztray_receipt_money(base)
-            right = f"{self._qztray_receipt_clean(tax_name)[:8]} {self._qztray_receipt_money(tax_amount)}"
-            lines.append(self._qztray_receipt_pair(left, right, width))
+            base_text = self._qztray_receipt_money(base)
+            tax_text = self._qztray_receipt_clean(tax_name)[:16]
+            amount_text = self._qztray_receipt_money(tax_amount)
+            lines.append(f"{base_text:<12}{tax_text:>16}  {amount_text:>10}"[:width])
 
         lines.append(separator)
         lines.append("\x1bE\x01")
