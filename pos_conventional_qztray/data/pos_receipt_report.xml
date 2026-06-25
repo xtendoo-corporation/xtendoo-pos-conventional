@@ -103,8 +103,8 @@
                     <div class="ticket">
                         <div class="center" style="margin-bottom: 6px;">
                             <img t-if="company.logo"
-                                t-att-src="'/logo.png?company=%s' % company.id"
-                                style="max-height: 90px; max-width: 78mm; filter: brightness(0); -webkit-filter: brightness(0);"/>
+                                t-att-src="image_data_uri(company.logo)"
+                                style="width: 78mm; max-height: 36mm; height: auto; filter: brightness(0); -webkit-filter: brightness(0);"/>
                         </div>
 
                         <t t-if="o.config_id and o.config_id.receipt_header">

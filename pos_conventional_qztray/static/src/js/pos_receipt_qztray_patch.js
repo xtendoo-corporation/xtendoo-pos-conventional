@@ -10,6 +10,9 @@ import { useService } from "@web/core/utils/hooks";
 import { PosReceiptClientAction } from "@pos_conventional_core/js/pos_receipt_client_action";
 
 const DEFAULT_REPORT_NAME = "pos_conventional_receipt_custom.report_factura_simplificada_80mm";
+let qzSecurityConfigured = false;
+let qzConnectionKey = null;
+const qzPrintConfigCache = new Map();
 
 async function getQzTrayParamsFromOrder(env, params = {}) {
     if (params.use_qztray || !params.order_id) {
@@ -84,6 +87,67 @@ function printUrlInBackground(url, env, { reportAutoprints = false } = {}) {
     });
 }
 
+function configureQzSecurity() {
+    if (qzSecurityConfigured) {
+        return;
+    }
+    qz.security.setCertificatePromise((resolve, reject) => {
+        fetch("/qz-certificate", {
+            cache: "no-store",
+            headers: { "Content-Type": "text/plain" },
+        })
+            .then((response) =>
+                response.text().then((text) => (response.ok ? resolve(text) : reject(text)))
+            )
+            .catch(reject);
+    });
+    qz.security.setSignatureAlgorithm("SHA512");
+    qz.security.setSignaturePromise((toSign) => (resolve, reject) => {
+        fetch(`/qz-sign-message?request=${toSign}`, {
+            cache: "no-store",
+            headers: { "Content-Type": "text/plain" },
+        })
+            .then((response) =>
+                response.text().then((text) => (response.ok ? resolve(text) : reject(text)))
+            )
+            .catch(reject);
+    });
+    qzSecurityConfigured = true;
+}
+
+async function ensureQzConnection(host) {
+    const connectionKey = host || "__local__";
+    if (qz.websocket.isActive() && qzConnectionKey === connectionKey) {
+        return;
+    }
+    if (qz.websocket.isActive()) {
+        await qz.websocket.disconnect();
+    }
+    if (host) {
+        await qz.websocket.connect({ host });
+    } else {
+        await qz.websocket.connect();
+    }
+    qzConnectionKey = connectionKey;
+}
+
+async function getQzPrintConfig(printerName) {
+    if (qzPrintConfigCache.has(printerName)) {
+        return qzPrintConfigCache.get(printerName);
+    }
+    const qzPrinter = await qz.printers.find(printerName);
+    const config = qz.configs.create(qzPrinter, {
+        units: "mm",
+        margins: 0,
+        scaleContent: false,
+        rasterize: false,
+        interpolation: "nearest-neighbor",
+        jobName: "Ticket POS",
+    });
+    qzPrintConfigCache.set(printerName, config);
+    return config;
+}
+
 patch(PosReceiptClientAction.prototype, {
     setup() {
         super.setup();
@@ -121,51 +185,18 @@ patch(PosReceiptClientAction.prototype, {
             context: {},
         });
 
-        qz.security.setCertificatePromise((resolve, reject) => {
-            fetch("/qz-certificate", {
-                cache: "no-store",
-                headers: { "Content-Type": "text/plain" },
-            })
-                .then((response) =>
-                    response.text().then((text) => (response.ok ? resolve(text) : reject(text)))
-                )
-                .catch(reject);
-        });
-        qz.security.setSignatureAlgorithm("SHA512");
-        qz.security.setSignaturePromise((toSign) => (resolve, reject) => {
-            fetch(`/qz-sign-message?request=${toSign}`, {
-                cache: "no-store",
-                headers: { "Content-Type": "text/plain" },
-            })
-                .then((response) =>
-                    response.text().then((text) => (response.ok ? resolve(text) : reject(text)))
-                )
-                .catch(reject);
-        });
-
         let printerName = printAction.printer_name;
+        let printerHost = null;
         if (printerName.includes("\\")) {
             const [host, printer] = printerName.split("\\");
+            printerHost = host;
             printerName = printer;
-            await qz.websocket.connect({ host });
-        } else {
-            await qz.websocket.connect();
         }
 
-        try {
-            const qzPrinter = await qz.printers.find(printerName);
-            const config = qz.configs.create(qzPrinter);
-            await qz.print(config, data);
-            this.notification.add(_t("Ticket enviado a QZ Tray: %s", printerName), {
-                type: "success",
-            });
-        } finally {
-            try {
-                await qz.websocket.disconnect();
-            } catch {
-                // Ignore disconnect errors: the print result is already known.
-            }
-        }
+        configureQzSecurity();
+        await ensureQzConnection(printerHost);
+        const config = await getQzPrintConfig(printerName);
+        await qz.print(config, data);
     },
 
     async _printReportBackground(moveId) {
