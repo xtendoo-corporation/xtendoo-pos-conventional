@@ -51,7 +51,7 @@ class PosOrder(models.Model):
         return lines
 
     def _qztray_receipt_money(self, amount):
-        symbol = "\xd5" if self.currency_id.name == "EUR" else (self.currency_id.symbol or "")
+        symbol = "EUR" if self.currency_id.name == "EUR" else (self.currency_id.symbol or "")
         return f"{amount:.2f} {symbol}".strip()
 
     def _get_pos_conventional_qztray_raw_receipt(self):
@@ -140,9 +140,9 @@ class PosOrder(models.Model):
         lines.append(self._qztray_receipt_center("Gracias por su visita", width))
         if self.user_id:
             lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name}", width))
-        lines.extend(["", "", "", "\x1dV\x00"])
+        lines.extend(["", "", "", "\x1bd\x08", "\x1dV\x00"])
         centered_lines = [
-            line if not line or line[0] in ("\x1b", "\x1d") else f" {line}"
+            line if not line or line[0] in ("\x1b", "\x1d") else f"  {line}"
             for line in lines
         ]
         return "\n".join(centered_lines)
