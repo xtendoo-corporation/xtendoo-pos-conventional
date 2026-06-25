@@ -80,10 +80,10 @@ class PosOrder(models.Model):
         lines.append(separator)
 
         title = "FACTURA SIMPLIFICADA RECTIFICATIVA:" if move and move.move_type == "out_refund" else "FACTURA SIMPLIFICADA:"
+        document_name = move.name if move else self.name
         lines.append("\x1bE\x01")
-        lines.append(title[:width])
+        lines.append(f"{title} {document_name}"[:width])
         lines.append("\x1bE\x00")
-        lines.append((move.name if move else self.name)[:width])
         date_order = fields.Datetime.context_timestamp(self, self.date_order)
         lines.append(f"FECHA: {date_order.strftime('%d/%m/%Y %H:%M')}")
 
