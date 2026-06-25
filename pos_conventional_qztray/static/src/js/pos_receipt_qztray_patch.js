@@ -142,10 +142,36 @@ async function getQzPrintConfig(printerName) {
         scaleContent: false,
         rasterize: false,
         interpolation: "nearest-neighbor",
+        encoding: "CP850",
         jobName: "Ticket POS",
     });
     qzPrintConfigCache.set(printerName, config);
     return config;
+}
+
+function parsePrinterName(printerName) {
+    if (printerName.includes("\\")) {
+        const [host, printer] = printerName.split("\\");
+        return { host, printerName: printer };
+    }
+    return { host: null, printerName };
+}
+
+async function getQzPrintAction(orm, reportName) {
+    const printAction = await orm.call(
+        "ir.actions.report",
+        "print_action_for_report_name",
+        [reportName],
+        { context: { skip_printer_exception: true } }
+    );
+
+    if (!printAction || printAction.action !== "server") {
+        throw new Error(_t("El informe no está configurado para impresión directa."));
+    }
+    if (printAction.backend !== "qztray") {
+        throw new Error(_t("La impresora configurada no usa el backend QZ Tray."));
+    }
+    return printAction;
 }
 
 patch(PosReceiptClientAction.prototype, {
@@ -162,21 +188,32 @@ patch(PosReceiptClientAction.prototype, {
 
         const reportName = params.report_name || DEFAULT_REPORT_NAME;
         const printerReportName = params.printer_report_name || reportName;
-        const printAction = await this.orm.call(
-            "ir.actions.report",
-            "print_action_for_report_name",
-            [printerReportName],
-            { context: { skip_printer_exception: true } }
-        );
-
-        if (!printAction || printAction.action !== "server") {
-            throw new Error(_t("El informe no está configurado para impresión directa."));
-        }
-        if (printAction.backend !== "qztray") {
-            throw new Error(_t("La impresora configurada no usa el backend QZ Tray."));
-        }
+        const printAction = await getQzPrintAction(this.orm, printerReportName);
+        const parsedPrinter = parsePrinterName(printAction.printer_name);
 
         const reportResId = params.report_res_id || moveId;
+        if (params.raw_receipt && reportResId) {
+            try {
+                const rawReceipt = await this.orm.call(
+                    "pos.order",
+                    "get_pos_conventional_qztray_raw_receipt",
+                    [[reportResId]]
+                );
+                configureQzSecurity();
+                await ensureQzConnection(parsedPrinter.host);
+                const config = await getQzPrintConfig(parsedPrinter.printerName);
+                await qz.print(config, [{
+                    type: "raw",
+                    format: "command",
+                    flavor: "plain",
+                    data: rawReceipt,
+                }]);
+                return;
+            } catch (error) {
+                console.warn("[PosReceiptQzTray] Falló la impresión RAW, se usará PDF.", error);
+            }
+        }
+
         const data = await rpc("/web/dataset/call_kw", {
             model: "ir.actions.report",
             method: "get_qz_tray_data",
@@ -185,17 +222,9 @@ patch(PosReceiptClientAction.prototype, {
             context: {},
         });
 
-        let printerName = printAction.printer_name;
-        let printerHost = null;
-        if (printerName.includes("\\")) {
-            const [host, printer] = printerName.split("\\");
-            printerHost = host;
-            printerName = printer;
-        }
-
         configureQzSecurity();
-        await ensureQzConnection(printerHost);
-        const config = await getQzPrintConfig(printerName);
+        await ensureQzConnection(parsedPrinter.host);
+        const config = await getQzPrintConfig(parsedPrinter.printerName);
         await qz.print(config, data);
     },
 
