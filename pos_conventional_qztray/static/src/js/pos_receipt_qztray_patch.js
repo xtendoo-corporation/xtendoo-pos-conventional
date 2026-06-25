@@ -207,7 +207,7 @@ async function printRawReceiptWithQzTray(orm, orderId, parsedPrinter) {
             type: "raw",
             format: "command",
             flavor: "plain",
-            data: "\n\x1ba\x00",
+            data: "\x1ba\x00",
         });
     }
     printData.push({

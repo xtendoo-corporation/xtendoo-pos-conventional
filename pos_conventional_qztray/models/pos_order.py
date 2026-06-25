@@ -97,7 +97,7 @@ class PosOrder(models.Model):
                 lines.append(f"NIF: {self.partner_id.vat}"[:width])
 
         lines.append(separator)
-        lines.append(self._qztray_receipt_pair("Nombre", "UD   TOTAL", width))
+        lines.append(f"{'Nombre':<{width - 14}} {'UD':>3} {'TOTAL':>9}"[:width])
         lines.append(separator)
         for order_line in self.lines:
             line_name = order_line.full_product_name or order_line.product_id.display_name
