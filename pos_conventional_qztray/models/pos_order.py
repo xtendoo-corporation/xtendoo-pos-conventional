@@ -69,9 +69,7 @@ class PosOrder(models.Model):
                 lines.extend(self._qztray_receipt_wrap(header_line, width))
                 lines.append("")
 
-        lines.append("\x1bE\x01")
-        lines.append(self._qztray_receipt_clean(company.name).upper()[:width])
-        lines.append("\x1bE\x00")
+        lines.append(f"\x1bE\x01{self._qztray_receipt_clean(company.name).upper()[:width]}\x1bE\x00")
         address_parts = []
         if company.street:
             address_parts.append(company.street)
@@ -84,11 +82,9 @@ class PosOrder(models.Model):
 
         title = "FACTURA SIMPLIFICADA RECTIFICATIVA:" if move and move.move_type == "out_refund" else "FACTURA SIMPLIFICADA:"
         document_name = move.name if move else self.name
-        lines.append("\x1bE\x01")
-        lines.append(f"{title} {document_name}"[:width])
+        lines.append(f"\x1bE\x01{f'{title} {document_name}'[:width]}")
         date_order = fields.Datetime.context_timestamp(self, self.date_order)
-        lines.append(f"FECHA: {date_order.strftime('%d/%m/%Y %H:%M')}")
-        lines.append("\x1bE\x00")
+        lines.append(f"FECHA: {date_order.strftime('%d/%m/%Y')}\x1bE\x00")
 
         if self.partner_id:
             lines.append("")
@@ -145,12 +141,14 @@ class PosOrder(models.Model):
 
         lines.append(self._qztray_receipt_center("Gracias por su visita", width))
         if self.user_id:
-            lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name}", width))
+            lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name} {date_order.strftime('%H:%M')}", width))
         lines.extend(["", "", "", "\x1bd\x08", "\x1dV\x00"])
-        centered_lines = [
-            line if not line or line[0] in ("\x1b", "\x1d") else f"   {line}"
-            for line in lines
-        ]
+        centered_lines = []
+        for line in lines:
+            if not line or not any(char.isprintable() and char not in "\x1b\x1d" for char in line):
+                centered_lines.append(line)
+            else:
+                centered_lines.append(f"   {line}")
         return "\n".join(centered_lines)
 
     def get_pos_conventional_qztray_raw_receipt(self):
