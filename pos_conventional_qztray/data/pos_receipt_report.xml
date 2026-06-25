@@ -104,12 +104,12 @@
                         <div class="center" style="margin-bottom: 6px;">
                             <img t-if="company.logo"
                                 t-att-src="'/logo.png?company=%s' % company.id"
-                                style="max-height: 55px; max-width: 75mm; filter: brightness(0); -webkit-filter: brightness(0);"/>
+                                style="max-height: 90px; max-width: 78mm; filter: brightness(0); -webkit-filter: brightness(0);"/>
                         </div>
 
                         <t t-if="o.config_id and o.config_id.receipt_header">
                             <div style="white-space: pre-line; margin-bottom: 4px;">
-                                <span t-out="o.config_id.receipt_header"/>
+                                <span t-out="o.config_id.receipt_header.replace('\n', '\n\n')"/>
                             </div>
                         </t>
 
@@ -236,7 +236,7 @@
 
                         <t t-if="o.config_id and o.config_id.receipt_footer">
                             <div class="center" style="white-space: pre-line; margin-top: 5px;">
-                                <span t-out="o.config_id.receipt_footer"/>
+                                <span t-out="o.config_id.receipt_footer.replace('\n', '\n\n')"/>
                             </div>
                         </t>
                         <div class="center" style="margin-top: 6px;">Gracias por su visita</div>
