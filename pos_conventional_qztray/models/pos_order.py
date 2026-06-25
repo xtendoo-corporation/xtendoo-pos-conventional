@@ -59,7 +59,7 @@ class PosOrder(models.Model):
         company = self.company_id
         move = self.account_move
         separator = "-" * width
-        lines = ["\x1b@", "\x1bt\x02"]
+        lines = ["\x1b@", "\x1bt\x02", "\x1b!\x10"]
 
         if self.config_id.receipt_header:
             for header_line in self.config_id.receipt_header.splitlines():
@@ -133,7 +133,7 @@ class PosOrder(models.Model):
         lines.append(self._qztray_receipt_center("Gracias por su visita", width))
         if self.user_id:
             lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name}", width))
-        lines.extend(["", "", "", "\x1dV\x00"])
+        lines.extend(["", "", "", "\x1b!\x00", "\x1dV\x00"])
         return "\n".join(lines)
 
     def get_pos_conventional_qztray_raw_receipt(self):
