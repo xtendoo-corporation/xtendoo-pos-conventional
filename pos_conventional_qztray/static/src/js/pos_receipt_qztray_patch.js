@@ -10,6 +10,10 @@ import { useService } from "@web/core/utils/hooks";
 import { PosReceiptClientAction } from "@pos_conventional_core/js/pos_receipt_client_action";
 
 const DEFAULT_REPORT_NAME = "pos_conventional_receipt_custom.report_factura_simplificada_80mm";
+const FAST_POS_REPORT_NAMES = new Set([
+    "pos_conventional_receipt_custom.report_pos_order_80mm",
+    "pos_conventional_qztray.report_pos_order_80mm_qztray",
+]);
 let qzSecurityConfigured = false;
 let qzConnectionKey = null;
 const qzPrintConfigCache = new Map();
@@ -174,6 +178,59 @@ async function getQzPrintAction(orm, reportName) {
     return printAction;
 }
 
+async function printRawReceiptWithQzTray(orm, orderId, parsedPrinter) {
+    const rawReceipt = await orm.call(
+        "pos.order",
+        "get_pos_conventional_qztray_raw_receipt",
+        [[orderId]]
+    );
+    configureQzSecurity();
+    await ensureQzConnection(parsedPrinter.host);
+    const config = await getQzPrintConfig(parsedPrinter.printerName);
+    await qz.print(config, [{
+        type: "raw",
+        format: "command",
+        flavor: "plain",
+        data: rawReceipt,
+    }]);
+}
+
+async function printFastPosReportWithQzTray(action, env) {
+    if (!FAST_POS_REPORT_NAMES.has(action.report_name)) {
+        return false;
+    }
+
+    const orderIds = action.context?.active_ids || [];
+    const orderId = orderIds[0];
+    if (!orderId) {
+        return false;
+    }
+
+    const printAction = await getQzPrintAction(env.services.orm, DEFAULT_REPORT_NAME);
+    const parsedPrinter = parsePrinterName(printAction.printer_name);
+    await printRawReceiptWithQzTray(env.services.orm, orderId, parsedPrinter);
+    return true;
+}
+
+const reportPrintBackends = registry.category("report.print.backends");
+const originalQzPrintDispatcher = reportPrintBackends.contains("qztray")
+    ? reportPrintBackends.get("qztray")
+    : null;
+
+reportPrintBackends.add(
+    "qztray",
+    async (action, env) => {
+        if (await printFastPosReportWithQzTray(action, env)) {
+            return true;
+        }
+        if (originalQzPrintDispatcher) {
+            return originalQzPrintDispatcher(action, env);
+        }
+        return false;
+    },
+    { force: true }
+);
+
 patch(PosReceiptClientAction.prototype, {
     setup() {
         super.setup();
@@ -199,7 +256,7 @@ patch(PosReceiptClientAction.prototype, {
             if (!params.raw_receipt) {
                 console.warn("[PosReceiptQzTray] Forzando impresión RAW para evitar QWeb/PDF lento.");
             }
-            return this._printRawReceiptWithQzTray(reportResId, parsedPrinter);
+            return printRawReceiptWithQzTray(this.orm, reportResId, parsedPrinter);
         }
 
         const pdfResId = params.report_res_id || moveId;
@@ -215,23 +272,6 @@ patch(PosReceiptClientAction.prototype, {
         await ensureQzConnection(parsedPrinter.host);
         const config = await getQzPrintConfig(parsedPrinter.printerName);
         await qz.print(config, data);
-    },
-
-    async _printRawReceiptWithQzTray(orderId, parsedPrinter) {
-        const rawReceipt = await this.orm.call(
-            "pos.order",
-            "get_pos_conventional_qztray_raw_receipt",
-            [[orderId]]
-        );
-        configureQzSecurity();
-        await ensureQzConnection(parsedPrinter.host);
-        const config = await getQzPrintConfig(parsedPrinter.printerName);
-        await qz.print(config, [{
-            type: "raw",
-            format: "command",
-            flavor: "plain",
-            data: rawReceipt,
-        }]);
     },
 
     async _printReportBackground(moveId) {

@@ -151,10 +151,7 @@ class PosOrder(models.Model):
             return action
 
         params = dict(action.get("params") or {})
-        params["use_qztray"] = bool(
-            self.config_id.iface_print_auto
-            and self.config_id.pos_print_receipt_with_qztray
-        )
+        params["use_qztray"] = bool(self.config_id.pos_print_receipt_with_qztray)
         original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
         params.setdefault("report_name", original_report_name)
         if params["use_qztray"]:
@@ -169,10 +166,7 @@ class PosOrder(models.Model):
 
     def action_print_factura_simplificada(self):
         self.ensure_one()
-        if not (
-            self.config_id.iface_print_auto
-            and self.config_id.pos_print_receipt_with_qztray
-        ):
+        if not self.config_id.pos_print_receipt_with_qztray:
             return super().action_print_factura_simplificada()
         return {
             "type": "ir.actions.client",
@@ -192,10 +186,7 @@ class PosOrder(models.Model):
         self.ensure_one()
         original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
         return {
-            "use_qztray": bool(
-                self.config_id.iface_print_auto
-                and self.config_id.pos_print_receipt_with_qztray
-            ),
+            "use_qztray": bool(self.config_id.pos_print_receipt_with_qztray),
             "order_id": self.id,
             "move_id": self.account_move.id if self.account_move else False,
             "printer_report_name": original_report_name,
