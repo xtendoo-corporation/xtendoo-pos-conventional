@@ -50,7 +50,9 @@ class PosOrder(models.Model):
             lines.append(current)
         return lines
 
-    def _qztray_receipt_money(self, amount):
+    def _qztray_receipt_money(self, amount, currency=False):
+        if not currency:
+            return f"{amount:.2f}"
         symbol = "EUR" if self.currency_id.name == "EUR" else (self.currency_id.symbol or "")
         return f"{amount:.2f} {symbol}".strip()
 
@@ -125,7 +127,9 @@ class PosOrder(models.Model):
 
         lines.append(separator)
         lines.append("\x1bE\x01")
-        lines.append(self._qztray_receipt_pair("TOTAL", self._qztray_receipt_money(self.amount_total), width))
+        lines.append("\x1d!\x01")
+        lines.append(self._qztray_receipt_pair("TOTAL", self._qztray_receipt_money(self.amount_total, currency=True), width))
+        lines.append("\x1d!\x00")
         lines.append("\x1bE\x00")
         payment_names = ", ".join(self.payment_ids.mapped("payment_method_id.name"))
         if payment_names:
@@ -150,6 +154,13 @@ class PosOrder(models.Model):
     def get_pos_conventional_qztray_raw_receipt(self):
         self.ensure_one()
         return self._get_pos_conventional_qztray_raw_receipt()
+
+    def get_pos_conventional_qztray_raw_payload(self):
+        self.ensure_one()
+        return {
+            "raw_receipt": self._get_pos_conventional_qztray_raw_receipt(),
+            "logo": self.company_id.logo.decode() if self.company_id.logo else False,
+        }
 
     def _pos_conventional_qztray_enrich_print_action(self, action):
         self.ensure_one()

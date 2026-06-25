@@ -179,20 +179,47 @@ async function getQzPrintAction(orm, reportName) {
 }
 
 async function printRawReceiptWithQzTray(orm, orderId, parsedPrinter) {
-    const rawReceipt = await orm.call(
+    const payload = await orm.call(
         "pos.order",
-        "get_pos_conventional_qztray_raw_receipt",
+        "get_pos_conventional_qztray_raw_payload",
         [[orderId]]
     );
-    configureQzSecurity();
-    await ensureQzConnection(parsedPrinter.host);
-    const config = await getQzPrintConfig(parsedPrinter.printerName);
-    await qz.print(config, [{
+    const rawReceipt = payload.raw_receipt || payload;
+    const printData = [];
+    if (payload.logo) {
+        printData.push({
+            type: "raw",
+            format: "command",
+            flavor: "plain",
+            data: "\x1ba\x01",
+        });
+        printData.push({
+            type: "raw",
+            format: "image",
+            flavor: "base64",
+            data: payload.logo,
+            options: {
+                language: "ESCPOS",
+                dotDensity: "double",
+            },
+        });
+        printData.push({
+            type: "raw",
+            format: "command",
+            flavor: "plain",
+            data: "\n\x1ba\x00",
+        });
+    }
+    printData.push({
         type: "raw",
         format: "command",
         flavor: "plain",
         data: rawReceipt,
-    }]);
+    });
+    configureQzSecurity();
+    await ensureQzConnection(parsedPrinter.host);
+    const config = await getQzPrintConfig(parsedPrinter.printerName);
+    await qz.print(config, printData);
 }
 
 async function printFastPosReportWithQzTray(action, env) {
