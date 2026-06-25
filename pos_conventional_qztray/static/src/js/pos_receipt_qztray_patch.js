@@ -193,25 +193,21 @@ patch(PosReceiptClientAction.prototype, {
 
         const reportResId = params.report_res_id || moveId;
         if (params.raw_receipt && reportResId) {
-            try {
-                const rawReceipt = await this.orm.call(
-                    "pos.order",
-                    "get_pos_conventional_qztray_raw_receipt",
-                    [[reportResId]]
-                );
-                configureQzSecurity();
-                await ensureQzConnection(parsedPrinter.host);
-                const config = await getQzPrintConfig(parsedPrinter.printerName);
-                await qz.print(config, [{
-                    type: "raw",
-                    format: "command",
-                    flavor: "plain",
-                    data: rawReceipt,
-                }]);
-                return;
-            } catch (error) {
-                console.warn("[PosReceiptQzTray] Falló la impresión RAW, se usará PDF.", error);
-            }
+            const rawReceipt = await this.orm.call(
+                "pos.order",
+                "get_pos_conventional_qztray_raw_receipt",
+                [[reportResId]]
+            );
+            configureQzSecurity();
+            await ensureQzConnection(parsedPrinter.host);
+            const config = await getQzPrintConfig(parsedPrinter.printerName);
+            await qz.print(config, [{
+                type: "raw",
+                format: "command",
+                flavor: "plain",
+                data: rawReceipt,
+            }]);
+            return;
         }
 
         const data = await rpc("/web/dataset/call_kw", {
