@@ -56,6 +56,19 @@ class PosOrder(models.Model):
         symbol = "EUR" if self.currency_id.name == "EUR" else (self.currency_id.symbol or "")
         return f"{amount:.2f} {symbol}".strip()
 
+    def _qztray_receipt_cash_amounts(self):
+        self.ensure_one()
+        cash_payments = self.payment_ids.filtered(
+            lambda payment: (
+                payment.payment_method_id.type == "cash"
+                or payment.payment_method_id.is_cash_count
+                or payment.payment_method_id.journal_id.type == "cash"
+            )
+        )
+        cash_tendered = sum(payment.amount for payment in cash_payments if payment.amount > 0)
+        cash_change = -sum(payment.amount for payment in cash_payments if payment.amount < 0)
+        return cash_tendered, cash_change
+
     def _get_pos_conventional_qztray_raw_receipt(self):
         self.ensure_one()
         width = self._qztray_receipt_line_width()
@@ -132,6 +145,11 @@ class PosOrder(models.Model):
         payment_names = ", ".join(self.payment_ids.mapped("payment_method_id.name"))
         if payment_names:
             lines.append(self._qztray_receipt_center(f"Pagado: {payment_names}", width))
+        cash_tendered, cash_change = self._qztray_receipt_cash_amounts()
+        if cash_tendered:
+            lines.append(self._qztray_receipt_pair("Entregado", self._qztray_receipt_money(cash_tendered), width))
+        if cash_change:
+            lines.append(self._qztray_receipt_pair("Cambio", self._qztray_receipt_money(cash_change), width))
         lines.append(separator)
 
         if self.config_id.receipt_footer:
