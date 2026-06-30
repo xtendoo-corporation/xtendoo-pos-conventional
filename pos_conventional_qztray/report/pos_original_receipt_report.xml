@@ -30,40 +30,27 @@
                 .pos-qz-standard-ticket {
                     font-size: 13px;
                     font-weight: 400;
-                    line-height: 1.45;
+                    line-height: 1.5;
                     color: #000;
-                    padding: 2mm 3mm 4mm 3mm;
+                    padding: 3mm 4mm 5mm 4mm;
                     box-sizing: border-box;
                 }
                 .pos-qz-standard-ticket .text-center { text-align: center; }
                 .pos-qz-standard-ticket .text-right { text-align: right; }
                 .pos-qz-standard-ticket .text-left { text-align: left; }
                 .pos-qz-standard-ticket .bold { font-weight: 700; }
-                .pos-qz-standard-ticket .muted { font-size: 75%; }
-                .pos-qz-standard-ticket .pt-3 { padding-top: 8px; }
                 .pos-qz-standard-ticket .receipt-logo {
-                    max-height: 70px;
-                    max-width: 75%;
+                    max-height: 75px;
+                    max-width: 90%;
                     margin: 0 auto;
                     display: block;
                     filter: brightness(0);
                     -webkit-filter: brightness(0);
                 }
-                .pos-qz-standard-ticket .receipt-row {
-                    display: table;
-                    width: 100%;
-                }
-                .pos-qz-standard-ticket .receipt-row > span {
-                    display: table-cell;
-                }
-                .pos-qz-standard-ticket .receipt-row .amount {
-                    text-align: right;
-                    white-space: nowrap;
-                }
                 .pos-qz-standard-ticket .dashed-line {
                     border: none;
                     border-bottom: 1px solid #000;
-                    margin: 7px 0;
+                    margin: 6px 0;
                     width: 100%;
                 }
                 .pos-qz-standard-ticket table {
@@ -92,15 +79,6 @@
                 .pos-qz-standard-ticket .col-name { width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                 .pos-qz-standard-ticket .col-ud { width: 10%; text-align: center; }
                 .pos-qz-standard-ticket .col-total { width: 22%; text-align: right; }
-                .pos-qz-standard-ticket .o_total_table td {
-                    padding: 2px 0;
-                    font-size: 13px;
-                }
-                .pos-qz-standard-ticket .o_total_table .o_total td,
-                .pos-qz-standard-ticket .o_total_table .o_total strong {
-                    font-size: 1.25em;
-                    font-weight: 700;
-                }
             </style>
 
             <t t-set="pos_order" t-value="o.pos_order_ids[:1] and o.pos_order_ids[0] or False"/>
@@ -111,32 +89,42 @@
                     class="receipt-logo"/>
             </div>
 
-            <div class="text-center muted">
-                <div>
-                    <span class="bold">Ticket</span>
-                    <span t-field="o.name"/>
-                </div>
-                <div>
-                    <span t-field="o.invoice_date"/>
-                    <span t-field="o.create_date" t-options='{"format": "HH:mm"}'/>
-                </div>
-            </div>
-
-            <div class="pt-3 text-center">
+            <div>
                 <t t-if="pos_order and pos_order.config_id and pos_order.config_id.receipt_header">
-                    <div style="white-space: pre-line;">
+                    <div class="text-left" style="margin-bottom: 6px; font-size: 1em; white-space: pre-line;">
                         <span t-out="pos_order.config_id.receipt_header"/>
                     </div>
                 </t>
-                <div t-if="pos_order and pos_order.user_id" class="muted">
-                    Atendido por: <span t-field="pos_order.user_id.name"/>
-                </div>
             </div>
+
+            <div class="text-left bold" style="font-size: 1.2em; text-transform: uppercase; margin-bottom: 2px;">
+                <span t-field="res_company.name"/>
+            </div>
+            <div class="text-left"><span t-field="res_company.street"/></div>
+            <div class="text-left">
+                <span t-field="res_company.zip"/>
+                <span t-field="res_company.city"/>
+            </div>
+            <div class="text-left"><span t-field="res_company.vat"/></div>
 
             <div class="dashed-line"/>
 
+            <div class="text-left" style="text-transform: uppercase; font-size: 1em; margin: 3px 0;">
+                <span class="bold">
+                    <t t-if="o.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
+                    <t t-else="">FACTURA SIMPLIFICADA:</t>
+                </span>
+                <span t-field="o.name"/>
+            </div>
+            <div class="text-left" style="font-size: 1em; margin: 0 0 3px 0;">
+                <span class="bold">FECHA:</span>
+                <span t-field="o.invoice_date"/>
+                <span t-field="o.create_date" t-options='{"format": "HH:mm"}'/>
+            </div>
+
             <t t-if="o.partner_id">
-                <div class="text-center">
+                <div class="text-left" style="font-size: 1em; margin-top: 5px;">
+                    <div><span class="bold">CLIENTE:</span></div>
                     <div><span t-field="o.partner_id.name"/></div>
                     <div t-if="o.partner_id.street"><span t-field="o.partner_id.street"/></div>
                     <div t-if="o.partner_id.zip">
@@ -147,12 +135,12 @@
                 </div>
             </t>
 
-            <div class="pt-3"/>
+            <div class="dashed-line"/>
 
             <table>
                 <thead>
                     <tr>
-                        <th class="text-left col-name">Producto</th>
+                        <th class="text-left col-name">Nombre</th>
                         <th class="text-center col-ud">UD</th>
                         <th class="text-right col-total">TOTAL</th>
                     </tr>
@@ -162,7 +150,7 @@
                         <tr t-if="line.display_type == 'product'">
                             <td class="text-left col-name" style="padding-right: 2px;">
                                 <t t-set="line_name" t-value="(line.name or '').split('] ', 1)[-1] if '] ' in (line.name or '') else (line.name or '')"/>
-                                <span t-out="line_name" t-options="{'widget': 'text'}"/>
+                                <span t-out="line_name"/>
                             </td>
                             <td class="text-center col-ud"><span t-esc="'%.0f' % line.quantity"/></td>
                             <td class="text-right col-total">
@@ -173,7 +161,9 @@
                 </tbody>
             </table>
 
-            <table class="o_total_table table table-borderless" style="width: 100%; margin-top: 5px; margin-bottom: 5px;">
+            <div class="dashed-line"/>
+
+            <table style="width: 100%; font-size: 0.9em; margin-top: 5px; margin-bottom: 5px;">
                 <thead>
                     <tr>
                         <th class="text-left">Base</th>
@@ -208,66 +198,41 @@
                 </tbody>
             </table>
 
-            <div class="paymentlines text-start pt-3">
+            <div class="dashed-line"/>
+
+            <div class="text-right bold" style="font-size: 1.6em; margin: 8px 0 8px 0;">
+                TOTAL <span t-field="o.amount_total"/>
+            </div>
+
+            <div class="text-center" style="margin-bottom: 6px; font-size: 1em;">
+                Pagado:
+                <t t-set="pago_encontrado" t-value="False"/>
                 <t t-if="o.pos_order_ids">
                     <t t-foreach="o.pos_order_ids" t-as="pos_order">
                         <t t-foreach="pos_order.payment_ids" t-as="payment">
-                            <div class="receipt-row">
-                                <span t-field="payment.payment_method_id.name"/>
-                                <span class="amount" t-field="payment.amount"/>
-                            </div>
+                            <t t-set="pago_encontrado" t-value="True"/>
+                            <span t-field="payment.payment_method_id.name"/>
                         </t>
                     </t>
                 </t>
-                <t t-if="not o.pos_order_ids and o.invoice_payments_widget">
+                <t t-if="not pago_encontrado and o.invoice_payments_widget">
                     <t t-set="payments" t-value="o.sudo().invoice_payments_widget and o.sudo().invoice_payments_widget['content'] or []"/>
                     <t t-foreach="payments" t-as="payment">
-                        <div class="receipt-row">
-                            <span t-out="payment['journal_name']"/>
-                            <span class="amount" t-out="payment['amount']"/>
-                        </div>
+                        <span t-out="payment['journal_name']"/>
                     </t>
                 </t>
             </div>
 
+            <div class="dashed-line"/>
+
             <t t-if="pos_order and pos_order.config_id and pos_order.config_id.receipt_footer">
-                <div class="text-center pt-3" style="white-space: pre-line;">
+                <div class="text-center" style="margin-top: 6px; font-size: 1em; white-space: pre-line;">
                     <span t-out="pos_order.config_id.receipt_footer"/>
                 </div>
             </t>
 
-            <div class="pt-3 muted">
-                <div class="receipt-row">
-                    <span style="width: 50%; text-align: left; word-break: break-word;">
-                        <div t-if="pos_order" t-field="pos_order.config_id.name"/>
-                        <div t-if="res_company.street" t-field="res_company.street"/>
-                        <div>
-                            <span t-if="res_company.city" t-field="res_company.city"/>
-                            <span t-if="res_company.zip">, <span t-field="res_company.zip"/></span>
-                        </div>
-                    </span>
-                    <span style="width: 50%; text-align: right; word-break: break-word;">
-                        <div t-if="res_company.vat" t-field="res_company.vat"/>
-                        <div t-if="res_company.phone">Tel: <span t-field="res_company.phone"/></div>
-                        <div t-if="res_company.email" t-field="res_company.email"/>
-                        <div t-if="res_company.website" t-field="res_company.website"/>
-                    </span>
-                </div>
-            </div>
-
-            <div class="text-center pt-3 muted">
-                <span>Powered by <strong>Odoo</strong></span>
-            </div>
-
-            <div class="text-center pt-3">
-                <t t-if="o.move_type == 'out_refund'">
-                    <span class="bold">FACTURA SIMPLIFICADA RECTIFICATIVA:</span>
-                </t>
-                <t t-else="">
-                    <span class="bold">FACTURA SIMPLIFICADA:</span>
-                </t>
-                <span t-field="o.name"/>
-            </div>
+            <div class="text-center" style="margin-top: 8px; margin-bottom: 2px; font-size: 1em;">Gracias por su visita</div>
+            <div class="text-center" style="font-size: 1em;">Atendido por: <span t-field="o.invoice_user_id.name"/></div>
             </div>
         </t>
     </template>
