@@ -135,21 +135,32 @@ async function ensureQzConnection(host) {
     qzConnectionKey = connectionKey;
 }
 
-async function getQzPrintConfig(printerName) {
-    if (qzPrintConfigCache.has(printerName)) {
-        return qzPrintConfigCache.get(printerName);
+async function getQzPrintConfig(printerName, mode = "raw") {
+    const cacheKey = `${mode}:${printerName}`;
+    if (qzPrintConfigCache.has(cacheKey)) {
+        return qzPrintConfigCache.get(cacheKey);
     }
     const qzPrinter = await qz.printers.find(printerName);
-    const config = qz.configs.create(qzPrinter, {
-        units: "mm",
-        margins: 0,
-        scaleContent: false,
-        rasterize: false,
-        interpolation: "nearest-neighbor",
-        encoding: "CP858",
-        jobName: "Ticket POS",
-    });
-    qzPrintConfigCache.set(printerName, config);
+    const configOptions = mode === "report"
+        ? {
+            units: "mm",
+            margins: 0,
+            scaleContent: true,
+            rasterize: true,
+            interpolation: "bicubic",
+            jobName: "Informe Odoo",
+        }
+        : {
+            units: "mm",
+            margins: 0,
+            scaleContent: false,
+            rasterize: false,
+            interpolation: "nearest-neighbor",
+            encoding: "CP858",
+            jobName: "Ticket POS",
+        };
+    const config = qz.configs.create(qzPrinter, configOptions);
+    qzPrintConfigCache.set(cacheKey, config);
     return config;
 }
 
@@ -218,7 +229,7 @@ async function printRawReceiptWithQzTray(orm, orderId, parsedPrinter) {
     });
     configureQzSecurity();
     await ensureQzConnection(parsedPrinter.host);
-    const config = await getQzPrintConfig(parsedPrinter.printerName);
+    const config = await getQzPrintConfig(parsedPrinter.printerName, "raw");
     await qz.print(config, printData);
 }
 
@@ -294,7 +305,7 @@ patch(PosReceiptClientAction.prototype, {
 
         configureQzSecurity();
         await ensureQzConnection(parsedPrinter.host);
-        const config = await getQzPrintConfig(parsedPrinter.printerName);
+        const config = await getQzPrintConfig(parsedPrinter.printerName, "report");
         await qz.print(config, data);
     },
 
