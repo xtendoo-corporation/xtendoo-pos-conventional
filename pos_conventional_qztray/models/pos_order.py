@@ -3,6 +3,11 @@ import re
 from odoo import fields, models
 
 
+ORIGINAL_RECEIPT_REPORT = "pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray"
+ORIGINAL_RECEIPT_PRINTER_REPORT = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
+FAST_RECEIPT_REPORT = "pos_conventional_qztray.report_pos_order_80mm_qztray"
+
+
 class PosOrder(models.Model):
     _inherit = "pos.order"
 
@@ -195,16 +200,16 @@ class PosOrder(models.Model):
         params["print_original_receipt"] = bool(
             self.config_id.pos_print_original_receipt_with_qztray
         )
-        original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
+        original_report_name = ORIGINAL_RECEIPT_REPORT
         params.setdefault("report_name", original_report_name)
         if params["use_qztray"]:
-            params["printer_report_name"] = original_report_name
+            params["printer_report_name"] = ORIGINAL_RECEIPT_PRINTER_REPORT
             if params["print_original_receipt"]:
                 params["report_name"] = original_report_name
                 params["report_res_id"] = self.account_move.id if self.account_move else self.id
                 params["raw_receipt"] = False
             else:
-                params["report_name"] = "pos_conventional_qztray.report_pos_order_80mm_qztray"
+                params["report_name"] = FAST_RECEIPT_REPORT
                 params["report_res_id"] = self.id
                 params["raw_receipt"] = True
         action["params"] = params
@@ -216,7 +221,7 @@ class PosOrder(models.Model):
         self.ensure_one()
         if not self.config_id.pos_print_receipt_with_qztray:
             return super().action_print_factura_simplificada()
-        original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
+        original_report_name = ORIGINAL_RECEIPT_REPORT
         print_original_receipt = bool(self.config_id.pos_print_original_receipt_with_qztray)
         return {
             "type": "ir.actions.client",
@@ -232,29 +237,29 @@ class PosOrder(models.Model):
                     else self.id
                 ),
                 "move_id": self.account_move.id if self.account_move else False,
-                "printer_report_name": original_report_name,
+                "printer_report_name": ORIGINAL_RECEIPT_PRINTER_REPORT,
                 "report_name": (
                     original_report_name
                     if print_original_receipt
-                    else "pos_conventional_qztray.report_pos_order_80mm_qztray"
+                    else FAST_RECEIPT_REPORT
                 ),
             },
         }
 
     def _get_pos_conventional_qztray_print_params(self):
         self.ensure_one()
-        original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
+        original_report_name = ORIGINAL_RECEIPT_REPORT
         print_original_receipt = bool(self.config_id.pos_print_original_receipt_with_qztray)
         return {
             "use_qztray": bool(self.config_id.pos_print_receipt_with_qztray),
             "print_original_receipt": print_original_receipt,
             "order_id": self.id,
             "move_id": self.account_move.id if self.account_move else False,
-            "printer_report_name": original_report_name,
+            "printer_report_name": ORIGINAL_RECEIPT_PRINTER_REPORT,
             "report_name": (
                 original_report_name
                 if print_original_receipt
-                else "pos_conventional_qztray.report_pos_order_80mm_qztray"
+                else FAST_RECEIPT_REPORT
             ),
             "report_res_id": (
                 self.account_move.id

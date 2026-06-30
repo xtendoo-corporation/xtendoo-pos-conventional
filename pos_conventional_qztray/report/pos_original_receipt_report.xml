@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_factura_simplificada_80mm_standard_qztray" model="ir.actions.report">
+        <field name="name">Factura Simplificada 80mm QZ Tray Standard</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray</field>
+        <field name="report_file">pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray</field>
+        <field name="print_report_name">'Ticket_QZ_%s' % object.name.replace('/', '_')</field>
+        <field name="paperformat_id" ref="pos_conventional_receipt_custom.paperformat_receipt_80mm"/>
+    </record>
+
+    <template id="report_factura_simplificada_80mm_standard_qztray_document">
+        <div class="page pos-qz-standard-ticket">
+            <style>
+                .pos-qz-standard-ticket {
+                    font-family: Arial, Helvetica, sans-serif;
+                    font-size: 13px;
+                    line-height: 1.5;
+                    color: #000;
+                    padding: 3mm 4mm 5mm 4mm;
+                    box-sizing: border-box;
+                }
+                .pos-qz-standard-ticket .text-center { text-align: center; }
+                .pos-qz-standard-ticket .text-right { text-align: right; }
+                .pos-qz-standard-ticket .text-left { text-align: left; }
+                .pos-qz-standard-ticket .bold { font-weight: bold; }
+                .pos-qz-standard-ticket .dashed-line {
+                    border: none;
+                    border-bottom: 1px solid #000;
+                    margin: 6px 0;
+                    width: 100%;
+                }
+                .pos-qz-standard-ticket table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    table-layout: fixed;
+                    border: none !important;
+                }
+                .pos-qz-standard-ticket tr,
+                .pos-qz-standard-ticket th,
+                .pos-qz-standard-ticket td {
+                    border: none !important;
+                    outline: none !important;
+                }
+                .pos-qz-standard-ticket th {
+                    font-weight: bold;
+                    font-size: 12px;
+                    border-bottom: 1px solid #000 !important;
+                    padding: 3px 0;
+                }
+                .pos-qz-standard-ticket td {
+                    vertical-align: top;
+                    padding: 3px 0;
+                    font-size: 13px;
+                }
+                .pos-qz-standard-ticket .col-name { width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .pos-qz-standard-ticket .col-ud { width: 10%; text-align: center; }
+                .pos-qz-standard-ticket .col-total { width: 22%; text-align: right; }
+            </style>
+
+            <div class="text-center" style="margin-bottom: 8px;">
+                <img t-if="res_company.logo"
+                    t-att-src="image_data_uri(res_company.logo)"
+                    style="max-height: 75px; max-width: 90%; filter: brightness(0); -webkit-filter: brightness(0);"/>
+            </div>
+
+            <t t-if="o.pos_order_ids and len(o.pos_order_ids) &gt; 0">
+                <t t-set="_pos_order_header" t-value="o.pos_order_ids[0]"/>
+                <t t-if="_pos_order_header.config_id and _pos_order_header.config_id.receipt_header">
+                    <div class="text-left" style="margin-bottom: 6px; font-size: 1em; white-space: pre-line;">
+                        <span t-out="_pos_order_header.config_id.receipt_header"/>
+                    </div>
+                </t>
+            </t>
+
+            <div class="text-left bold" style="font-size: 1.2em; text-transform: uppercase; margin-bottom: 2px;">
+                <span t-field="res_company.name"/>
+            </div>
+            <div class="text-left"><span t-field="res_company.street"/></div>
+            <div class="text-left">
+                <span t-field="res_company.zip"/>
+                <span t-field="res_company.city"/>
+            </div>
+            <div class="text-left"><span t-field="res_company.vat"/></div>
+
+            <div class="dashed-line"/>
+
+            <div class="text-left" style="text-transform: uppercase; font-size: 1em; margin: 3px 0;">
+                <span class="bold">
+                    <t t-if="o.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
+                    <t t-else="">FACTURA SIMPLIFICADA:</t>
+                </span>
+                <span t-field="o.name"/>
+            </div>
+            <div class="text-left" style="font-size: 1em; margin: 0 0 3px 0;">
+                <span class="bold">FECHA:</span>
+                <span t-field="o.invoice_date"/>
+                <span t-field="o.create_date" t-options='{"format": "HH:mm"}'/>
+            </div>
+
+            <t t-if="o.partner_id">
+                <div class="text-left" style="font-size: 1em; margin-top: 5px;">
+                    <div><span class="bold">CLIENTE:</span></div>
+                    <div><span t-field="o.partner_id.name"/></div>
+                    <div t-if="o.partner_id.street"><span t-field="o.partner_id.street"/></div>
+                    <div t-if="o.partner_id.zip">
+                        <span t-field="o.partner_id.zip"/>
+                        <span t-field="o.partner_id.city"/>
+                    </div>
+                    <div t-if="o.partner_id.vat">NIF: <span t-field="o.partner_id.vat"/></div>
+                </div>
+            </t>
+
+            <div class="dashed-line"/>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th class="text-left col-name">Nombre</th>
+                        <th class="text-center col-ud">UD</th>
+                        <th class="text-right col-total">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="o.invoice_line_ids" t-as="line">
+                        <tr t-if="line.display_type == 'product'">
+                            <td class="text-left col-name" style="padding-right: 2px;">
+                                <t t-set="line_name" t-value="(line.name or '').split('] ', 1)[-1] if '] ' in (line.name or '') else (line.name or '')"/>
+                                <span t-out="line_name"/>
+                            </td>
+                            <td class="text-center col-ud"><span t-esc="'%.0f' % line.quantity"/></td>
+                            <td class="text-right col-total"><span t-esc="'%.2f' % line.price_total"/></td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+
+            <div class="dashed-line"/>
+
+            <table style="width: 100%; font-size: 0.9em; margin-top: 5px; margin-bottom: 5px;">
+                <thead>
+                    <tr style="border-bottom: 1px dashed black;">
+                        <th class="text-left">Base</th>
+                        <th class="text-center">IMPUESTO</th>
+                        <th class="text-right">Cuota</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="o.tax_totals['subtotals']" t-as="subtotal">
+                        <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
+                            <tr>
+                                <td class="text-left">
+                                    <span t-out="tax_group['base_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                </td>
+                                <td class="text-center"><span t-out="tax_group['group_name']"/></td>
+                                <td class="text-right">
+                                    <span t-out="tax_group['tax_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                </td>
+                            </tr>
+                        </t>
+                    </t>
+                </tbody>
+            </table>
+
+            <div class="dashed-line"/>
+
+            <div class="text-right bold" style="font-size: 1.6em; margin: 8px 0 8px 0;">
+                TOTAL <span t-field="o.amount_total"/>
+            </div>
+
+            <div class="text-center" style="margin-bottom: 6px; font-size: 1em;">
+                Pagado:
+                <t t-set="pago_encontrado" t-value="False"/>
+                <t t-if="o.pos_order_ids">
+                    <t t-foreach="o.pos_order_ids" t-as="pos_order">
+                        <t t-foreach="pos_order.payment_ids" t-as="payment">
+                            <t t-set="pago_encontrado" t-value="True"/>
+                            <span t-field="payment.payment_method_id.name"/>
+                        </t>
+                    </t>
+                </t>
+                <t t-if="not pago_encontrado and o.invoice_payments_widget">
+                    <t t-set="payments" t-value="o.sudo().invoice_payments_widget and o.sudo().invoice_payments_widget['content'] or []"/>
+                    <t t-foreach="payments" t-as="payment">
+                        <span t-out="payment['journal_name']"/>
+                    </t>
+                </t>
+            </div>
+
+            <div class="dashed-line"/>
+
+            <t t-if="o.pos_order_ids and len(o.pos_order_ids) &gt; 0">
+                <t t-set="_pos_order" t-value="o.pos_order_ids[0]"/>
+                <t t-if="_pos_order.config_id and _pos_order.config_id.receipt_footer">
+                    <div class="text-center" style="margin-top: 6px; font-size: 1em; white-space: pre-line;">
+                        <span t-out="_pos_order.config_id.receipt_footer"/>
+                    </div>
+                </t>
+            </t>
+
+            <div class="text-center" style="margin-top: 8px; margin-bottom: 2px; font-size: 1em;">Gracias por su visita</div>
+            <div class="text-center" style="font-size: 1em;">Atendido por: <span t-field="o.invoice_user_id.name"/></div>
+        </div>
+    </template>
+
+    <template id="report_factura_simplificada_80mm_standard_qztray">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray_document" t-lang="o.partner_id.lang"/>
+            </t>
+        </t>
+    </template>
+</odoo>
