@@ -199,9 +199,14 @@ class PosOrder(models.Model):
         params.setdefault("report_name", original_report_name)
         if params["use_qztray"]:
             params["printer_report_name"] = original_report_name
-            params["report_name"] = "pos_conventional_qztray.report_pos_order_80mm_qztray"
-            params["report_res_id"] = self.id
-            params["raw_receipt"] = True
+            if params["print_original_receipt"]:
+                params["report_name"] = original_report_name
+                params["report_res_id"] = self.account_move.id if self.account_move else self.id
+                params["raw_receipt"] = False
+            else:
+                params["report_name"] = "pos_conventional_qztray.report_pos_order_80mm_qztray"
+                params["report_res_id"] = self.id
+                params["raw_receipt"] = True
         action["params"] = params
         if params["use_qztray"] and action.get("tag") == "pos_conventional_print_receipt_window":
             action["tag"] = "pos_conventional_print_receipt_qztray_window"
@@ -211,37 +216,52 @@ class PosOrder(models.Model):
         self.ensure_one()
         if not self.config_id.pos_print_receipt_with_qztray:
             return super().action_print_factura_simplificada()
+        original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
+        print_original_receipt = bool(self.config_id.pos_print_original_receipt_with_qztray)
         return {
             "type": "ir.actions.client",
             "tag": "pos_conventional_print_receipt_qztray_window",
             "params": {
                 "use_qztray": True,
-                "print_original_receipt": bool(
-                    self.config_id.pos_print_original_receipt_with_qztray
-                ),
-                "raw_receipt": True,
+                "print_original_receipt": print_original_receipt,
+                "raw_receipt": not print_original_receipt,
                 "order_id": self.id,
-                "report_res_id": self.id,
+                "report_res_id": (
+                    self.account_move.id
+                    if print_original_receipt and self.account_move
+                    else self.id
+                ),
                 "move_id": self.account_move.id if self.account_move else False,
-                "printer_report_name": "pos_conventional_receipt_custom.report_factura_simplificada_80mm",
-                "report_name": "pos_conventional_qztray.report_pos_order_80mm_qztray",
+                "printer_report_name": original_report_name,
+                "report_name": (
+                    original_report_name
+                    if print_original_receipt
+                    else "pos_conventional_qztray.report_pos_order_80mm_qztray"
+                ),
             },
         }
 
     def _get_pos_conventional_qztray_print_params(self):
         self.ensure_one()
         original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
+        print_original_receipt = bool(self.config_id.pos_print_original_receipt_with_qztray)
         return {
             "use_qztray": bool(self.config_id.pos_print_receipt_with_qztray),
-            "print_original_receipt": bool(
-                self.config_id.pos_print_original_receipt_with_qztray
-            ),
+            "print_original_receipt": print_original_receipt,
             "order_id": self.id,
             "move_id": self.account_move.id if self.account_move else False,
             "printer_report_name": original_report_name,
-            "report_name": "pos_conventional_qztray.report_pos_order_80mm_qztray",
-            "report_res_id": self.id,
-            "raw_receipt": True,
+            "report_name": (
+                original_report_name
+                if print_original_receipt
+                else "pos_conventional_qztray.report_pos_order_80mm_qztray"
+            ),
+            "report_res_id": (
+                self.account_move.id
+                if print_original_receipt and self.account_move
+                else self.id
+            ),
+            "raw_receipt": not print_original_receipt,
         }
 
     def _get_post_validation_action(self):

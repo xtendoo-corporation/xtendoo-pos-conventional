@@ -276,12 +276,9 @@ patch(PosReceiptClientAction.prototype, {
         const parsedPrinter = parsePrinterName(printAction.printer_name);
 
         const reportResId = params.report_res_id || params.order_id;
-        if (params.use_qztray) {
+        if (params.use_qztray && params.raw_receipt) {
             if (!reportResId) {
                 throw new Error(_t("No se pudo identificar el pedido para imprimir en modo rápido."));
-            }
-            if (!params.raw_receipt) {
-                console.warn("[PosReceiptQzTray] Forzando impresión RAW para evitar QWeb/PDF lento.");
             }
             return printRawReceiptWithQzTray(this.orm, reportResId, parsedPrinter);
         }
@@ -307,7 +304,16 @@ patch(PosReceiptClientAction.prototype, {
             return super._printReportBackground(moveId);
         }
         if (params.print_original_receipt) {
-            return super._printReportBackground(moveId);
+            return this._printReportWithQzTray(moveId, params).catch((error) => {
+                console.warn(
+                    "[PosReceiptQzTray] No se pudo imprimir el ticket original con QZ Tray.",
+                    error
+                );
+                this.notification.add(
+                    _t("No se pudo imprimir el ticket original con QZ Tray: %s", error?.message || error),
+                    { type: "danger", sticky: true }
+                );
+            });
         }
 
         this._printReportWithQzTray(moveId, params).catch((error) => {
@@ -330,14 +336,22 @@ async function printReceiptWindowQzTrayAction(env, action) {
         : true;
 
     if (params.use_qztray && params.print_original_receipt) {
-        if (params.url) {
-            const absoluteUrl = new URL(params.url, window.location.origin).toString();
-            await printUrlInBackground(absoluteUrl, env, {
-                reportAutoprints: !!params.report_autoprints,
-            });
-        } else if (params.move_id) {
-            const originalUrl = `/report/html/${DEFAULT_REPORT_NAME}/${params.move_id}`;
-            await printUrlInBackground(originalUrl, env, { reportAutoprints: true });
+        const clientAction = Object.create(PosReceiptClientAction.prototype);
+        clientAction.orm = env.services.orm;
+        clientAction.notification = env.services.notification;
+        clientAction.props = { action };
+
+        try {
+            await clientAction._printReportWithQzTray(params.move_id, params);
+        } catch (error) {
+            console.warn(
+                "[PosReceiptQzTray] No se pudo imprimir el ticket original con QZ Tray desde window action.",
+                error
+            );
+            env.services.notification.add(
+                _t("No se pudo imprimir el ticket original con QZ Tray: %s", error?.message || error),
+                { type: "danger", sticky: true }
+            );
         }
     } else if (params.use_qztray) {
         const clientAction = Object.create(PosReceiptClientAction.prototype);
