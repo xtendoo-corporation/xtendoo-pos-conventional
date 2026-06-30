@@ -144,9 +144,13 @@ async function getQzPrintConfig(printerName, mode = "raw") {
     const configOptions = mode === "report"
         ? {
             units: "mm",
+            size: {
+                width: 80,
+                height: 297,
+            },
             margins: 0,
             scaleContent: false,
-            rasterize: false,
+            rasterize: true,
             interpolation: "bicubic",
             jobName: "Informe Odoo",
         }
