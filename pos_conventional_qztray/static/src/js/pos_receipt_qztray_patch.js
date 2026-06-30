@@ -145,7 +145,7 @@ async function getQzPrintConfig(printerName, mode = "raw") {
         const config = qz.configs.create(qzPrinter, {
             units: "mm",
             size: {
-                width: 76,
+                width: 80,
                 height: 297,
             },
             margins: 0,
@@ -314,6 +314,16 @@ patch(PosReceiptClientAction.prototype, {
             kwargs: { data: {} },
             context: reportContext,
         });
+        for (const printData of data) {
+            if (printData.type === "pixel" && printData.format === "pdf") {
+                printData.options = {
+                    ...(printData.options || {}),
+                    pageWidth: 640,
+                    pageHeight: 2376,
+                    ignoreTransparency: true,
+                };
+            }
+        }
 
         configureQzSecurity();
         await ensureQzConnection(parsedPrinter.host);
