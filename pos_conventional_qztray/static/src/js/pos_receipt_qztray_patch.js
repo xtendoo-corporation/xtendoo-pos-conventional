@@ -306,6 +306,9 @@ patch(PosReceiptClientAction.prototype, {
         if (!params.use_qztray) {
             return super._printReportBackground(moveId);
         }
+        if (params.print_original_receipt) {
+            return super._printReportBackground(moveId);
+        }
 
         this._printReportWithQzTray(moveId, params).catch((error) => {
             console.warn(
@@ -326,7 +329,17 @@ async function printReceiptWindowQzTrayAction(env, action) {
         ? !!params.clear_breadcrumbs
         : true;
 
-    if (params.use_qztray) {
+    if (params.use_qztray && params.print_original_receipt) {
+        if (params.url) {
+            const absoluteUrl = new URL(params.url, window.location.origin).toString();
+            await printUrlInBackground(absoluteUrl, env, {
+                reportAutoprints: !!params.report_autoprints,
+            });
+        } else if (params.move_id) {
+            const originalUrl = `/report/html/${DEFAULT_REPORT_NAME}/${params.move_id}`;
+            await printUrlInBackground(originalUrl, env, { reportAutoprints: true });
+        }
+    } else if (params.use_qztray) {
         const clientAction = Object.create(PosReceiptClientAction.prototype);
         clientAction.orm = env.services.orm;
         clientAction.notification = env.services.notification;

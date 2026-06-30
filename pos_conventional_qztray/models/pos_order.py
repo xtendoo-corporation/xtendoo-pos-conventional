@@ -192,6 +192,9 @@ class PosOrder(models.Model):
 
         params = dict(action.get("params") or {})
         params["use_qztray"] = bool(self.config_id.pos_print_receipt_with_qztray)
+        params["print_original_receipt"] = bool(
+            self.config_id.pos_print_original_receipt_with_qztray
+        )
         original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
         params.setdefault("report_name", original_report_name)
         if params["use_qztray"]:
@@ -213,6 +216,9 @@ class PosOrder(models.Model):
             "tag": "pos_conventional_print_receipt_qztray_window",
             "params": {
                 "use_qztray": True,
+                "print_original_receipt": bool(
+                    self.config_id.pos_print_original_receipt_with_qztray
+                ),
                 "raw_receipt": True,
                 "order_id": self.id,
                 "report_res_id": self.id,
@@ -227,6 +233,9 @@ class PosOrder(models.Model):
         original_report_name = "pos_conventional_receipt_custom.report_factura_simplificada_80mm"
         return {
             "use_qztray": bool(self.config_id.pos_print_receipt_with_qztray),
+            "print_original_receipt": bool(
+                self.config_id.pos_print_original_receipt_with_qztray
+            ),
             "order_id": self.id,
             "move_id": self.account_move.id if self.account_move else False,
             "printer_report_name": original_report_name,

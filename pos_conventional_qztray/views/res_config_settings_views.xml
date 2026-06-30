@@ -12,6 +12,12 @@
                     invisible="not pos_iface_print_auto">
                     <field name="pos_print_receipt_with_qztray"/>
                 </setting>
+                <setting id="pos_print_original_receipt_with_qztray_setting"
+                    string="Usar ticket original"
+                    help="Si QZ Tray está activo, imprime el informe original del ticket en lugar del ticket rápido."
+                    invisible="not pos_iface_print_auto or not pos_print_receipt_with_qztray">
+                    <field name="pos_print_original_receipt_with_qztray"/>
+                </setting>
             </xpath>
         </field>
     </record>

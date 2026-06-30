@@ -12,3 +12,11 @@ class PosConfig(models.Model):
             "cliente web vuelve al flujo de impresión del navegador."
         ),
     )
+
+    pos_print_original_receipt_with_qztray = fields.Boolean(
+        string="Imprimir el ticket original en lugar del rápido",
+        help=(
+            "Cuando QZ Tray está activo, imprime el informe original del ticket "
+            "en vez del ticket rápido enviado a la ticketera."
+        ),
+    )
