@@ -145,7 +145,7 @@
                     <t t-if="o.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
                     <t t-else="">FACTURA SIMPLIFICADA:</t>
                 </span>
-                <span t-field="o.name"/>
+                <span t-field="o.name" style="font-weight: 300;"/>
             </div>
             <div class="text-left" style="font-size: 1em; margin: 0 0 3px 0;">
                 <span class="bold">FECHA:</span>
