@@ -145,7 +145,7 @@ async function getQzPrintConfig(printerName, mode = "raw") {
         const config = qz.configs.create(qzPrinter, {
             units: "mm",
             size: {
-                width: 80,
+                width: 72,
                 height: 297,
             },
             margins: 0,
@@ -307,13 +307,20 @@ patch(PosReceiptClientAction.prototype, {
             ...(this.props.action.context || {}),
             ...(params.context || {}),
         };
-        const data = await rpc("/web/dataset/call_kw", {
-            model: "ir.actions.report",
-            method: "get_qz_tray_data",
-            args: [printAction.id, [pdfResId], "pdf", reportName],
-            kwargs: { data: {} },
-            context: reportContext,
-        });
+        const data = params.print_original_receipt
+            ? [{
+                type: "pixel",
+                format: "html",
+                flavor: "file",
+                data: new URL(`/report/html/${reportName}/${pdfResId}`, window.location.origin).toString(),
+            }]
+            : await rpc("/web/dataset/call_kw", {
+                model: "ir.actions.report",
+                method: "get_qz_tray_data",
+                args: [printAction.id, [pdfResId], "pdf", reportName],
+                kwargs: { data: {} },
+                context: reportContext,
+            });
 
         configureQzSecurity();
         await ensureQzConnection(parsedPrinter.host);
