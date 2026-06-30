@@ -152,6 +152,7 @@ async function getQzPrintConfig(printerName, mode = "raw") {
             scaleContent: false,
             rasterize: true,
             interpolation: "bicubic",
+            encoding: "UTF-8",
             jobName: "Informe Odoo",
         });
         qzPrintConfigCache.set(cacheKey, config);
