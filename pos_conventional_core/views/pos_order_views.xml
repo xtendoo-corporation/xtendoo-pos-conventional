@@ -17,6 +17,17 @@
         </field>
     </record>
 
+    <record id="view_pos_order_tree_inherit_pos_conventional_core_employees" model="ir.ui.view">
+        <field name="name">pos.order.list.inherit.pos.conventional.core.employees</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="pos_hr.view_pos_order_tree_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='employee_id']" position="replace">
+                <field name="user_id" string="Cajero"/>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Vista formulario: layout completo con totales, ribbon de pago y campos técnicos -->
     <record id="view_pos_pos_form_inherit_pos_conventional_core" model="ir.ui.view">
         <field name="name">pos.order.form.inherit.pos.conventional.core</field>
