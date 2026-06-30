@@ -23,7 +23,9 @@
     </record>
 
     <template id="report_factura_simplificada_80mm_standard_qztray_document">
-        <div class="page pos-qz-standard-ticket">
+        <t t-call="web.external_layout">
+            <t t-set="doc" t-value="o"/>
+            <div class="page pos-qz-standard-ticket">
             <style>
                 .pos-qz-standard-ticket {
                     font-size: 13px;
@@ -228,7 +230,8 @@
 
             <div class="text-center" style="margin-top: 8px; margin-bottom: 2px; font-size: 1em;">Gracias por su visita</div>
             <div class="text-center" style="font-size: 1em;">Atendido por: <span t-field="o.invoice_user_id.name"/></div>
-        </div>
+            </div>
+        </t>
     </template>
 
     <template id="report_factura_simplificada_80mm_standard_qztray">
