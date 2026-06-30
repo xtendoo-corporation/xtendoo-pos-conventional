@@ -59,12 +59,32 @@
                     border-spacing: 0;
                     table-layout: fixed;
                     border: none !important;
+                    border-color: transparent !important;
+                    background: transparent !important;
                 }
                 .pos-qz-standard-ticket table.table,
                 .pos-qz-standard-ticket .table,
                 .pos-qz-standard-ticket .table-borderless {
                     border: 0 !important;
                 }
+                .pos-qz-standard-ticket table.table-borderless,
+                .pos-qz-standard-ticket table.table-borderless thead,
+                .pos-qz-standard-ticket table.table-borderless tbody,
+                .pos-qz-standard-ticket table.table-borderless tfoot,
+                .pos-qz-standard-ticket table.table-borderless tr,
+                .pos-qz-standard-ticket table.table-borderless th,
+                .pos-qz-standard-ticket table.table-borderless td {
+                    border: 0 none transparent !important;
+                    border-top: 0 none transparent !important;
+                    border-right: 0 none transparent !important;
+                    border-bottom: 0 none transparent !important;
+                    border-left: 0 none transparent !important;
+                    background-image: none !important;
+                    box-shadow: none !important;
+                }
+                .pos-qz-standard-ticket thead,
+                .pos-qz-standard-ticket tbody,
+                .pos-qz-standard-ticket tfoot,
                 .pos-qz-standard-ticket tr,
                 .pos-qz-standard-ticket th,
                 .pos-qz-standard-ticket td {
@@ -84,29 +104,12 @@
                     padding: 3px 0;
                     font-size: 14px;
                 }
-                .pos-qz-standard-ticket .ticket-row {
-                    display: flex;
-                    align-items: flex-start;
-                    width: 100%;
-                    border: 0 !important;
-                    box-shadow: none !important;
-                }
-                .pos-qz-standard-ticket .ticket-cell {
-                    border: 0 !important;
-                    box-shadow: none !important;
-                    padding: 3px 0;
-                    box-sizing: border-box;
-                }
-                .pos-qz-standard-ticket .ticket-header .ticket-cell {
-                    font-weight: 700;
-                    font-size: 13px;
-                }
-                .pos-qz-standard-ticket .col-name { flex: 0 0 68%; max-width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-                .pos-qz-standard-ticket .col-ud { flex: 0 0 10%; max-width: 10%; text-align: center; }
-                .pos-qz-standard-ticket .col-total { flex: 0 0 22%; max-width: 22%; text-align: right; }
-                .pos-qz-standard-ticket .col-tax-base { flex: 0 0 34%; max-width: 34%; text-align: left; }
-                .pos-qz-standard-ticket .col-tax-name { flex: 0 0 33%; max-width: 33%; text-align: center; }
-                .pos-qz-standard-ticket .col-tax-amount { flex: 0 0 33%; max-width: 33%; text-align: right; }
+                .pos-qz-standard-ticket .col-name { width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .pos-qz-standard-ticket .col-ud { width: 10%; text-align: center; }
+                .pos-qz-standard-ticket .col-total { width: 22%; text-align: right; }
+                .pos-qz-standard-ticket .col-tax-base { width: 34%; text-align: left; }
+                .pos-qz-standard-ticket .col-tax-name { width: 33%; text-align: center; }
+                .pos-qz-standard-ticket .col-tax-amount { width: 33%; text-align: right; }
             </style>
 
             <t t-set="pos_order" t-value="o.pos_order_ids[:1] and o.pos_order_ids[0] or False"/>
@@ -165,56 +168,66 @@
 
             <div class="dashed-line"/>
 
-            <div class="ticket-row ticket-header">
-                <div class="ticket-cell col-name">Nombre</div>
-                <div class="ticket-cell col-ud">UD</div>
-                <div class="ticket-cell col-total">TOTAL</div>
-            </div>
-            <t t-foreach="o.invoice_line_ids" t-as="line">
-                <div t-if="line.display_type == 'product'" class="ticket-row">
-                    <div class="ticket-cell col-name" style="padding-right: 2px;">
-                        <t t-set="line_name" t-value="(line.name or '').split('] ', 1)[-1] if '] ' in (line.name or '') else (line.name or '')"/>
-                        <span t-out="line_name"/>
-                    </div>
-                    <div class="ticket-cell col-ud"><span t-esc="'%.0f' % line.quantity"/></div>
-                    <div class="ticket-cell col-total">
-                        <span t-field="line.price_total"/>
-                    </div>
-                </div>
-            </t>
+            <table class="table-borderless" border="0" cellspacing="0" cellpadding="0" rules="none" frame="void">
+                <thead>
+                    <tr>
+                        <th class="text-left col-name">Nombre</th>
+                        <th class="text-center col-ud">UD</th>
+                        <th class="text-right col-total">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="o.invoice_line_ids" t-as="line">
+                        <tr t-if="line.display_type == 'product'">
+                            <td class="text-left col-name" style="padding-right: 2px;">
+                                <t t-set="line_name" t-value="(line.name or '').split('] ', 1)[-1] if '] ' in (line.name or '') else (line.name or '')"/>
+                                <span t-out="line_name"/>
+                            </td>
+                            <td class="text-center col-ud"><span t-esc="'%.0f' % line.quantity"/></td>
+                            <td class="text-right col-total">
+                                <span t-field="line.price_total"/>
+                            </td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
 
             <div class="dashed-line"/>
 
-            <div style="font-size: 0.9em; margin-top: 5px; margin-bottom: 5px;">
-                <div class="ticket-row ticket-header">
-                    <div class="ticket-cell col-tax-base">Base</div>
-                    <div class="ticket-cell col-tax-name">IMPUESTO</div>
-                    <div class="ticket-cell col-tax-amount">Cuota</div>
-                </div>
-                <t t-if="o.tax_totals">
-                    <t t-foreach="o.tax_totals['subtotals']" t-as="subtotal">
-                        <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
-                            <div class="ticket-row">
-                                <div class="ticket-cell col-tax-base">
-                                    <span t-out="tax_group['base_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                </div>
-                                <div class="ticket-cell col-tax-name">
-                                    <span t-out="tax_group['group_name']"/>
-                                </div>
-                                <div class="ticket-cell col-tax-amount">
-                                    <span t-out="tax_group['tax_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                </div>
-                            </div>
+            <table class="table-borderless" border="0" cellspacing="0" cellpadding="0" rules="none" frame="void" style="font-size: 0.9em; margin-top: 5px; margin-bottom: 5px;">
+                <thead>
+                    <tr>
+                        <th class="col-tax-base">Base</th>
+                        <th class="col-tax-name">IMPUESTO</th>
+                        <th class="col-tax-amount">Cuota</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-if="o.tax_totals">
+                        <t t-foreach="o.tax_totals['subtotals']" t-as="subtotal">
+                            <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
+                                <tr>
+                                    <td class="col-tax-base">
+                                        <span t-out="tax_group['base_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                    <td class="col-tax-name">
+                                        <span t-out="tax_group['group_name']"/>
+                                    </td>
+                                    <td class="col-tax-amount">
+                                        <span t-out="tax_group['tax_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </t>
                         </t>
                     </t>
-                </t>
-                <div class="ticket-row">
-                    <div class="ticket-cell" style="flex: 0 0 67%; max-width: 67%; text-align: right;"><strong>Total</strong></div>
-                    <div class="ticket-cell col-tax-amount">
-                        <strong t-out="o.tax_totals['total_amount_currency'] if o.tax_totals else o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                    </div>
-                </div>
-            </div>
+                    <tr>
+                        <td colspan="2" class="text-right"><strong>Total</strong></td>
+                        <td class="col-tax-amount">
+                            <strong t-out="o.tax_totals['total_amount_currency'] if o.tax_totals else o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
 
             <div class="dashed-line"/>
 
