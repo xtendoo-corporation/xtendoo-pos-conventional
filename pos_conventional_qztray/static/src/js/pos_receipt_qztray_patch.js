@@ -145,7 +145,7 @@ async function getQzPrintConfig(printerName, mode = "raw") {
         ? {
             units: "mm",
             margins: 0,
-            scaleContent: true,
+            scaleContent: false,
             rasterize: true,
             interpolation: "bicubic",
             jobName: "Informe Odoo",
