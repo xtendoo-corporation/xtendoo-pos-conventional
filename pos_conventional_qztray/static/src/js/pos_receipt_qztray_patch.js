@@ -229,6 +229,34 @@ async function printRawReceiptWithQzTray(orm, orderId, parsedPrinter) {
     await qz.print(config, printData);
 }
 
+async function printReportWithOcaQzTray(env, params = {}, actionContext = {}) {
+    if (!originalQzPrintDispatcher) {
+        throw new Error(_t("No se encontró el backend QZ Tray original de OCA."));
+    }
+    const reportResId = params.report_res_id || params.move_id;
+    if (!reportResId) {
+        throw new Error(_t("No se pudo identificar el documento para imprimir con QZ Tray."));
+    }
+    const reportName = params.report_name || DEFAULT_REPORT_NAME;
+    const reportAction = {
+        type: "ir.actions.report",
+        report_type: "qweb-pdf",
+        report_name: reportName,
+        data: params.data || {},
+        context: {
+            ...actionContext,
+            ...(params.context || {}),
+            active_id: reportResId,
+            active_ids: [reportResId],
+            active_model: "account.move",
+        },
+    };
+    const printed = await originalQzPrintDispatcher(reportAction, env);
+    if (!printed) {
+        throw new Error(_t("El backend QZ Tray de OCA no pudo imprimir el informe."));
+    }
+}
+
 async function printFastPosReportWithQzTray(action, env) {
     if (!FAST_POS_REPORT_NAMES.has(action.report_name)) {
         return false;
@@ -278,6 +306,14 @@ patch(PosReceiptClientAction.prototype, {
         }
 
         const reportName = params.report_name || DEFAULT_REPORT_NAME;
+        if (params.print_original_receipt && !params.raw_receipt) {
+            return printReportWithOcaQzTray(
+                this.env,
+                params,
+                this.props.action.context || {}
+            );
+        }
+
         const printerReportName = params.printer_report_name || reportName;
         const printAction = await getQzPrintAction(this.orm, printerReportName);
         const parsedPrinter = parsePrinterName(printAction.printer_name);
@@ -349,6 +385,7 @@ async function printReceiptWindowQzTrayAction(env, action) {
 
     if (params.use_qztray && params.print_original_receipt) {
         const clientAction = Object.create(PosReceiptClientAction.prototype);
+        clientAction.env = env;
         clientAction.orm = env.services.orm;
         clientAction.notification = env.services.notification;
         clientAction.props = { action };
@@ -367,6 +404,7 @@ async function printReceiptWindowQzTrayAction(env, action) {
         }
     } else if (params.use_qztray) {
         const clientAction = Object.create(PosReceiptClientAction.prototype);
+        clientAction.env = env;
         clientAction.orm = env.services.orm;
         clientAction.notification = env.services.notification;
         clientAction.props = { action };
