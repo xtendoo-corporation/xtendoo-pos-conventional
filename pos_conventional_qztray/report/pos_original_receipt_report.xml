@@ -26,10 +26,9 @@
         <div class="page pos-qz-standard-ticket">
             <style>
                 .pos-qz-standard-ticket {
-                    font-family: "DejaVu Sans", Arial, Helvetica, sans-serif;
                     font-size: 13px;
                     font-weight: 400;
-                    line-height: 1.5;
+                    line-height: 1.7;
                     color: #000;
                     padding: 3mm 4mm 5mm 4mm;
                     box-sizing: border-box;
@@ -70,6 +69,15 @@
                 .pos-qz-standard-ticket .col-name { width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                 .pos-qz-standard-ticket .col-ud { width: 10%; text-align: center; }
                 .pos-qz-standard-ticket .col-total { width: 22%; text-align: right; }
+                .pos-qz-standard-ticket .o_total_table td {
+                    padding: 2px 0;
+                    font-size: 13px;
+                }
+                .pos-qz-standard-ticket .o_total_table .o_total td,
+                .pos-qz-standard-ticket .o_total_table .o_total strong {
+                    font-size: 1.25em;
+                    font-weight: 700;
+                }
             </style>
 
             <div class="text-center" style="margin-bottom: 8px;">
@@ -144,7 +152,7 @@
                             </td>
                             <td class="text-center col-ud"><span t-esc="'%.0f' % line.quantity"/></td>
                             <td class="text-right col-total">
-                                <span t-field="line.price_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                <span t-field="line.price_total"/>
                             </td>
                         </tr>
                     </t>
@@ -153,36 +161,12 @@
 
             <div class="dashed-line"/>
 
-            <table style="width: 100%; font-size: 0.9em; margin-top: 5px; margin-bottom: 5px;">
-                <thead>
-                    <tr style="border-bottom: 1px dashed black;">
-                        <th class="text-left">Base</th>
-                        <th class="text-center">IMPUESTO</th>
-                        <th class="text-right">Cuota</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <t t-foreach="o.tax_totals['subtotals']" t-as="subtotal">
-                        <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
-                            <tr>
-                                <td class="text-left">
-                                    <span t-out="tax_group['base_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                </td>
-                                <td class="text-center"><span t-out="tax_group['group_name']"/></td>
-                                <td class="text-right">
-                                    <span t-out="tax_group['tax_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                </td>
-                            </tr>
-                        </t>
-                    </t>
-                </tbody>
+            <table class="o_total_table table table-borderless" style="width: 100%; margin-top: 5px; margin-bottom: 5px;">
+                <t t-if="o.tax_totals" t-call="account.document_tax_totals">
+                    <t t-set="tax_totals" t-value="o.tax_totals"/>
+                    <t t-set="currency" t-value="o.currency_id"/>
+                </t>
             </table>
-
-            <div class="dashed-line"/>
-
-            <div class="text-right bold" style="font-size: 1.6em; margin: 8px 0 8px 0;">
-                TOTAL <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-            </div>
 
             <div class="text-center" style="margin-bottom: 6px; font-size: 1em;">
                 Pagado:
