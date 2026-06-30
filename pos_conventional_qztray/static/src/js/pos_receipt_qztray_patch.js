@@ -145,7 +145,7 @@ async function getQzPrintConfig(printerName, mode = "raw") {
         const config = qz.configs.create(qzPrinter, {
             units: "mm",
             size: {
-                width: 80,
+                width: 76,
                 height: 297,
             },
             margins: 0,
