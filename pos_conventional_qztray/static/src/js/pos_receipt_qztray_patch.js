@@ -146,7 +146,7 @@ async function getQzPrintConfig(printerName, mode = "raw") {
             units: "mm",
             margins: 0,
             scaleContent: false,
-            rasterize: true,
+            rasterize: false,
             interpolation: "bicubic",
             jobName: "Informe Odoo",
         }
@@ -295,12 +295,17 @@ patch(PosReceiptClientAction.prototype, {
         }
 
         const pdfResId = params.report_res_id || moveId;
+        const reportContext = {
+            ...(this.env?.searchModel?.context || {}),
+            ...(this.props.action.context || {}),
+            ...(params.context || {}),
+        };
         const data = await rpc("/web/dataset/call_kw", {
             model: "ir.actions.report",
             method: "get_qz_tray_data",
             args: [printAction.id, [pdfResId], "pdf", reportName],
             kwargs: { data: {} },
-            context: {},
+            context: reportContext,
         });
 
         configureQzSecurity();
