@@ -141,30 +141,20 @@ async function getQzPrintConfig(printerName, mode = "raw") {
         return qzPrintConfigCache.get(cacheKey);
     }
     const qzPrinter = await qz.printers.find(printerName);
-    const configOptions = mode === "report"
-        ? {
-            units: "mm",
-            size: {
-                width: 80,
-                height: 297,
-            },
-            margins: 0,
-            scaleContent: false,
-            rasterize: true,
-            density: 8,
-            fallbackDensity: 8,
-            interpolation: "bicubic",
-            jobName: "Informe Odoo",
-        }
-        : {
-            units: "mm",
-            margins: 0,
-            scaleContent: false,
-            rasterize: false,
-            interpolation: "nearest-neighbor",
-            encoding: "CP858",
-            jobName: "Ticket POS",
-        };
+    if (mode === "report") {
+        const config = qz.configs.create(qzPrinter);
+        qzPrintConfigCache.set(cacheKey, config);
+        return config;
+    }
+    const configOptions = {
+        units: "mm",
+        margins: 0,
+        scaleContent: false,
+        rasterize: false,
+        interpolation: "nearest-neighbor",
+        encoding: "CP858",
+        jobName: "Ticket POS",
+    };
     const config = qz.configs.create(qzPrinter, configOptions);
     qzPrintConfigCache.set(cacheKey, config);
     return config;
