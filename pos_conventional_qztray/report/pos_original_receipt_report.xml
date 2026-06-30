@@ -10,6 +10,18 @@
         <field name="paperformat_id" ref="pos_conventional_receipt_custom.paperformat_receipt_80mm"/>
     </record>
 
+    <record id="action_pos_order_original_80mm_standard_qztray" model="ir.actions.report">
+        <field name="name">Factura Simplificada 80mm QZ Tray Standard</field>
+        <field name="model">pos.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">pos_conventional_qztray.report_pos_order_original_80mm_standard_qztray</field>
+        <field name="report_file">pos_conventional_qztray.report_pos_order_original_80mm_standard_qztray</field>
+        <field name="print_report_name">'Ticket_QZ_%s' % object.name.replace('/', '_')</field>
+        <field name="paperformat_id" ref="pos_conventional_receipt_custom.paperformat_receipt_80mm"/>
+        <field name="binding_model_id" ref="point_of_sale.model_pos_order"/>
+        <field name="binding_type">report</field>
+    </record>
+
     <template id="report_factura_simplificada_80mm_standard_qztray_document">
         <div class="page pos-qz-standard-ticket">
             <style>
@@ -208,6 +220,17 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray_document" t-lang="o.partner_id.lang"/>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_pos_order_original_80mm_standard_qztray">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="pos_order">
+                <t t-if="pos_order.account_move">
+                    <t t-set="o" t-value="pos_order.account_move"/>
+                    <t t-call="pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray_document" t-lang="o.partner_id.lang"/>
+                </t>
             </t>
         </t>
     </template>
