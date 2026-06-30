@@ -162,10 +162,38 @@
             <div class="dashed-line"/>
 
             <table class="o_total_table table table-borderless" style="width: 100%; margin-top: 5px; margin-bottom: 5px;">
-                <t t-if="o.tax_totals" t-call="account.document_tax_totals">
-                    <t t-set="tax_totals" t-value="o.tax_totals"/>
-                    <t t-set="currency" t-value="o.currency_id"/>
-                </t>
+                <thead>
+                    <tr>
+                        <th class="text-left">Base</th>
+                        <th class="text-center">IMPUESTO</th>
+                        <th class="text-right">Cuota</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-if="o.tax_totals">
+                        <t t-foreach="o.tax_totals['subtotals']" t-as="subtotal">
+                            <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
+                                <tr>
+                                    <td class="text-left">
+                                        <span t-out="tax_group['base_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                    <td class="text-center">
+                                        <span t-out="tax_group['group_name']"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-out="tax_group['tax_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </t>
+                    </t>
+                    <tr class="o_total">
+                        <td colspan="2" class="text-right"><strong>Total</strong></td>
+                        <td class="text-right">
+                            <strong t-out="o.tax_totals['total_amount_currency'] if o.tax_totals else o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                        </td>
+                    </tr>
+                </tbody>
             </table>
 
             <div class="text-center" style="margin-bottom: 6px; font-size: 1em;">
@@ -206,6 +234,7 @@
     <template id="report_factura_simplificada_80mm_standard_qztray">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
+                <t t-set="o" t-value="o.with_context(lang=o.partner_id.lang or o.env.lang)"/>
                 <t t-call="pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray_document" t-lang="o.partner_id.lang"/>
             </t>
         </t>
@@ -215,7 +244,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="pos_order">
                 <t t-if="pos_order.account_move">
-                    <t t-set="o" t-value="pos_order.account_move"/>
+                    <t t-set="o" t-value="pos_order.account_move.with_context(lang=pos_order.account_move.partner_id.lang or pos_order.env.lang)"/>
                     <t t-call="pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray_document" t-lang="o.partner_id.lang"/>
                 </t>
             </t>
