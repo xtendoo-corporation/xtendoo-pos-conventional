@@ -29,7 +29,7 @@
             <style>
                 .pos-qz-standard-ticket {
                     font-size: 15px;
-                    font-weight: 150;
+                    
                     line-height: 1.7;
                     color: #000;
                     padding: 3mm 4mm 5mm 4mm;
@@ -38,7 +38,7 @@
                 .pos-qz-standard-ticket .text-center { text-align: center; }
                 .pos-qz-standard-ticket .text-right { text-align: right; }
                 .pos-qz-standard-ticket .text-left { text-align: left; }
-                .pos-qz-standard-ticket .bold { font-weight: 500; }
+                
                 .pos-qz-standard-ticket .receipt-logo {
                     max-height: 75px;
                     max-width: 90%;
@@ -95,7 +95,7 @@
                     outline: none !important;
                 }
                 .pos-qz-standard-ticket th {
-                    font-weight: 500;
+                
                     font-size: 13px;
                     padding: 3px 0;
                 }
@@ -220,12 +220,7 @@
                             </t>
                         </t>
                     </t>
-                    <tr>
-                        <td colspan="2" class="text-right"><strong>Total</strong></td>
-                        <td class="col-tax-amount">
-                            <strong t-out="o.tax_totals['total_amount_currency'] if o.tax_totals else o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                        </td>
-                    </tr>
+
                 </tbody>
             </table>
 
