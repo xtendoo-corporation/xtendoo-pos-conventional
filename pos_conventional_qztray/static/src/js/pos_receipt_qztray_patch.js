@@ -142,19 +142,7 @@ async function getQzPrintConfig(printerName, mode = "raw") {
     }
     const qzPrinter = await qz.printers.find(printerName);
     if (mode === "report") {
-        const config = qz.configs.create(qzPrinter, {
-            units: "mm",
-            size: {
-                width: 80,
-                height: 297,
-            },
-            margins: 0,
-            scaleContent: false,
-            rasterize: true,
-            interpolation: "bicubic",
-            encoding: "UTF-8",
-            jobName: "Informe Odoo",
-        });
+        const config = qz.configs.create(qzPrinter);
         qzPrintConfigCache.set(cacheKey, config);
         return config;
     }
