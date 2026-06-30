@@ -28,9 +28,9 @@
             <div class="page pos-qz-standard-ticket">
             <style>
                 .pos-qz-standard-ticket {
-                    font-size: 13px;
+                    font-size: 15px;
                     font-weight: 400;
-                    line-height: 1.5;
+                    line-height: 1.55;
                     color: #000;
                     padding: 3mm 4mm 5mm 4mm;
                     box-sizing: border-box;
@@ -56,25 +56,33 @@
                 .pos-qz-standard-ticket table {
                     width: 100%;
                     border-collapse: collapse;
+                    border-spacing: 0;
                     table-layout: fixed;
                     border: none !important;
+                }
+                .pos-qz-standard-ticket table.table,
+                .pos-qz-standard-ticket .table,
+                .pos-qz-standard-ticket .table-borderless {
+                    border: 0 !important;
                 }
                 .pos-qz-standard-ticket tr,
                 .pos-qz-standard-ticket th,
                 .pos-qz-standard-ticket td {
                     border: none !important;
+                    border-top: 0 !important;
+                    border-bottom: 0 !important;
+                    box-shadow: none !important;
                     outline: none !important;
                 }
                 .pos-qz-standard-ticket th {
                     font-weight: 700;
-                    font-size: 12px;
-                    border-bottom: 1px solid #000 !important;
+                    font-size: 13px;
                     padding: 3px 0;
                 }
                 .pos-qz-standard-ticket td {
                     vertical-align: top;
                     padding: 3px 0;
-                    font-size: 13px;
+                    font-size: 14px;
                 }
                 .pos-qz-standard-ticket .col-name { width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                 .pos-qz-standard-ticket .col-ud { width: 10%; text-align: center; }
