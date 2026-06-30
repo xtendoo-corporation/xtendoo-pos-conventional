@@ -38,7 +38,7 @@
                 .pos-qz-standard-ticket .text-center { text-align: center; }
                 .pos-qz-standard-ticket .text-right { text-align: right; }
                 .pos-qz-standard-ticket .text-left { text-align: left; }
-                .pos-qz-standard-ticket .bold { font-weight: 600; }
+                .pos-qz-standard-ticket .bold { font-weight: 500; }
                 .pos-qz-standard-ticket .receipt-logo {
                     max-height: 75px;
                     max-width: 90%;
@@ -95,7 +95,7 @@
                     outline: none !important;
                 }
                 .pos-qz-standard-ticket th {
-                    font-weight: 600;
+                    font-weight: 500;
                     font-size: 13px;
                     padding: 3px 0;
                 }
