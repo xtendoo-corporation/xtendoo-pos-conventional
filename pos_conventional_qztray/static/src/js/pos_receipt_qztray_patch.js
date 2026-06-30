@@ -310,9 +310,9 @@ patch(PosReceiptClientAction.prototype, {
         const data = params.print_original_receipt
             ? [{
                 type: "pixel",
-                format: "html",
+                format: "pdf",
                 flavor: "file",
-                data: new URL(`/report/html/${reportName}/${pdfResId}`, window.location.origin).toString(),
+                data: new URL(`/report/pdf/${reportName}/${pdfResId}`, window.location.origin).toString(),
             }]
             : await rpc("/web/dataset/call_kw", {
                 model: "ir.actions.report",
