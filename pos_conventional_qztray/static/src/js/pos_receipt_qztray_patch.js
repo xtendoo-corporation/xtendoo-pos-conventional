@@ -148,8 +148,14 @@ async function getQzPrintConfig(printerName, mode = "raw") {
                 width: 80,
                 height: 297,
             },
+            bounds: {
+                x: -4,
+                y: 0,
+                width: 88,
+                height: 297,
+            },
             margins: 0,
-            scaleContent: false,
+            scaleContent: true,
             rasterize: true,
             interpolation: "bicubic",
             jobName: "Informe Odoo",
@@ -314,16 +320,6 @@ patch(PosReceiptClientAction.prototype, {
             kwargs: { data: {} },
             context: reportContext,
         });
-        for (const printData of data) {
-            if (printData.type === "pixel" && printData.format === "pdf") {
-                printData.options = {
-                    ...(printData.options || {}),
-                    pageWidth: 640,
-                    pageHeight: 2376,
-                    ignoreTransparency: true,
-                };
-            }
-        }
 
         configureQzSecurity();
         await ensureQzConnection(parsedPrinter.host);
