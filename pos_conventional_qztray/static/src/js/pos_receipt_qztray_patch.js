@@ -151,6 +151,8 @@ async function getQzPrintConfig(printerName, mode = "raw") {
             margins: 0,
             scaleContent: false,
             rasterize: true,
+            density: 8,
+            fallbackDensity: 8,
             interpolation: "bicubic",
             jobName: "Informe Odoo",
         }
