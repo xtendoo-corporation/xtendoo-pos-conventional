@@ -129,7 +129,7 @@
                 </t>
             </div>
 
-            <div class="text-left bold" style="font-size: 1.3em; text-transform: uppercase; margin-bottom: 2px; font-weight: bold;">
+            <div class="text-left bold" style="font-size: 1.4em; text-transform: uppercase; margin-bottom: 2px; font-weight: 600; letter-spacing: -0.5px;">
                 <span t-field="res_company.name"/>
             </div>
             <div class="text-left" style="font-weight: normal; font-size: 0.95em;"><span t-field="res_company.street"/></div>
@@ -142,21 +142,21 @@
             <div class="dashed-line"/>
 
             <div class="text-left" style="text-transform: uppercase; margin: 3px 0;">
-                <span style="font-weight: bold; font-size: 1.1em;">
+                <span style="font-weight: 600; font-size: 1.2em; letter-spacing: -0.5px;">
                     <t t-if="o.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
                     <t t-else="">FACTURA SIMPLIFICADA:</t>
                 </span>
                 <span t-field="o.name" style="font-weight: normal; font-size: 0.95em;"/>
             </div>
             <div class="text-left" style="margin: 0 0 3px 0;">
-                <span style="font-weight: bold; font-size: 1.1em;">FECHA:</span>
+                <span style="font-weight: 600; font-size: 1.2em; letter-spacing: -0.5px;">FECHA:</span>
                 <span t-field="o.invoice_date" style="font-weight: normal; font-size: 0.95em;"/>
                 <span t-field="o.create_date" t-options='{"format": "HH:mm"}' style="font-weight: normal; font-size: 0.95em;"/>
             </div>
 
             <t t-if="o.partner_id">
                 <div class="text-left" style="margin-top: 5px;">
-                    <div><span style="font-weight: bold; font-size: 1.1em;">CLIENTE:</span></div>
+                    <div><span style="font-weight: 600; font-size: 1.2em; letter-spacing: -0.5px;">CLIENTE:</span></div>
                     <div><span t-field="o.partner_id.name" style="font-weight: normal; font-size: 0.95em;"/></div>
                     <div t-if="o.partner_id.street" style="font-weight: normal; font-size: 0.95em;"><span t-field="o.partner_id.street"/></div>
                     <div t-if="o.partner_id.zip" style="font-weight: normal; font-size: 0.95em;">
@@ -172,9 +172,9 @@
             <table class="table-borderless" border="0" cellspacing="0" cellpadding="0" rules="none" frame="void">
                 <thead>
                     <tr>
-                        <th class="text-left col-name" style="font-weight: bold; font-size: 14px;">Nombre</th>
-                        <th class="text-center col-ud" style="font-weight: bold; font-size: 14px;">UD</th>
-                        <th class="text-right col-total" style="font-weight: bold; font-size: 14px;">TOTAL</th>
+                        <th class="text-left col-name" style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px;">Nombre</th>
+                        <th class="text-center col-ud" style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px;">UD</th>
+                        <th class="text-right col-total" style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px;">TOTAL</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -198,9 +198,9 @@
             <table class="table-borderless" border="0" cellspacing="0" cellpadding="0" rules="none" frame="void" style="font-size: 0.9em; margin-top: 5px; margin-bottom: 5px;">
                 <thead>
                     <tr>
-                        <th class="col-tax-base" style="font-weight: bold; font-size: 13px;">Base</th>
-                        <th class="col-tax-name" style="font-weight: bold; font-size: 13px;">IMPUESTO</th>
-                        <th class="col-tax-amount" style="font-weight: bold; font-size: 13px;">Cuota</th>
+                        <th class="col-tax-base" style="font-weight: 600; font-size: 14px; letter-spacing: -0.5px;">Base</th>
+                        <th class="col-tax-name" style="font-weight: 600; font-size: 14px; letter-spacing: -0.5px;">IMPUESTO</th>
+                        <th class="col-tax-amount" style="font-weight: 600; font-size: 14px; letter-spacing: -0.5px;">Cuota</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -227,7 +227,7 @@
 
             <div class="dashed-line"/>
 
-            <div class="text-right" style="font-size: 1.6em; margin: 8px 0 8px 0; font-weight: bold;">
+            <div class="text-right" style="font-size: 1.7em; margin: 8px 0 8px 0; font-weight: 600; letter-spacing: -0.5px;">
                 TOTAL <span t-field="o.amount_total"/>
             </div>
 

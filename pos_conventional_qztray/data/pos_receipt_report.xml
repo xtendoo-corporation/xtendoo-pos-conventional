@@ -42,7 +42,7 @@
                         }
                         .center { text-align: center; }
                         .right { text-align: right; }
-                        .bold { font-weight: bold; }
+                        .bold { font-weight: 600; }
                         .normal { font-weight: normal; }
                         .upper { text-transform: uppercase; }
                         .line {
@@ -66,9 +66,10 @@
                             background: transparent !important;
                         }
                         th {
-                            font-size: 8mm;
+                            font-size: 8.5mm;
                             padding: 3px 0;
-                            font-weight: bold;
+                            font-weight: 600;
+                            letter-spacing: -0.5mm;
                         }
                         td {
                             border: 0 !important;
@@ -93,9 +94,10 @@
                             font-size: 8.6mm;
                         }
                         .total {
-                            font-size: 15mm;
+                            font-size: 16mm;
                             margin: 10px 0 8px 0;
-                            font-weight: bold;
+                            font-weight: 600;
+                            letter-spacing: -0.5mm;
                         }
                         .block-gap {
                             margin-top: 5mm;
@@ -118,7 +120,7 @@
                             </div>
                         </t>
 
-                        <div class="bold upper" style="font-weight: bold;">
+                        <div class="bold upper" style="font-weight: 600; font-size: 11mm; letter-spacing: -0.5mm;">
                             <span t-field="company.name"/>
                         </div>
                         <div t-if="company.street" class="normal" style="font-weight: normal; font-size: 8.5mm;"><span t-field="company.street"/></div>
@@ -132,7 +134,7 @@
 
                         <t t-set="move" t-value="o.account_move"/>
                         <div class="upper" style="margin-bottom: 2px;">
-                            <span style="font-weight: bold; font-size: 10mm;">
+                            <span style="font-weight: 600; font-size: 11mm; letter-spacing: -0.5mm;">
                                 <t t-if="move and move.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
                                 <t t-else="">FACTURA SIMPLIFICADA:</t>
                             </span>
@@ -142,13 +144,13 @@
                             <span t-else="" t-field="o.name"/>
                         </div>
                         <div class="normal" style="font-weight: normal; font-size: 8.5mm;">
-                            <span style="font-weight: bold; font-size: 10mm;">FECHA:</span>
+                            <span style="font-weight: 600; font-size: 11mm; letter-spacing: -0.5mm;">FECHA:</span>
                             <span t-field="o.date_order" t-options='{"format": "dd/MM/yyyy HH:mm"}'/>
                         </div>
 
                         <t t-if="o.partner_id">
                             <div class="block-gap">
-                                <div style="font-weight: bold; font-size: 10mm;">CLIENTE:</div>
+                                <div style="font-weight: 600; font-size: 11mm; letter-spacing: -0.5mm;">CLIENTE:</div>
                                 <div class="normal" style="font-weight: normal; font-size: 8.5mm;"><span t-field="o.partner_id.name"/></div>
                                 <div t-if="o.partner_id.vat" class="normal" style="font-weight: normal; font-size: 8.5mm;">NIF: <span t-field="o.partner_id.vat"/></div>
                             </div>
@@ -159,9 +161,9 @@
                         <table class="lines-table">
                             <thead>
                                 <tr>
-                                    <th class="col-name" style="text-align: left; font-weight: bold; font-size: 8.5mm;">Nombre</th>
-                                    <th class="col-qty" style="font-weight: bold; font-size: 8.5mm;">UD</th>
-                                    <th class="col-total" style="font-weight: bold; font-size: 8.5mm;">TOTAL</th>
+                                    <th class="col-name" style="text-align: left; font-weight: 600; font-size: 9mm; letter-spacing: -0.5mm;">Nombre</th>
+                                    <th class="col-qty" style="font-weight: 600; font-size: 9mm; letter-spacing: -0.5mm;">UD</th>
+                                    <th class="col-total" style="font-weight: 600; font-size: 9mm; letter-spacing: -0.5mm;">TOTAL</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -187,9 +189,9 @@
                         <table class="tax-table">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left; font-weight: bold; font-size: 8mm;">Base</th>
-                                    <th style="font-weight: bold; font-size: 8mm;">IMPUESTO</th>
-                                    <th class="right" style="font-weight: bold; font-size: 8mm;">Cuota</th>
+                                    <th style="text-align: left; font-weight: 600; font-size: 8.5mm; letter-spacing: -0.5mm;">Base</th>
+                                    <th style="font-weight: 600; font-size: 8.5mm; letter-spacing: -0.5mm;">IMPUESTO</th>
+                                    <th class="right" style="font-weight: 600; font-size: 8.5mm; letter-spacing: -0.5mm;">Cuota</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -228,7 +230,7 @@
 
                         <hr class="line section-gap"/>
 
-                        <div class="right total" style="font-weight: bold;">
+                        <div class="right total" style="font-weight: 600; letter-spacing: -0.5mm;">
                             TOTAL <span t-field="o.amount_total"/>
                         </div>
 
