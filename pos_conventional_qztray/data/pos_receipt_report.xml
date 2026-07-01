@@ -41,7 +41,8 @@
                         }
                         .center { text-align: center; }
                         .right { text-align: right; }
-                        .bold { font-weight: 700; }
+                        .bold { font-weight: bold; }
+                        .normal { font-weight: normal; }
                         .upper { text-transform: uppercase; }
                         .line {
                             border: 0;
@@ -66,6 +67,7 @@
                         th {
                             font-size: 8.6mm;
                             padding: 3px 0;
+                            font-weight: bold;
                         }
                         td {
                             border: 0 !important;
@@ -74,6 +76,7 @@
                             font-size: 10mm;
                             padding: 3px 0;
                             vertical-align: top;
+                            font-weight: normal;
                         }
                         .col-name { width: 62%; }
                         .col-qty { width: 10%; text-align: center; }
@@ -91,6 +94,7 @@
                         .total {
                             font-size: 15mm;
                             margin: 10px 0 8px 0;
+                            font-weight: bold;
                         }
                         .block-gap {
                             margin-top: 5mm;
@@ -113,37 +117,37 @@
                             </div>
                         </t>
 
-                        <div class="bold upper">
+                        <div class="bold upper" style="font-weight: bold;">
                             <span t-field="company.name"/>
                         </div>
-                        <div t-if="company.street"><span t-field="company.street"/></div>
-                        <div>
+                        <div t-if="company.street" class="normal" style="font-weight: normal;"><span t-field="company.street"/></div>
+                        <div class="normal" style="font-weight: normal;">
                             <span t-if="company.zip" t-field="company.zip"/>
                             <span t-if="company.city" t-field="company.city"/>
                         </div>
-                        <div t-if="company.vat"><span t-field="company.vat"/></div>
+                        <div t-if="company.vat" class="normal" style="font-weight: normal;"><span t-field="company.vat"/></div>
 
                         <hr class="line"/>
 
                         <t t-set="move" t-value="o.account_move"/>
-                        <div class="bold upper">
+                        <div class="upper" style="font-weight: bold;">
                             <t t-if="move and move.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
                             <t t-else="">FACTURA SIMPLIFICADA:</t>
                         </div>
-                        <div>
+                        <div class="normal" style="font-weight: normal;">
                             <span t-if="move" t-field="move.name"/>
                             <span t-else="" t-field="o.name"/>
                         </div>
-                        <div>
-                            <span class="bold">FECHA:</span>
+                        <div class="normal" style="font-weight: normal;">
+                            <span style="font-weight: bold;">FECHA:</span>
                             <span t-field="o.date_order" t-options='{"format": "dd/MM/yyyy HH:mm"}'/>
                         </div>
 
                         <t t-if="o.partner_id">
                             <div class="block-gap">
-                                <div class="bold">CLIENTE:</div>
-                                <div><span t-field="o.partner_id.name"/></div>
-                                <div t-if="o.partner_id.vat">NIF: <span t-field="o.partner_id.vat"/></div>
+                                <div style="font-weight: bold;">CLIENTE:</div>
+                                <div class="normal" style="font-weight: normal;"><span t-field="o.partner_id.name"/></div>
+                                <div t-if="o.partner_id.vat" class="normal" style="font-weight: normal;">NIF: <span t-field="o.partner_id.vat"/></div>
                             </div>
                         </t>
 
@@ -152,14 +156,14 @@
                         <table class="lines-table">
                             <thead>
                                 <tr>
-                                    <th class="col-name" style="text-align: left;">Nombre</th>
-                                    <th class="col-qty">UD</th>
-                                    <th class="col-total">TOTAL</th>
+                                    <th class="col-name" style="text-align: left; font-weight: bold;">Nombre</th>
+                                    <th class="col-qty" style="font-weight: bold;">UD</th>
+                                    <th class="col-total" style="font-weight: bold;">TOTAL</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <t t-foreach="o.lines" t-as="line">
-                                    <tr>
+                                    <tr style="font-weight: normal;">
                                         <td class="col-name name-cell">
                                             <t t-set="line_name" t-value="line.full_product_name or line.product_id.display_name"/>
                                             <span t-out="line_name"/>
@@ -180,16 +184,16 @@
                         <table class="tax-table">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left;">Base</th>
-                                    <th>IMPUESTO</th>
-                                    <th class="right">Cuota</th>
+                                    <th style="text-align: left; font-weight: bold;">Base</th>
+                                    <th style="font-weight: bold;">IMPUESTO</th>
+                                    <th class="right" style="font-weight: bold;">Cuota</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <t t-if="move and move.tax_totals">
                                     <t t-foreach="move.tax_totals['subtotals']" t-as="subtotal">
                                         <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
-                                            <tr>
+                                            <tr style="font-weight: normal;">
                                                 <td>
                                                     <span t-out="tax_group['base_amount_currency']"
                                                         t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
@@ -204,7 +208,7 @@
                                     </t>
                                 </t>
                                 <t t-else="">
-                                    <tr>
+                                    <tr style="font-weight: normal;">
                                         <td>
                                             <span t-out="o.amount_total - o.amount_tax"
                                                 t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
@@ -221,11 +225,11 @@
 
                         <hr class="line section-gap"/>
 
-                        <div class="right bold total">
+                        <div class="right total" style="font-weight: bold;">
                             TOTAL <span t-field="o.amount_total"/>
                         </div>
 
-                        <div class="center">
+                        <div class="center normal" style="font-weight: normal;">
                             Pagado:
                             <t t-foreach="o.payment_ids" t-as="payment">
                                 <span t-field="payment.payment_method_id.name"/>
