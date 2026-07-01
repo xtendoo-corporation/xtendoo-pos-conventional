@@ -199,19 +199,18 @@ class PosOrder(models.Model):
 
         params = dict(action.get("params") or {})
         params["use_qztray"] = bool(self.config_id.pos_print_receipt_with_qztray)
-        params["print_original_receipt"] = bool(
-            self.config_id.pos_print_original_receipt_with_qztray
-        )
+
+        # Forzar siempre la impresión del reporte original (XML/PDF) para asegurar
+        # que se vea el diseño personalizado y no el modo texto rápido.
+        params["print_original_receipt"] = True
+
         original_report_name = ORIGINAL_RECEIPT_REPORT
         params.setdefault("report_name", original_report_name)
         if params["use_qztray"]:
             params["printer_report_name"] = ORIGINAL_RECEIPT_PRINTER_REPORT
             params["report_res_id"] = self.id
             params["report_name"] = ORIGINAL_RECEIPT_REPORT
-            if params["print_original_receipt"]:
-                params["raw_receipt"] = False
-            else:
-                params["raw_receipt"] = True
+            params["raw_receipt"] = False
         action["params"] = params
         if params["use_qztray"] and action.get("tag") == "pos_conventional_print_receipt_window":
             action["tag"] = "pos_conventional_print_receipt_qztray_window"
@@ -229,7 +228,7 @@ class PosOrder(models.Model):
             "params": {
                 "use_qztray": True,
                 "print_original_receipt": print_original_receipt,
-                "raw_receipt": not print_original_receipt,
+                "raw_receipt": False,
                 "order_id": self.id,
                 "report_res_id": self.id,
                 "move_id": self.account_move.id if self.account_move else False,
@@ -258,7 +257,7 @@ class PosOrder(models.Model):
                 else FAST_RECEIPT_REPORT
             ),
             "report_res_id": self.id,
-            "raw_receipt": not print_original_receipt,
+            "raw_receipt": False,
         }
 
     def _get_post_validation_action(self):

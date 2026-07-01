@@ -11,8 +11,7 @@ import { PosReceiptClientAction } from "@pos_conventional_core/js/pos_receipt_cl
 
 const DEFAULT_REPORT_NAME = "pos_conventional_qztray.report_pos_order_80mm_qztray";
 const FAST_POS_REPORT_NAMES = new Set([
-    "pos_conventional_receipt_custom.report_pos_order_80mm",
-    "pos_conventional_qztray.report_pos_order_80mm_qztray",
+    "pos_conventional_receipt_custom.report_pos_order_80mm_raw", // Usar un nombre distinto para RAW si existiera
 ]);
 let qzSecurityConfigured = false;
 let qzConnectionKey = null;
