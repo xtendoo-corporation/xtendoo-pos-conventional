@@ -9,7 +9,7 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { PosReceiptClientAction } from "@pos_conventional_core/js/pos_receipt_client_action";
 
-const DEFAULT_REPORT_NAME = "pos_conventional_receipt_custom.report_factura_simplificada_80mm";
+const DEFAULT_REPORT_NAME = "pos_conventional_qztray.report_pos_order_80mm_qztray";
 const FAST_POS_REPORT_NAMES = new Set([
     "pos_conventional_receipt_custom.report_pos_order_80mm",
     "pos_conventional_qztray.report_pos_order_80mm_qztray",
@@ -349,7 +349,9 @@ patch(PosReceiptClientAction.prototype, {
     async _printReportBackground(moveId) {
         const params = await getQzTrayParamsFromOrder(this.env, this.props.action.params || {});
         if (!params.use_qztray) {
-            return super._printReportBackground(moveId);
+            const reportName = params.report_name || DEFAULT_REPORT_NAME;
+            const url = `/report/html/${reportName}/${moveId}`;
+            return printUrlInBackground(url, this.env);
         }
         if (params.print_original_receipt) {
             return this._printReportWithQzTray(moveId, params).catch((error) => {
