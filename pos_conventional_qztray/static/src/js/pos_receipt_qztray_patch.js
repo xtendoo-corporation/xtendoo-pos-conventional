@@ -233,11 +233,13 @@ async function printReportWithOcaQzTray(env, params = {}, actionContext = {}) {
     if (!originalQzPrintDispatcher) {
         throw new Error(_t("No se encontró el backend QZ Tray original de OCA."));
     }
-    const reportResId = params.report_res_id || params.move_id;
+    const reportResId = params.report_res_id || params.order_id || params.move_id;
     if (!reportResId) {
         throw new Error(_t("No se pudo identificar el documento para imprimir con QZ Tray."));
     }
     const reportName = params.report_name || DEFAULT_REPORT_NAME;
+    const activeModel = reportName.includes("report_pos_order") ? "pos.order" : "account.move";
+
     const reportAction = {
         type: "ir.actions.report",
         report_type: "qweb-pdf",
@@ -248,7 +250,7 @@ async function printReportWithOcaQzTray(env, params = {}, actionContext = {}) {
             ...(params.context || {}),
             active_id: reportResId,
             active_ids: [reportResId],
-            active_model: "account.move",
+            active_model: activeModel,
         },
     };
     const printed = await originalQzPrintDispatcher(reportAction, env);
@@ -311,14 +313,17 @@ patch(PosReceiptClientAction.prototype, {
                 this.env,
                 params,
                 this.props.action.context || {}
-            );
+            ).catch(error => {
+                console.warn("[PosReceiptQzTray] Error in printReportWithOcaQzTray:", error);
+                throw error;
+            });
         }
 
         const printerReportName = params.printer_report_name || reportName;
         const printAction = await getQzPrintAction(this.orm, printerReportName);
         const parsedPrinter = parsePrinterName(printAction.printer_name);
 
-        const reportResId = params.report_res_id || params.order_id;
+        const reportResId = params.report_res_id || params.order_id || moveId;
         if (params.use_qztray && params.raw_receipt) {
             if (!reportResId) {
                 throw new Error(_t("No se pudo identificar el pedido para imprimir en modo rápido."));
@@ -326,7 +331,7 @@ patch(PosReceiptClientAction.prototype, {
             return printRawReceiptWithQzTray(this.orm, reportResId, parsedPrinter);
         }
 
-        const pdfResId = params.report_res_id || moveId;
+        const pdfResId = params.report_res_id || params.order_id || moveId;
         const reportContext = {
             ...(this.env?.searchModel?.context || {}),
             ...(this.props.action.context || {}),
@@ -385,7 +390,7 @@ async function printReceiptWindowQzTrayAction(env, action) {
         ? !!params.clear_breadcrumbs
         : true;
 
-    if (params.use_qztray && params.print_original_receipt) {
+    if (params.use_qztray) {
         const clientAction = Object.create(PosReceiptClientAction.prototype);
         clientAction.env = env;
         clientAction.orm = env.services.orm;
@@ -393,26 +398,8 @@ async function printReceiptWindowQzTrayAction(env, action) {
         clientAction.props = { action };
 
         try {
-            await clientAction._printReportWithQzTray(params.move_id, params);
-        } catch (error) {
-            console.warn(
-                "[PosReceiptQzTray] No se pudo imprimir el ticket original con QZ Tray desde window action.",
-                error
-            );
-            env.services.notification.add(
-                _t("No se pudo imprimir el ticket original con QZ Tray: %s", error?.message || error),
-                { type: "danger", sticky: true }
-            );
-        }
-    } else if (params.use_qztray) {
-        const clientAction = Object.create(PosReceiptClientAction.prototype);
-        clientAction.env = env;
-        clientAction.orm = env.services.orm;
-        clientAction.notification = env.services.notification;
-        clientAction.props = { action };
-
-        try {
-            await clientAction._printReportWithQzTray(params.move_id, params);
+            const resId = params.report_res_id || params.order_id || params.move_id;
+            await clientAction._printReportWithQzTray(resId, params);
         } catch (error) {
             console.warn(
                 "[PosReceiptQzTray] No se pudo imprimir con QZ Tray desde window action.",

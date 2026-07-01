@@ -204,13 +204,12 @@ class PosOrder(models.Model):
         params.setdefault("report_name", original_report_name)
         if params["use_qztray"]:
             params["printer_report_name"] = ORIGINAL_RECEIPT_PRINTER_REPORT
+            params["report_res_id"] = self.id
             if params["print_original_receipt"]:
                 params["report_name"] = original_report_name
-                params["report_res_id"] = self.account_move.id if self.account_move else self.id
                 params["raw_receipt"] = False
             else:
                 params["report_name"] = FAST_RECEIPT_REPORT
-                params["report_res_id"] = self.id
                 params["raw_receipt"] = True
         action["params"] = params
         if params["use_qztray"] and action.get("tag") == "pos_conventional_print_receipt_window":
@@ -231,11 +230,7 @@ class PosOrder(models.Model):
                 "print_original_receipt": print_original_receipt,
                 "raw_receipt": not print_original_receipt,
                 "order_id": self.id,
-                "report_res_id": (
-                    self.account_move.id
-                    if print_original_receipt and self.account_move
-                    else self.id
-                ),
+                "report_res_id": self.id,
                 "move_id": self.account_move.id if self.account_move else False,
                 "printer_report_name": ORIGINAL_RECEIPT_PRINTER_REPORT,
                 "report_name": (
@@ -261,11 +256,7 @@ class PosOrder(models.Model):
                 if print_original_receipt
                 else FAST_RECEIPT_REPORT
             ),
-            "report_res_id": (
-                self.account_move.id
-                if print_original_receipt and self.account_move
-                else self.id
-            ),
+            "report_res_id": self.id,
             "raw_receipt": not print_original_receipt,
         }
 
