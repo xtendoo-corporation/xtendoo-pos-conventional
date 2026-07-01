@@ -3,7 +3,7 @@ import re
 from odoo import fields, models
 
 
-ORIGINAL_RECEIPT_REPORT = "pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray"
+ORIGINAL_RECEIPT_REPORT = "pos_conventional_qztray.report_pos_order_80mm_qztray"
 ORIGINAL_RECEIPT_PRINTER_REPORT = "pos_conventional_qztray.report_pos_order_80mm_qztray"
 FAST_RECEIPT_REPORT = "pos_conventional_qztray.report_pos_order_80mm_qztray"
 
