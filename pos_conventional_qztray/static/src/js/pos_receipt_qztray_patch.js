@@ -308,6 +308,8 @@ patch(PosReceiptClientAction.prototype, {
         }
 
         const reportName = params.report_name || DEFAULT_REPORT_NAME;
+        console.log("[DEBUG QZ TRAY] Iniciando impresión. Report name:", reportName, "Params:", params);
+
         if (params.print_original_receipt && !params.raw_receipt) {
             return printReportWithOcaQzTray(
                 this.env,
@@ -320,18 +322,19 @@ patch(PosReceiptClientAction.prototype, {
         }
 
         const printerReportName = params.printer_report_name || reportName;
+        console.log("[DEBUG QZ TRAY] Buscando configuración de impresora para:", printerReportName);
         const printAction = await getQzPrintAction(this.orm, printerReportName);
+        console.log("[DEBUG QZ TRAY] Print action recibida:", printAction);
         const parsedPrinter = parsePrinterName(printAction.printer_name);
 
         const reportResId = params.report_res_id || params.order_id || moveId;
         if (params.use_qztray && params.raw_receipt) {
-            if (!reportResId) {
-                throw new Error(_t("No se pudo identificar el pedido para imprimir en modo rápido."));
-            }
+            console.log("[DEBUG QZ TRAY] Imprimiendo en modo RAW (Rápido). ID:", reportResId);
             return printRawReceiptWithQzTray(this.orm, reportResId, parsedPrinter);
         }
 
         const pdfResId = params.report_res_id || params.order_id || moveId;
+        console.log("[DEBUG QZ TRAY] Imprimiendo en modo REPORT (PDF). ID:", pdfResId, "Report:", reportName);
         const reportContext = {
             ...(this.env?.searchModel?.context || {}),
             ...(this.props.action.context || {}),

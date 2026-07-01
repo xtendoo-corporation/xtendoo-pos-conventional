@@ -205,11 +205,10 @@ class PosOrder(models.Model):
         if params["use_qztray"]:
             params["printer_report_name"] = ORIGINAL_RECEIPT_PRINTER_REPORT
             params["report_res_id"] = self.id
+            params["report_name"] = ORIGINAL_RECEIPT_REPORT
             if params["print_original_receipt"]:
-                params["report_name"] = original_report_name
                 params["raw_receipt"] = False
             else:
-                params["report_name"] = FAST_RECEIPT_REPORT
                 params["raw_receipt"] = True
         action["params"] = params
         if params["use_qztray"] and action.get("tag") == "pos_conventional_print_receipt_window":
