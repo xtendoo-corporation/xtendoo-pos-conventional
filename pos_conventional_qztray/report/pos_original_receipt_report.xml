@@ -28,8 +28,8 @@
             <div class="page pos-qz-standard-ticket">
             <style>
                 .pos-qz-standard-ticket {
-                    font-size: 15px;
-
+                    font-size: 14px;
+                    letter-spacing: -0.2px;
                     line-height: 1.7;
                     color: #000;
                     padding: 3mm 4mm 5mm 4mm;
@@ -129,41 +129,41 @@
                 </t>
             </div>
 
-            <div class="text-left bold" style="font-size: 1.2em; text-transform: uppercase; margin-bottom: 2px; font-weight: bold;">
+            <div class="text-left bold" style="font-size: 1.3em; text-transform: uppercase; margin-bottom: 2px; font-weight: bold;">
                 <span t-field="res_company.name"/>
             </div>
-            <div class="text-left" style="font-weight: normal;"><span t-field="res_company.street"/></div>
-            <div class="text-left" style="font-weight: normal;">
+            <div class="text-left" style="font-weight: normal; font-size: 0.95em;"><span t-field="res_company.street"/></div>
+            <div class="text-left" style="font-weight: normal; font-size: 0.95em;">
                 <span t-field="res_company.zip"/>
                 <span t-field="res_company.city"/>
             </div>
-            <div class="text-left" style="font-weight: normal;"><span t-field="res_company.vat"/></div>
+            <div class="text-left" style="font-weight: normal; font-size: 0.95em;"><span t-field="res_company.vat"/></div>
 
             <div class="dashed-line"/>
 
-            <div class="text-left" style="text-transform: uppercase; font-size: 1.1em; margin: 3px 0;">
-                <span style="font-weight: bold;">
+            <div class="text-left" style="text-transform: uppercase; margin: 3px 0;">
+                <span style="font-weight: bold; font-size: 1.1em;">
                     <t t-if="o.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
                     <t t-else="">FACTURA SIMPLIFICADA:</t>
                 </span>
-                <span t-field="o.name" style="font-weight: normal;"/>
+                <span t-field="o.name" style="font-weight: normal; font-size: 0.95em;"/>
             </div>
-            <div class="text-left" style="font-size: 1.1em; margin: 0 0 3px 0;">
-                <span style="font-weight: bold;">FECHA:</span>
-                <span t-field="o.invoice_date" style="font-weight: normal;"/>
-                <span t-field="o.create_date" t-options='{"format": "HH:mm"}' style="font-weight: normal;"/>
+            <div class="text-left" style="margin: 0 0 3px 0;">
+                <span style="font-weight: bold; font-size: 1.1em;">FECHA:</span>
+                <span t-field="o.invoice_date" style="font-weight: normal; font-size: 0.95em;"/>
+                <span t-field="o.create_date" t-options='{"format": "HH:mm"}' style="font-weight: normal; font-size: 0.95em;"/>
             </div>
 
             <t t-if="o.partner_id">
-                <div class="text-left" style="font-size: 1.1em; margin-top: 5px;">
-                    <div><span style="font-weight: bold;">CLIENTE:</span></div>
-                    <div><span t-field="o.partner_id.name" style="font-weight: normal;"/></div>
-                    <div t-if="o.partner_id.street" style="font-weight: normal;"><span t-field="o.partner_id.street"/></div>
-                    <div t-if="o.partner_id.zip" style="font-weight: normal;">
+                <div class="text-left" style="margin-top: 5px;">
+                    <div><span style="font-weight: bold; font-size: 1.1em;">CLIENTE:</span></div>
+                    <div><span t-field="o.partner_id.name" style="font-weight: normal; font-size: 0.95em;"/></div>
+                    <div t-if="o.partner_id.street" style="font-weight: normal; font-size: 0.95em;"><span t-field="o.partner_id.street"/></div>
+                    <div t-if="o.partner_id.zip" style="font-weight: normal; font-size: 0.95em;">
                         <span t-field="o.partner_id.zip"/>
                         <span t-field="o.partner_id.city"/>
                     </div>
-                    <div t-if="o.partner_id.vat" style="font-weight: normal;">NIF: <span t-field="o.partner_id.vat"/></div>
+                    <div t-if="o.partner_id.vat" style="font-weight: normal; font-size: 0.95em;">NIF: <span t-field="o.partner_id.vat"/></div>
                 </div>
             </t>
 
@@ -172,20 +172,20 @@
             <table class="table-borderless" border="0" cellspacing="0" cellpadding="0" rules="none" frame="void">
                 <thead>
                     <tr>
-                        <th class="text-left col-name" style="font-weight: bold;">Nombre</th>
-                        <th class="text-center col-ud" style="font-weight: bold;">UD</th>
-                        <th class="text-right col-total" style="font-weight: bold;">TOTAL</th>
+                        <th class="text-left col-name" style="font-weight: bold; font-size: 14px;">Nombre</th>
+                        <th class="text-center col-ud" style="font-weight: bold; font-size: 14px;">UD</th>
+                        <th class="text-right col-total" style="font-weight: bold; font-size: 14px;">TOTAL</th>
                     </tr>
                 </thead>
                 <tbody>
                     <t t-foreach="o.invoice_line_ids" t-as="line">
                         <tr t-if="line.display_type == 'product'">
-                            <td class="text-left col-name" style="padding-right: 2px; font-weight: normal;">
+                            <td class="text-left col-name" style="padding-right: 2px; font-weight: normal; font-size: 13px;">
                                 <t t-set="line_name" t-value="(line.name or '').split('] ', 1)[-1] if '] ' in (line.name or '') else (line.name or '')"/>
                                 <span t-out="line_name"/>
                             </td>
-                            <td class="text-center col-ud" style="font-weight: normal;"><span t-esc="'%.0f' % line.quantity"/></td>
-                            <td class="text-right col-total" style="font-weight: normal;">
+                            <td class="text-center col-ud" style="font-weight: normal; font-size: 13px;"><span t-esc="'%.0f' % line.quantity"/></td>
+                            <td class="text-right col-total" style="font-weight: normal; font-size: 13px;">
                                 <span t-field="line.price_total"/>
                             </td>
                         </tr>
@@ -198,9 +198,9 @@
             <table class="table-borderless" border="0" cellspacing="0" cellpadding="0" rules="none" frame="void" style="font-size: 0.9em; margin-top: 5px; margin-bottom: 5px;">
                 <thead>
                     <tr>
-                        <th class="col-tax-base" style="font-weight: bold;">Base</th>
-                        <th class="col-tax-name" style="font-weight: bold;">IMPUESTO</th>
-                        <th class="col-tax-amount" style="font-weight: bold;">Cuota</th>
+                        <th class="col-tax-base" style="font-weight: bold; font-size: 13px;">Base</th>
+                        <th class="col-tax-name" style="font-weight: bold; font-size: 13px;">IMPUESTO</th>
+                        <th class="col-tax-amount" style="font-weight: bold; font-size: 13px;">Cuota</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -208,13 +208,13 @@
                         <t t-foreach="o.tax_totals['subtotals']" t-as="subtotal">
                             <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
                                 <tr>
-                                    <td class="col-tax-base" style="font-weight: normal;">
+                                    <td class="col-tax-base" style="font-weight: normal; font-size: 12px;">
                                         <span t-out="tax_group['base_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                     </td>
-                                    <td class="col-tax-name" style="font-weight: normal;">
+                                    <td class="col-tax-name" style="font-weight: normal; font-size: 12px;">
                                         <span t-out="tax_group['group_name']"/>
                                     </td>
-                                    <td class="col-tax-amount" style="font-weight: normal;">
+                                    <td class="col-tax-amount" style="font-weight: normal; font-size: 12px;">
                                         <span t-out="tax_group['tax_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                     </td>
                                 </tr>
@@ -231,7 +231,7 @@
                 TOTAL <span t-field="o.amount_total"/>
             </div>
 
-            <div class="text-center" style="margin-bottom: 6px; font-size: 1em; font-weight: normal;">
+            <div class="text-center" style="margin-bottom: 6px; font-size: 0.95em; font-weight: normal;">
                 Pagado:
                 <t t-set="pago_encontrado" t-value="False"/>
                 <t t-if="o.pos_order_ids">
@@ -253,13 +253,13 @@
             <div class="dashed-line"/>
 
             <t t-if="pos_order and pos_order.config_id and pos_order.config_id.receipt_footer">
-                <div class="text-center" style="margin-top: 6px; font-size: 1em; white-space: pre-line;">
+                <div class="text-center" style="margin-top: 6px; font-size: 0.95em; white-space: pre-line;">
                     <span t-out="pos_order.config_id.receipt_footer"/>
                 </div>
             </t>
 
-            <div class="text-center" style="margin-top: 8px; margin-bottom: 2px; font-size: 1em;">Gracias por su visita</div>
-            <div class="text-center" style="font-size: 1em;">Atendido por: <span t-field="o.invoice_user_id.name"/></div>
+            <div class="text-center" style="margin-top: 8px; margin-bottom: 2px; font-size: 0.95em;">Gracias por su visita</div>
+            <div class="text-center" style="font-size: 0.95em;">Atendido por: <span t-field="o.invoice_user_id.name"/></div>
             </div>
         </t>
     </template>
