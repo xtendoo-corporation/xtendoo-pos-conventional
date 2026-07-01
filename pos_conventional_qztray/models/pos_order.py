@@ -76,6 +76,7 @@ class PosOrder(models.Model):
 
     def _get_pos_conventional_qztray_raw_receipt(self):
         self.ensure_one()
+        print(f"DEBUG QZ TRAY: Generando recibo RAW para pedido {self.name}")
         width = self._qztray_receipt_line_width()
         company = self.company_id
         move = self.account_move
@@ -163,6 +164,7 @@ class PosOrder(models.Model):
                 lines.append("")
 
         lines.append(self._qztray_receipt_center("Gracias por su visita", width))
+        lines.append(self._qztray_receipt_center("MODO RAW QZ TRAY", width))
         if self.user_id:
             lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name} {date_order.strftime('%H:%M')}", width))
         lines.extend(["", "", "", "\x1bd\x08", "\x1dV\x00"])

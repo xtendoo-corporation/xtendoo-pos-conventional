@@ -10,7 +10,6 @@ class IrActionsReport(models.Model):
         print(f"DEBUG QZ TRAY: Intentando imprimir reporte original: {report_name}")
 
         # Alias para asegurar que siempre usemos el reporte configurado de QZ Tray
-        # si se intenta usar alguno de los reportes antiguos o estándar
         custom_report = "pos_conventional_qztray.report_pos_order_80mm_qztray"
         legacy_reports = [
             "pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray",
@@ -24,5 +23,6 @@ class IrActionsReport(models.Model):
             print(f"DEBUG QZ TRAY: Redirigiendo {report_name} -> {custom_report}")
             report_name = custom_report
 
-        print(f"DEBUG QZ TRAY: Reporte final seleccionado: {report_name}")
-        return super().print_action_for_report_name(report_name)
+        res = super().print_action_for_report_name(report_name)
+        print(f"DEBUG QZ TRAY: Reporte final: {report_name} | Action ID: {res.get('id') if isinstance(res, dict) else 'N/A'}")
+        return res
