@@ -309,6 +309,9 @@ patch(PosReceiptClientAction.prototype, {
         const reportName = params.report_name || DEFAULT_REPORT_NAME;
         console.log("[DEBUG QZ TRAY] Iniciando impresión. Report name:", reportName, "Params:", params);
 
+        // COMENTARIO: Comentamos la llamada al dispatcher de OCA porque está fallando
+        // y usaremos nuestra propia implementación get_qz_tray_data que es más robusta.
+        /*
         if (params.print_original_receipt && !params.raw_receipt) {
             return printReportWithOcaQzTray(
                 this.env,
@@ -319,6 +322,7 @@ patch(PosReceiptClientAction.prototype, {
                 throw error;
             });
         }
+        */
 
         const printerReportName = params.printer_report_name || reportName;
         console.log("[DEBUG QZ TRAY] Buscando configuración de impresora para:", printerReportName);
