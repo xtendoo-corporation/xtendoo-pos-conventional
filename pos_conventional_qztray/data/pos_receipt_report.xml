@@ -20,191 +20,150 @@
                             margin: 0 !important;
                             padding: 0 !important;
                             color: #000;
-                        }
-                        main {
-                            margin: 0 !important;
-                            padding: 0 !important;
-                        }
-                        .article {
-                            margin: 0 !important;
-                            padding: 0 !important;
+                            font-family: "Courier New", Courier, monospace;
                         }
                         .ticket {
                             width: 100%;
                             box-sizing: border-box;
-                            margin: 0 auto;
-                            padding: 0.25mm 0 4mm 0;
-                            font-family: Arial, Helvetica, sans-serif;
-                            font-size: 9mm;
-                            letter-spacing: -0.2mm;
-                            line-height: 1.1;
+                            padding: 2mm;
+                            font-size: 13px;
+                            line-height: 1.2;
                             color: #000;
                         }
                         .center { text-align: center; }
                         .right { text-align: right; }
-                        .bold { font-weight: 600; }
-                        .normal { font-weight: normal; }
+                        .bold { font-weight: bold; }
                         .upper { text-transform: uppercase; }
-                        .line {
-                            border: 0;
-                            border-top: 1px solid #000;
-                            margin: 5px 0;
+                        .dashed-line {
+                            border: none;
+                            border-bottom: 1px dashed #000;
+                            margin: 4px 0;
+                            width: 100%;
+                            height: 1px;
                         }
                         table {
                             width: 100%;
-                            border-collapse: separate !important;
-                            border-spacing: 0 !important;
+                            border-collapse: collapse;
                             table-layout: fixed;
-                            border: 0 !important;
-                        }
-                        thead,
-                        tbody,
-                        tr,
-                        th {
-                            border: 0 !important;
-                            outline: 0 !important;
-                            background: transparent !important;
                         }
                         th {
-                            font-size: 8.5mm;
-                            padding: 3px 0;
-                            font-weight: 600;
-                            letter-spacing: -0.5mm;
+                            font-size: 12px;
+                            padding: 4px 0;
+                            font-weight: bold;
+                            border-bottom: 1px dashed #000 !important;
                         }
                         td {
-                            border: 0 !important;
-                            outline: 0 !important;
-                            background: transparent !important;
-                            font-size: 9mm;
-                            padding: 3px 0;
+                            padding: 2px 0;
+                            font-size: 13px;
                             vertical-align: top;
-                            font-weight: normal;
                         }
-                        .col-name { width: 62%; }
-                        .col-qty { width: 10%; text-align: center; }
-                        .col-total { width: 28%; text-align: right; }
-                        .name-cell {
-                            white-space: nowrap;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
-                            padding-right: 1mm;
-                        }
-                        .tax-table td,
-                        .tax-table th {
-                            font-size: 8.6mm;
-                        }
-                        .total {
-                            font-size: 16mm;
-                            margin: 10px 0 8px 0;
-                            font-weight: 600;
-                            letter-spacing: -0.5mm;
-                        }
-                        .block-gap {
-                            margin-top: 5mm;
-                        }
-                        .section-gap {
-                            margin-top: 4mm;
+                        .col-name { width: 60%; }
+                        .col-qty { width: 15%; text-align: center; }
+                        .col-total { width: 25%; text-align: right; }
+
+                        .total-row {
+                            font-size: 19px;
+                            margin: 8px 0;
+                            font-weight: bold;
                         }
                     </style>
 
                     <div class="ticket">
-                        <div class="center" style="margin-bottom: 6px;">
+                        <div class="center" style="margin-bottom: 8px;">
                             <img t-if="company.logo"
                                 t-att-src="image_data_uri(company.logo)"
-                                style="width: 78mm; max-height: 36mm; height: auto; filter: brightness(0); -webkit-filter: brightness(0);"/>
+                                style="max-height: 60px; max-width: 80%; filter: grayscale(100%) contrast(150%);"/>
                         </div>
 
                         <t t-if="o.config_id and o.config_id.receipt_header">
-                            <div style="white-space: pre-line; margin-bottom: 4px;">
-                                <span t-out="o.config_id.receipt_header.replace('\n', '\n\n')"/>
+                            <div style="white-space: pre-line; margin-bottom: 5px;">
+                                <span t-out="o.config_id.receipt_header"/>
                             </div>
                         </t>
 
-                        <div class="bold upper" style="font-weight: 600; font-size: 11mm; letter-spacing: -0.5mm;">
+                        <div class="bold upper" style="font-size: 1.1em;">
                             <span t-field="company.name"/>
                         </div>
-                        <div t-if="company.street" class="normal" style="font-weight: normal; font-size: 8.5mm;"><span t-field="company.street"/></div>
-                        <div class="normal" style="font-weight: normal; font-size: 8.5mm;">
+                        <div t-if="company.street"><span t-field="company.street"/></div>
+                        <div>
                             <span t-if="company.zip" t-field="company.zip"/>
                             <span t-if="company.city" t-field="company.city"/>
                         </div>
-                        <div t-if="company.vat" class="normal" style="font-weight: normal; font-size: 8.5mm;"><span t-field="company.vat"/></div>
+                        <div t-if="company.vat"><span t-field="company.vat"/></div>
 
-                        <hr class="line"/>
+                        <div class="dashed-line"/>
 
                         <t t-set="move" t-value="o.account_move"/>
-                        <div class="upper" style="margin-bottom: 2px;">
-                            <span style="font-weight: 600; font-size: 11mm; letter-spacing: -0.5mm;">
-                                <t t-if="move and move.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECTIFICATIVA:</t>
+                        <div style="margin: 2px 0;">
+                            <span class="bold">
+                                <t t-if="move and move.move_type == 'out_refund'">FACTURA SIMPLIFICADA RECT.:</t>
                                 <t t-else="">FACTURA SIMPLIFICADA:</t>
                             </span>
-                        </div>
-                        <div class="normal" style="font-weight: normal; font-size: 8.5mm; margin-bottom: 2px;">
                             <span t-if="move" t-field="move.name"/>
                             <span t-else="" t-field="o.name"/>
                         </div>
-                        <div class="normal" style="font-weight: normal; font-size: 8.5mm;">
-                            <span style="font-weight: 600; font-size: 11mm; letter-spacing: -0.5mm;">FECHA:</span>
+                        <div>
+                            <span class="bold">FECHA:</span>
                             <span t-field="o.date_order" t-options='{"format": "dd/MM/yyyy HH:mm"}'/>
                         </div>
 
                         <t t-if="o.partner_id">
-                            <div class="block-gap">
-                                <div style="font-weight: 600; font-size: 11mm; letter-spacing: -0.5mm;">CLIENTE:</div>
-                                <div class="normal" style="font-weight: normal; font-size: 8.5mm;"><span t-field="o.partner_id.name"/></div>
-                                <div t-if="o.partner_id.vat" class="normal" style="font-weight: normal; font-size: 8.5mm;">NIF: <span t-field="o.partner_id.vat"/></div>
-                            </div>
+                            <div class="dashed-line"/>
+                            <div class="bold">CLIENTE:</div>
+                            <div><span t-field="o.partner_id.name"/></div>
+                            <div t-if="o.partner_id.vat">NIF: <span t-field="o.partner_id.vat"/></div>
                         </t>
 
-                        <hr class="line section-gap"/>
+                        <div class="dashed-line"/>
 
-                        <table class="lines-table">
+                        <table>
                             <thead>
                                 <tr>
-                                    <th class="col-name" style="text-align: left; font-weight: 600; font-size: 9mm; letter-spacing: -0.5mm;">Nombre</th>
-                                    <th class="col-qty" style="font-weight: 600; font-size: 9mm; letter-spacing: -0.5mm;">UD</th>
-                                    <th class="col-total" style="font-weight: 600; font-size: 9mm; letter-spacing: -0.5mm;">TOTAL</th>
+                                    <th class="text-left col-name">Nombre</th>
+                                    <th class="text-center col-qty">UD</th>
+                                    <th class="text-right col-total">TOTAL</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <t t-foreach="o.lines" t-as="line">
-                                    <tr style="font-weight: normal;">
-                                        <td class="col-name name-cell" style="font-size: 8.5mm;">
+                                    <tr>
+                                        <td class="col-name">
                                             <t t-set="line_name" t-value="line.full_product_name or line.product_id.display_name"/>
                                             <span t-out="line_name"/>
                                         </td>
-                                        <td class="col-qty" style="font-size: 9.5mm;">
+                                        <td class="col-qty">
                                             <span t-esc="'%.0f' % line.qty"/>
                                         </td>
-                                        <td class="col-total" style="font-size: 9.5mm;">
-                                            <span t-esc="'%.2f' % line.price_subtotal_incl"/>
+                                        <td class="col-total">
+                                            <span t-esc="'%.2f' % line.price_subtotal_incl" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                         </td>
                                     </tr>
                                 </t>
                             </tbody>
                         </table>
 
-                        <hr class="line section-gap"/>
+                        <div class="dashed-line"/>
 
-                        <table class="tax-table">
+                        <table>
                             <thead>
                                 <tr>
-                                    <th style="text-align: left; font-weight: 600; font-size: 8.5mm; letter-spacing: -0.5mm;">Base</th>
-                                    <th style="font-weight: 600; font-size: 8.5mm; letter-spacing: -0.5mm;">IMPUESTO</th>
-                                    <th class="right" style="font-weight: 600; font-size: 8.5mm; letter-spacing: -0.5mm;">Cuota</th>
+                                    <th class="text-left" style="width: 35%;">Base</th>
+                                    <th class="text-center" style="width: 35%;">Impuesto</th>
+                                    <th class="text-right" style="width: 30%;">Cuota</th>
+                                    <th class="text-right" style="width: 30%;">Cuota</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <t t-if="move and move.tax_totals">
                                     <t t-foreach="move.tax_totals['subtotals']" t-as="subtotal">
                                         <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
-                                            <tr style="font-weight: normal;">
-                                                <td style="font-size: 9mm;">
+                                            <tr>
+                                                <td class="text-left">
                                                     <span t-out="tax_group['base_amount_currency']"
                                                         t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                                 </td>
-                                                <td class="center" style="font-size: 8mm;"><span t-out="tax_group['group_name']"/></td>
-                                                <td class="right" style="font-size: 9mm;">
+                                                <td class="text-center"><span t-out="tax_group['group_name']"/></td>
+                                                <td class="text-right">
                                                     <span t-out="tax_group['tax_amount_currency']"
                                                         t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                                 </td>
@@ -213,13 +172,13 @@
                                     </t>
                                 </t>
                                 <t t-else="">
-                                    <tr style="font-weight: normal; font-size: 8mm;">
-                                        <td>
+                                    <tr>
+                                        <td class="text-left">
                                             <span t-out="o.amount_total - o.amount_tax"
                                                 t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                         </td>
-                                        <td class="center">IVA</td>
-                                        <td class="right">
+                                        <td class="text-center">IVA</td>
+                                        <td class="text-right">
                                             <span t-out="o.amount_tax"
                                                 t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                         </td>
@@ -228,29 +187,38 @@
                             </tbody>
                         </table>
 
-                        <hr class="line section-gap"/>
+                        <div class="dashed-line"/>
 
-                        <div class="right total" style="font-weight: 600; letter-spacing: -0.5mm;">
-                            TOTAL <span t-field="o.amount_total"/>
-                        </div>
+                        <table class="total-row">
+                            <tr>
+                                <td class="text-left bold">TOTAL</td>
+                                <td class="text-right bold">
+                                    <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                </td>
+                            </tr>
+                        </table>
 
-                        <div class="center normal" style="font-weight: normal; font-size: 8.5mm;">
+                        <div class="dashed-line"/>
+
+                        <div class="center" style="margin-top: 5px;">
                             Pagado:
                             <t t-foreach="o.payment_ids" t-as="payment">
                                 <span t-field="payment.payment_method_id.name"/>
                             </t>
                         </div>
 
-                        <hr class="line"/>
+                        <div class="dashed-line"/>
 
                         <t t-if="o.config_id and o.config_id.receipt_footer">
-                            <div class="center" style="white-space: pre-line; margin-top: 5px; font-size: 8.5mm;">
-                                <span t-out="o.config_id.receipt_footer.replace('\n', '\n\n')"/>
+                            <div class="center" style="white-space: pre-line; margin-top: 5px;">
+                                <span t-out="o.config_id.receipt_footer"/>
                             </div>
                         </t>
-                        <div class="center" style="margin-top: 6px; font-size: 8.5mm;">Gracias por su visita</div>
-                        <div class="center" style="font-size: 8.5mm;">Atendido por: <span t-field="o.user_id.name"/></div>
-                        <div class="right" style="font-size: 2.5mm; margin-top: 2px;">QZ2</div>
+                        <div class="center" style="margin-top: 5px;">Gracias por su visita</div>
+                        <div class="center">
+                            Atendido por: <span t-field="o.user_id.name"/>
+                            <span t-field="o.date_order" t-options='{"format": "HH:mm"}'/>
+                        </div>
                     </div>
                 </div>
             </t>
