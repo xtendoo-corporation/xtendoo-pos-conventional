@@ -27,8 +27,15 @@ class IrActionsReport(models.Model):
         print(f"DEBUG QZ TRAY: Reporte final: {report_name} | Action ID: {res.get('id') if isinstance(res, dict) else 'N/A'}")
         return res
 
-    def get_qz_tray_data(self, res_ids, report_type="pdf", report_name="", data=None):
-        print(f"DEBUG QZ TRAY: get_qz_tray_data llamado con report_name={report_name}")
+    def get_qz_tray_data(self, *args, **kwargs):
+        print(f"DEBUG QZ TRAY: get_qz_tray_data llamado con args={args} y kwargs={kwargs}")
+
+        # Intentar extraer el report_name de args o kwargs
+        report_name = kwargs.get('report_name', '')
+        if not report_name and len(args) > 2:
+            report_name = args[2] # Si args es (res_ids, report_type, report_name, ...)
+        elif not report_name and len(args) > 3:
+            report_name = args[3] # Si args es (self, res_ids, report_type, report_name)
 
         custom_report = "pos_conventional_qztray.report_pos_order_80mm_qztray"
         legacy_reports = [
@@ -41,6 +48,17 @@ class IrActionsReport(models.Model):
 
         if report_name in legacy_reports:
             print(f"DEBUG QZ TRAY: get_qz_tray_data REDIRIGIENDO {report_name} -> {custom_report}")
-            report_name = custom_report
+            if 'report_name' in kwargs:
+                kwargs['report_name'] = custom_report
+            elif len(args) > 2:
+                args = list(args)
+                args[2] = custom_report
+                args = tuple(args)
 
-        return super().get_qz_tray_data(res_ids, report_type=report_type, report_name=report_name, data=data)
+        try:
+            return super().get_qz_tray_data(*args, **kwargs)
+        except Exception as e:
+            print(f"DEBUG QZ TRAY: ERROR en super().get_qz_tray_data: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise e

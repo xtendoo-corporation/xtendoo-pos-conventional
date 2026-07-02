@@ -342,14 +342,20 @@ patch(PosReceiptClientAction.prototype, {
             ...(this.env?.searchModel?.context || {}),
             ...(this.props.action.context || {}),
             ...(params.context || {}),
+            active_id: pdfResId,
+            active_ids: [pdfResId],
         };
-        const data = await rpc("/web/dataset/call_kw", {
-            model: "ir.actions.report",
-            method: "get_qz_tray_data",
-            args: [printAction.id, [pdfResId], "pdf", reportName],
-            kwargs: { data: {} },
-            context: reportContext,
-        });
+
+        // Usar orm.call en lugar de rpc directo para mejor compatibilidad con recordsets
+        const data = await this.orm.call(
+            "ir.actions.report",
+            "get_qz_tray_data",
+            [[printAction.id], [pdfResId], "pdf", reportName],
+            {
+                data: {},
+                context: reportContext,
+            }
+        );
 
         configureQzSecurity();
         await ensureQzConnection(parsedPrinter.host);
