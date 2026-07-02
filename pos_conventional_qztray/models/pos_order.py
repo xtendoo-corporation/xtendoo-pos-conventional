@@ -200,9 +200,10 @@ class PosOrder(models.Model):
         params = dict(action.get("params") or {})
         params["use_qztray"] = bool(self.config_id.pos_print_receipt_with_qztray)
 
-        # Forzar siempre la impresión del reporte original (XML/PDF) para asegurar
-        # que se vea el diseño personalizado y no el modo texto rápido.
-        params["print_original_receipt"] = True
+        # Cambiamos a True para que use el modo RAW (comandos directos) por defecto
+        # esto coincide con el estilo de la Imagen 2 que el cliente prefiere.
+        params["raw_receipt"] = True
+        params["print_original_receipt"] = False
 
         original_report_name = ORIGINAL_RECEIPT_REPORT
         params.setdefault("report_name", original_report_name)
@@ -210,7 +211,8 @@ class PosOrder(models.Model):
             params["printer_report_name"] = ORIGINAL_RECEIPT_PRINTER_REPORT
             params["report_res_id"] = self.id
             params["report_name"] = ORIGINAL_RECEIPT_REPORT
-            params["raw_receipt"] = False
+            # Aseguramos que el flag de RAW se mantenga activo
+            params["raw_receipt"] = True
         action["params"] = params
         if params["use_qztray"] and action.get("tag") == "pos_conventional_print_receipt_window":
             action["tag"] = "pos_conventional_print_receipt_qztray_window"
