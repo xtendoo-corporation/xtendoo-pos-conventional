@@ -148,7 +148,7 @@ class PosMakePaymentWizard(models.TransientModel):
                 )
             )
 
-    @api.depends("amount_tendered", "amount_due", "is_cash_payment")
+    @api.depends("amount_tendered", "amount_due")
     def _compute_amount_change(self):
         """
         Cambio = Total a pagar (amount_due) - Importe entregado (amount_tendered).
@@ -159,13 +159,10 @@ class PosMakePaymentWizard(models.TransientModel):
           < 0  → hay cambio que devolver al cliente (se muestra en VERDE,
                  el importe es el valor absoluto).
 
-        Solo aplica para pagos en efectivo; para otros métodos devuelve 0.
+        Se muestra siempre que haya un importe entregado, independientemente del método de pago.
         """
         for wizard in self:
-            if wizard.is_cash_payment:
-                wizard.amount_change = wizard.amount_due - wizard.amount_tendered
-            else:
-                wizard.amount_change = 0.0
+            wizard.amount_change = wizard.amount_due - wizard.amount_tendered
 
     @api.onchange("amount_tendered", "payment_ids", "payment_method_id")
     def _onchange_amount_tendered(self):
@@ -174,17 +171,13 @@ class PosMakePaymentWizard(models.TransientModel):
         o cambia el método de pago.
 
         amount_change = amount_due - amount_tendered.
-        Solo aplica para efectivo; para otros métodos amount_change es 0.
         """
         for wizard in self:
-            if wizard.is_cash_payment:
-                _total, _paid, due = wizard._get_order_amounts(
-                    wizard.order_id,
-                    ignore_existing_payments=wizard._is_cash_quick_mode(),
-                )
-                wizard.amount_change = due - wizard.amount_tendered
-            else:
-                wizard.amount_change = 0.0
+            _total, _paid, due = wizard._get_order_amounts(
+                wizard.order_id,
+                ignore_existing_payments=wizard._is_cash_quick_mode(),
+            )
+            wizard.amount_change = due - wizard.amount_tendered
 
 
     @api.depends("config_id")
