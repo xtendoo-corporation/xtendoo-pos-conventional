@@ -56,44 +56,63 @@
 }
 
 /*
- * Fix del campo "Importe Entregado" en el wizard de Pago Combinado.
+ * Fix del campo "Importe Entregado" en wizard Pago Combinado.
  *
- * El widget monetary de Odoo (web.MonetaryField) renderiza:
- *   div.d-inline-flex.align-items-baseline  (contenedor)
- *     span.o_input.position-absolute        (overlay del símbolo)
- *     span.opacity-0                        (espaciador del símbolo)
- *     input.o_input.flex-grow-1             (input real)
+ * Estructura DOM con widget="monetary" + no_symbol:True dentro de input-group:
  *
- * fields.scss aplica border-width: 0 0 1px 0 a .o_input → subrayado.
- * Aquí forzamos borde completo tanto al overlay del símbolo como al input.
- * La clase .o_pos_amount_tendered queda en el div o_field_widget.
+ *   div.input-group.o_pos_amount_group
+ *     span.input-group-text           ← símbolo ($)
+ *       div.o_field_widget.o_field_char
+ *         span                        ← texto del símbolo (readonly)
+ *     div.o_field_widget.o_field_monetary.o_pos_amount_tendered
+ *       div.d-inline-flex.align-items-baseline  ← override → stretch
+ *         input.o_input               ← campo real
+ *
+ * Bootstrap input-group necesita que el o_field_widget sea un flex-item que
+ * se estire. Además hay que anular align-items-baseline del div interno.
  */
-.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered {
-    display: block;
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group {
+    display: flex;
+    align-items: stretch;
+}
+
+/* Neutralizar estilos del o_field_widget del campo currency_symbol */
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .input-group-text .o_field_widget {
+    display: inline !important;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-size: inherit;
+}
+
+/* El o_field_widget del campo monetario: estirarse en el input-group */
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered {
+    display: flex !important;
+    align-items: stretch !important;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-bottom: 0 !important;
+}
+
+/* div interno del monetary widget: anular align-items-baseline */
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered > div {
     width: 100%;
+    align-items: stretch !important;
 }
 
-.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered > div {
-    width: 100%;
-    align-items: stretch !important;   /* iguala altura símbolo e input */
+/* El <input> real: borde completo excepto lado izquierdo (lo aporta el input-group-text) */
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered input.o_input {
+    flex: 1 1 auto;
+    text-align: right !important;
+    border-width: 1px 1px 1px 0 !important;
+    border-radius: 0 0.375rem 0.375rem 0 !important;
+    padding: 0.375rem 0.75rem !important;
 }
 
-/* Símbolo ($) y el input comparten el mismo borde completo */
-.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered .o_input {
-    border-width: 1px !important;
-    border-radius: 0.375rem !important;
-}
-
-/* El overlay position-absolute del símbolo: borde solo a la derecha para simular divisor */
-.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered span.o_input {
-    border-width: 0 !important;        /* sin borde en el overlay */
-}
-
-/* Foco: anillo estándar de Odoo, sin segunda línea azul */
-.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered input.o_input:focus,
-.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered input.o_input:focus-visible {
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered input.o_input:focus,
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered input.o_input:focus-visible {
     border-color: #86b7fe !important;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+    box-shadow: none !important;
     outline: none !important;
 }
-
