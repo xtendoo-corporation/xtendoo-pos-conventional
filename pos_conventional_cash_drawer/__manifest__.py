@@ -7,6 +7,7 @@
     "website": "https://xtendoo.es",
     "license": "LGPL-3",
     "depends": [
+        "pos_conventional_core",
         "pos_conventional_payment_wizard",
         "xtendoo_cash_drawer",
     ],

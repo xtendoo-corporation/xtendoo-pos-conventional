@@ -7,7 +7,7 @@
     "author": "Xtendoo",
     "website": "https://xtendoo.es",
     "license": "LGPL-3",
-    "depends": ["point_of_sale", "stock", "sale"],
+    "depends": ["pos_conventional_core", "point_of_sale", "stock", "sale"],
     "data": [
         "views/pos_order_views.xml",
         "views/res_config_settings_views.xml",
