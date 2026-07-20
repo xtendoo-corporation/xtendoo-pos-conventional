@@ -6,7 +6,12 @@
     "license": "LGPL-3",
     "category": "Point of Sale",
     "summary": "Cash calculator utility for POS",
-    "depends": ["point_of_sale", "sale", "mail"],
+    "depends": [
+        "pos_conventional_core",
+        "point_of_sale",
+        "sale",
+        "mail",
+    ],
     "data": [
         "security/ir.model.access.csv",
         "views/pos_cash_calculator_wizard_views.xml",

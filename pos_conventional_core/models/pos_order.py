@@ -598,3 +598,9 @@ class PosOrder(models.Model):
                         result[key] = val
 
         return result
+
+
+    def action_print_factura_simplificada(self):
+        """Base stub for simplified invoice printing. Overridden by modules that
+        provide the actual print driver (e.g. pos_conventional_qztray)."""
+        return False
