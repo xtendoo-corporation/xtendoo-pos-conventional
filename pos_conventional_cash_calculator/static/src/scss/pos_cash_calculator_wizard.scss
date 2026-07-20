@@ -1,0 +1,96 @@
+// Estilos del asistente de recuento de efectivo.
+// Patrón de entrada basado en el catálogo de productos de Odoo:
+// d-flex con botones Bootstrap e input estirado a la misma altura.
+
+.o_cash_calculator_wizard {
+
+    // ── Tarjeta de denominación ──────────────────────────────────────────────
+    .o_cash_calc_card {
+        padding: map-get($spacers, 2);
+        margin-bottom: map-get($spacers, 2);
+    }
+
+    // ── Cabeceras de sección ─────────────────────────────────────────────────
+    .o_cash_section_title {
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-weight: $font-weight-bold;
+        font-size: $font-size-sm;
+        color: $text-muted;
+        border-bottom: 1px solid $border-color;
+        padding-bottom: map-get($spacers, 1);
+        margin-bottom: map-get($spacers, 3);
+    }
+
+    // ── Control cantidad ─────────────────────────────────────────────────────
+    .o_cash_qty_group {
+        display: flex;
+        align-items: stretch;
+
+        .o_field_widget {
+            display: flex;
+            align-items: stretch;
+            width: 64px;
+            margin-bottom: 0;
+
+            .o_input {
+                width: 100%;
+                text-align: center;
+                font-weight: $font-weight-bold;
+                border: $border-width solid $border-color;
+                border-radius: 0;
+                background-color: $gray-100;
+                appearance: textfield;
+
+                &:focus,
+                &:focus-visible {
+                    border-color: $border-color;
+                    box-shadow: none;
+                    outline: none;
+                }
+
+                &::-webkit-outer-spin-button,
+                &::-webkit-inner-spin-button {
+                    appearance: none;
+                    margin: 0;
+                }
+            }
+        }
+    }
+
+    .o_cash_label {
+        margin-left: map-get($spacers, 3);
+        font-weight: $font-weight-semibold;
+        font-size: $font-size-base;
+        white-space: nowrap;
+        min-width: 55px;
+        align-self: center;
+        color: $body-color;
+    }
+
+    // ── Panel total (derecho) ────────────────────────────────────────────────
+    .o_cash_total_panel {
+        border-left: 1px solid $border-color-translucent;
+        gap: map-get($spacers, 2);
+    }
+
+    .o_cash_total_label {
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-bold;
+        color: $text-muted;
+    }
+
+    .o_cash_total_amount {
+        // Tamaño moderado: ~ h2 + negrita, color de marca
+        .o_field_monetary,
+        .o_field_widget {
+            font-size: 2rem;
+            font-weight: $font-weight-bold;
+            color: var(--o-brand-primary, #{$o-brand-primary});
+            line-height: 1.2;
+            margin-bottom: 0;
+        }
+    }
+}

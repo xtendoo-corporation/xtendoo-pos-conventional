@@ -1,6 +1,6 @@
 {
     "name": "POS Conventional Cash Calculator",
-    "version": "19.0.1.0.0",
+    "version": "19.0.2.0.0",
     "author": "Xtendoo",
     "website": "https://xtendoo.es",
     "license": "LGPL-3",
@@ -11,5 +11,10 @@
         "security/ir.model.access.csv",
         "views/pos_cash_calculator_wizard_views.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "pos_conventional_cash_calculator/static/src/scss/pos_cash_calculator_wizard.scss",
+        ],
+    },
     "installable": True,
 }

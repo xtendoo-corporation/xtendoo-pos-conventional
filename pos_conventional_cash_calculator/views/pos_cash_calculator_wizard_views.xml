@@ -4,110 +4,203 @@
         <field name="name">pos.cash.calculator.wizard.form</field>
         <field name="model">pos.cash.calculator.wizard</field>
         <field name="arch" type="xml">
-            <form string="Calculadora de Monedas y Billetes">
-                <sheet>
-                    <div class="row">
-                        <div class="col-8">
-                            <group string="Billetes">
-                                <div class="o_group_col_6">
-                                    <label for="qty_200" string="200€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_200" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_200"/>
-                                        <button name="increment_200" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                    <label for="qty_100" string="100€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_100" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_100"/>
-                                        <button name="increment_100" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                    <label for="qty_50" string="50€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_50" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_50"/>
-                                        <button name="increment_50" string="+" type="object" class="btn-secondary"/>
+            <form string="Recuento de efectivo" class="o_cash_calculator_wizard">
+                <div class="row m-0 p-0">
+                    <!-- Money Grid (Left Side) -->
+                    <div class="col-12 col-md-8 p-4">
+                        <h6 class="o_cash_section_title">Billetes</h6>
+                        <div class="row g-2 mb-4">
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_200" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_200" nolabel="1"/>
+                                            <button name="increment_200" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">200 €</span>
                                     </div>
                                 </div>
-                                <div class="o_group_col_6">
-                                    <label for="qty_20" string="20€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_20" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_20"/>
-                                        <button name="increment_20" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                    <label for="qty_10" string="10€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_10" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_10"/>
-                                        <button name="increment_10" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                    <label for="qty_5" string="5€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_5" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_5"/>
-                                        <button name="increment_5" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                </div>
-                            </group>
-                            <group string="Monedas">
-                                <div class="o_group_col_6">
-                                    <label for="qty_2" string="2€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_2" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_2"/>
-                                        <button name="increment_2" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                    <label for="qty_1" string="1€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_1" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_1"/>
-                                        <button name="increment_1" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                    <label for="qty_050" string="0,50€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_050" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_050"/>
-                                        <button name="increment_050" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                </div>
-                                <div class="o_group_col_6">
-                                    <label for="qty_020" string="0,20€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_020" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_020"/>
-                                        <button name="increment_020" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                    <label for="qty_010" string="0,10€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_010" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_010"/>
-                                        <button name="increment_010" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                    <label for="qty_005" string="0,05€"/>
-                                    <div class="o_row">
-                                        <button name="decrement_005" string="-" type="object" class="btn-secondary"/>
-                                        <field name="qty_005"/>
-                                        <button name="increment_005" string="+" type="object" class="btn-secondary"/>
-                                    </div>
-                                </div>
-                            </group>
-                        </div>
-                        <div class="col-4 bg-light p-3">
-                            <h2 class="text-center mt-4">Total</h2>
-                            <div class="text-center display-4 text-primary">
-                                <field name="total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                             </div>
-                            <field name="currency_id" invisible="1"/>
-                            <field name="parent_model" invisible="1"/>
-                            <field name="parent_res_id" invisible="1"/>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_20" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_20" nolabel="1"/>
+                                            <button name="increment_20" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">20 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_100" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_100" nolabel="1"/>
+                                            <button name="increment_100" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">100 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_10" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_10" nolabel="1"/>
+                                            <button name="increment_10" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">10 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_50" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_50" nolabel="1"/>
+                                            <button name="increment_50" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">50 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_5" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_5" nolabel="1"/>
+                                            <button name="increment_5" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">5 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="o_cash_section_title">Monedas</h6>
+                        <div class="row g-2">
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_2" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_2" nolabel="1"/>
+                                            <button name="increment_2" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">2 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_020" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_020" nolabel="1"/>
+                                            <button name="increment_020" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">0,20 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_1" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_1" nolabel="1"/>
+                                            <button name="increment_1" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">1 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_010" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_010" nolabel="1"/>
+                                            <button name="increment_010" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">0,10 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_050" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_050" nolabel="1"/>
+                                            <button name="increment_050" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">0,50 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_005" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_005" nolabel="1"/>
+                                            <button name="increment_005" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">0,05 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_002" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_002" nolabel="1"/>
+                                            <button name="increment_002" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">0,02 €</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_001" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_001" nolabel="1"/>
+                                            <button name="increment_001" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">0,01 €</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <footer>
-                        <button name="action_confirm" string="Confirmar" type="object" class="btn-primary"/>
-                        <button name="action_cancel" string="Cancelar" type="object" class="btn-secondary"/>
-                    </footer>
-                </sheet>
+
+                    <!-- Total Section (Right Side) -->
+                    <div class="col-12 col-md-4 p-4 d-flex flex-column align-items-center justify-content-center o_cash_total_panel">
+                        <span class="o_cash_total_label">Total</span>
+                        <div class="o_cash_total_amount">
+                            <field name="total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                        </div>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="parent_model" invisible="1"/>
+                        <field name="parent_res_id" invisible="1"/>
+                    </div>
+                </div>
+                <footer class="border-top p-3 bg-white d-flex justify-content-end gap-2">
+                    <button name="action_confirm" string="Confirmar" type="object" class="btn btn-primary px-5"/>
+                    <button name="action_clear" string="Limpiar" type="object" class="btn btn-outline-secondary px-4"/>
+                    <button string="Cancelar" class="btn btn-light px-4" special="cancel"/>
+                </footer>
             </form>
         </field>
     </record>
