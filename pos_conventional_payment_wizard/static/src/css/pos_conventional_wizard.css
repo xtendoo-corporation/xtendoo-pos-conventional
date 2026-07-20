@@ -57,20 +57,41 @@
 
 /*
  * Fix del campo "Importe Entregado" en el wizard de Pago Combinado.
- * El widget monetary de Odoo aplica solo border-bottom al o_input.
- * Dentro de un input-group de Bootstrap necesitamos borde completo
- * (Bootstrap gestiona los bordes adyacentes entre input-group-text e input).
+ *
+ * El widget monetary de Odoo (web.MonetaryField) renderiza:
+ *   div.d-inline-flex.align-items-baseline  (contenedor)
+ *     span.o_input.position-absolute        (overlay del símbolo)
+ *     span.opacity-0                        (espaciador del símbolo)
+ *     input.o_input.flex-grow-1             (input real)
+ *
+ * fields.scss aplica border-width: 0 0 1px 0 a .o_input → subrayado.
+ * Aquí forzamos borde completo tanto al overlay del símbolo como al input.
+ * La clase .o_pos_amount_tendered queda en el div o_field_widget.
  */
-.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered .o_input {
-    border-top: 1px solid #dee2e6 !important;
-    border-bottom: 1px solid #dee2e6 !important;
-    border-right: 1px solid #dee2e6 !important;
-    border-left: 0 !important;
-    border-radius: 0 0.375rem 0.375rem 0 !important;
+.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered {
+    display: block;
+    width: 100%;
 }
 
-.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered .o_input:focus,
-.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered .o_input:focus-visible {
+.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered > div {
+    width: 100%;
+    align-items: stretch !important;   /* iguala altura símbolo e input */
+}
+
+/* Símbolo ($) y el input comparten el mismo borde completo */
+.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered .o_input {
+    border-width: 1px !important;
+    border-radius: 0.375rem !important;
+}
+
+/* El overlay position-absolute del símbolo: borde solo a la derecha para simular divisor */
+.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered span.o_input {
+    border-width: 0 !important;        /* sin borde en el overlay */
+}
+
+/* Foco: anillo estándar de Odoo, sin segunda línea azul */
+.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered input.o_input:focus,
+.o_pos_conventional_payment_wizard_form .o_pos_amount_tendered input.o_input:focus-visible {
     border-color: #86b7fe !important;
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
     outline: none !important;

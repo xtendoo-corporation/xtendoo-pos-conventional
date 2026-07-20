@@ -56,16 +56,11 @@
                         <div class="d-flex align-items-start gap-3">
                             <div class="flex-grow-1">
                                 <label for="amount_tendered" class="fw-bold mb-1 d-block text-primary" style="line-height: 20px;">Importe Entregado</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-white">
-                                        <field name="currency_symbol" nolabel="1"/>
-                                    </span>
-                                    <field name="amount_tendered"
-                                        widget="monetary"
-                                        options="{'currency_field': 'currency_id', 'no_symbol': True}"
-                                        nolabel="1"
-                                        class="o_pos_amount_tendered form-control text-end fw-bold text-primary flex-grow-1"/>
-                                </div>
+                                <field name="amount_tendered"
+                                    widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    nolabel="1"
+                                    class="o_pos_amount_tendered fw-bold w-100"/>
                             </div>
                             <div class="flex-grow-1">
                                 <label for="payment_method_id" class="fw-bold mb-1 d-block" style="line-height: 20px;">Diario</label>
