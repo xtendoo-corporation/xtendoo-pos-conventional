@@ -83,11 +83,11 @@ test("scanner widget only updates the record for events coming from its form", a
     expect(view.model.root.data._barcode_scanned).toBe("");
 
     view.env.services.barcode.bus.trigger("barcode_scanned", {
-        barcode: "DIRECT001",
+        barcode: "5012345678900",
         target: internalInput,
     });
     await animationFrame();
-    expect(view.model.root.data._barcode_scanned).toBe("DIRECT001");
+    expect(view.model.root.data._barcode_scanned).toBe("5012345678900");
 
     view.env.services.barcode.bus.trigger("barcode_scanned", {
         barcode: "",
@@ -147,7 +147,7 @@ test("scanner widget keeps the original field value while the barcode is process
     const internalInput = document.querySelector(".o_field_widget[name=partner_name] input");
     internalInput.value = "Cliente Barcode";
 
-    for (const key of ["S", "C", "A", "N", "0", "0", "1", "Enter"]) {
+    for (const key of ["1", "2", "3", "4", "0", "0", "1", "Enter"]) {
         const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key });
         internalInput.dispatchEvent(event);
         expect(event.defaultPrevented).toBe(true);
@@ -155,13 +155,13 @@ test("scanner widget keeps the original field value while the barcode is process
     expect(internalInput.value).toBe("Cliente Barcode");
 
     view.env.services.barcode.bus.trigger("barcode_scanned", {
-        barcode: "SCAN001",
+        barcode: "1234001",
         target: internalInput,
     });
     await animationFrame();
 
     expect(internalInput.value).toBe("Cliente Barcode");
-    expect(view.model.root.data._barcode_scanned).toBe("SCAN001");
+    expect(view.model.root.data._barcode_scanned).toBe("1234001");
 });
 
 test("scanner widget does not block browser paste shortcuts", async () => {
@@ -221,5 +221,90 @@ test("scanner widget does not require cleanBarcode on the started barcode servic
     await animationFrame();
 
     expect(view.model.root.data._barcode_scanned).toBe("123");
+});
+
+test("scanner widget does not hijack non-numeric fast typing", async () => {
+    await mountView({
+        type: "form",
+        resModel: "sale.order",
+        resId: 1,
+        arch: /* xml */ `
+            <form>
+                <field name="name"/>
+                <field name="partner_name"/>
+                <field name="_barcode_scanned" widget="pos_conventional_barcode_scanner"/>
+            </form>
+        `,
+    });
+
+    const internalInput = document.querySelector(".o_field_widget[name=partner_name] input");
+
+    for (const key of ["a", "b", "c"]) {
+        const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key });
+        internalInput.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(false);
+    }
+});
+
+test("scanner widget restores buffered digits when a non-numeric key breaks the sequence", async () => {
+    await mountView({
+        type: "form",
+        resModel: "sale.order",
+        resId: 1,
+        arch: /* xml */ `
+            <form>
+                <field name="name"/>
+                <field name="partner_name"/>
+                <field name="_barcode_scanned" widget="pos_conventional_barcode_scanner"/>
+            </form>
+        `,
+    });
+
+    const internalInput = document.querySelector(".o_field_widget[name=partner_name] input");
+    internalInput.value = "";
+    internalInput.setSelectionRange(0, 0);
+
+    for (const key of ["1", "2"]) {
+        const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key });
+        internalInput.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(true);
+    }
+
+    const breakingEvent = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "a" });
+    internalInput.dispatchEvent(breakingEvent);
+
+    expect(breakingEvent.defaultPrevented).toBe(false);
+    expect(internalInput.value).toBe("12");
+});
+
+test("scanner widget ignores non-numeric barcode events", async () => {
+    const view = await mountView({
+        type: "form",
+        resModel: "sale.order",
+        resId: 1,
+        arch: /* xml */ `
+            <form>
+                <field name="name"/>
+                <field name="partner_name"/>
+                <field name="_barcode_scanned" widget="pos_conventional_barcode_scanner"/>
+            </form>
+        `,
+    });
+
+    const internalInput = document.querySelector(".o_field_widget[name=partner_name] input");
+
+    view.env.services.barcode.bus.trigger("barcode_scanned", {
+        barcode: "ABC123",
+        target: internalInput,
+    });
+    await animationFrame();
+    expect(view.model.root.data._barcode_scanned).toBe("");
+
+    view.env.services.barcode.bus.trigger("barcode_scanned", {
+        barcode: "999",
+        target: internalInput,
+    });
+    await animationFrame();
+    expect(view.model.root.data._barcode_scanned).toBe("999");
 });
 

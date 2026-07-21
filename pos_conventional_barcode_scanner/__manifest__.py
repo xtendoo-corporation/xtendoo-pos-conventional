@@ -15,6 +15,9 @@
         "web.assets_backend": [
             "pos_conventional_barcode_scanner/static/src/js/pos_conventional_barcode_scanner_field.js",
         ],
+        "web.assets_unit_tests": [
+            "pos_conventional_barcode_scanner/static/tests/**/*.test.js",
+        ],
     },
     "installable": True,
     "application": False,

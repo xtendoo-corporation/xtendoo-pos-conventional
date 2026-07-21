@@ -29,6 +29,14 @@ function isEndCharacter(key) {
     return /(Enter|Tab)/.test(key);
 }
 
+function isNumericKey(key) {
+    return key.length === 1 && key >= "0" && key <= "9";
+}
+
+function isNumericBarcode(barcode) {
+    return typeof barcode === "string" && /^[0-9]+$/.test(barcode.trim());
+}
+
 function cleanBarcode(barcode) {
     return barcodeServiceDefinition.cleanBarcode(barcode);
 }
@@ -208,6 +216,18 @@ export class PosConventionalBarcodeScannerField extends Component {
         );
     }
 
+    _flushBufferedBarcodeAsText(capture) {
+        if (capture.timeoutId) {
+            clearTimeout(capture.timeoutId);
+            capture.timeoutId = null;
+        }
+        if (capture.rawBarcode) {
+            applyBufferedText(capture.snapshot, cleanBarcode(capture.rawBarcode));
+        }
+        capture.rawBarcode = "";
+        capture.snapshot = null;
+    }
+
     _handleKeydownCapture(event) {
         const target = event.target;
         if (!isNodeWithin(target, this.formElement) || !isEditable(target) || !event.key) {
@@ -237,22 +257,35 @@ export class PosConventionalBarcodeScannerField extends Component {
                 rawBarcode: "",
                 snapshot: captureEditableState(target),
                 target,
+                poisoned: false,
             };
         }
 
-        if (!this.pendingBarcodeCapture) {
+        const capture = this.pendingBarcodeCapture;
+        if (!capture) {
             return;
         }
 
-        this.pendingBarcodeCapture.lastEventAt = now;
+        capture.lastEventAt = now;
+
+        if (capture.poisoned) {
+            return;
+        }
+
+        if (!endCharacter && !isNumericKey(event.key)) {
+            capture.poisoned = true;
+            this._flushBufferedBarcodeAsText(capture);
+            return;
+        }
+
         if (!endCharacter) {
             event.preventDefault();
-            this.pendingBarcodeCapture.rawBarcode += event.key;
+            capture.rawBarcode += event.key;
             this._refreshPendingBarcodeCaptureTimeout();
             return;
         }
 
-        if (!this._isBarcodeSequence(this.pendingBarcodeCapture.rawBarcode)) {
+        if (!this._isBarcodeSequence(capture.rawBarcode)) {
             this._finalizePendingBarcodeCapture();
             return;
         }
@@ -264,6 +297,9 @@ export class PosConventionalBarcodeScannerField extends Component {
     async onBarcodeScanned(event) {
         const { barcode, target } = event.detail;
         if (!barcode || !isNodeWithin(target, this.formElement)) {
+            return;
+        }
+        if (!isNumericBarcode(barcode)) {
             return;
         }
         this._clearPendingBarcodeCapture();
