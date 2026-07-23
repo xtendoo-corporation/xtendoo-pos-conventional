@@ -17,9 +17,36 @@ class PosOrder(models.Model):
 
     def action_print_factura_simplificada(self):
         self.ensure_one()
-        if self.account_move:
-            return self.env.ref("pos_conventional_receipt_custom.action_factura_simplificada_80mm_pdf").report_action(self.account_move)
-        return self.env.ref("pos_conventional_receipt_custom.action_report_pos_order_80mm").report_action(self)
+        # Intentamos reproducir exactamente el mismo comportamiento que se
+        # ejecuta al pagar en POS: devolvemos una acción cliente que el
+        # frontend (si tiene cargados los handlers) interceptará y lanzará la
+        # impresión (QZ Tray o ventana de impresión del navegador). Esto
+        # permite que la preview salga como cuando se paga en efectivo.
+        if hasattr(self, '_get_pos_conventional_qztray_print_params'):
+            # Si existe la integración QZ Tray, delegamos en ella (comportamiento POS).
+            params = self._get_pos_conventional_qztray_print_params()
+            use_qztray = bool(params.get('use_qztray'))
+            tag = 'pos_conventional_print_receipt_qztray_window' if use_qztray else 'pos_conventional_print_receipt_window'
+            return {
+                'type': 'ir.actions.client',
+                'tag': tag,
+                'params': params,
+            }
+
+        # Si no hay integración QZ, devolvemos una acción cliente específica para
+        # el backend que imprimirá en segundo plano sin navegar (preview encima).
+        if not self.account_move:
+            return self.env.ref("pos_conventional_receipt_custom.action_report_pos_order_80mm").report_action(self)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'pos_conventional_print_receipt_backend',
+            'params': {
+                'move_id': self.account_move.id,
+                'report_name': 'pos_conventional_receipt_custom.report_factura_simplificada_80mm',
+                'report_autoprints': True,
+            },
+        }
 
     def action_send_email(self):
         """

@@ -17,5 +17,10 @@
         "data/mail_template_pos_receipt.xml",
         "report/pos_order_report.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "pos_conventional_receipt_custom/static/src/js/pos_print_receipt_backend.js",
+        ],
+    },
     "installable": True,
 }
