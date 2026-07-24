@@ -50,7 +50,6 @@
             "point_of_sale/static/src/app/screens/receipt_screen/receipt/receipt_header/receipt_header.xml",
             "point_of_sale/static/src/app/components/order_display/order_display.js",
             "point_of_sale/static/src/app/components/order_display/order_display.xml",
-            "pos_conventional_receipt/static/src/xml/receipt_templates.xml",
             "point_of_sale/static/src/app/screens/receipt_screen/receipt_screen.scss",
             # Actual receipt client action (must go after POS components are registered)
             "pos_conventional_core/static/src/js/pos_receipt_client_action.js",
