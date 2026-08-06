@@ -33,8 +33,13 @@
             "pos_conventional_core/static/src/js/pos_action_service_patch.js",
             "pos_conventional_core/static/src/js/product_label_section_and_note_field_patch.js",
             "pos_conventional_core/static/src/xml/pos_order_list_view.xml",
-            # POS receipt components injected into backend
-            # (needed by pos_receipt_client_action.js which renders OrderReceipt)
+            # POS receipt components injected into backend, needed by
+            # pos_receipt_client_action.js which renders OrderReceipt.
+            # pos_conventional_receipt/static/src/xml/receipt_templates.xml
+            # is also required here but is contributed by that module's own
+            # manifest (web.assets_backend), not listed here, to avoid a
+            # circular dependency (pos_conventional_receipt already depends
+            # on pos_conventional_core).
             "point_of_sale/static/lib/qrcode.js",
             "point_of_sale/static/src/utils.js",
             "point_of_sale/static/src/css/pos_receipts.css",

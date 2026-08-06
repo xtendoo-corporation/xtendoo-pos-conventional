@@ -12,6 +12,9 @@
             'pos_conventional_receipt/static/src/xml/receipt_templates.xml',
             'pos_conventional_receipt/static/src/js/receipt_order.js',
         ],
+        'web.assets_backend': [
+            'pos_conventional_receipt/static/src/xml/receipt_templates.xml',
+        ],
     },
     'data': [],
     'installable': True,

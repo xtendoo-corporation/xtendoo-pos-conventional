@@ -50,6 +50,20 @@ class PosConfig(models.Model):
         )
 
 
+    def _get_non_touch_opening_action(self, session):
+        """Stub base: sin acción especial de apertura por defecto.
+
+        pos_conventional_session_management (que depende de este módulo, no
+        al revés) sobreescribe este método con el popup real cuando está
+        instalado. Si solo está pos_conventional_core, open_ui() ya trata un
+        valor falsy como "sin acción" y cae al flujo táctil estándar de
+        Odoo -- no borrar este stub sin más, un intento anterior de
+        "limpiarlo" ya rompió open_ui() cuando session_management no está
+        instalado (AttributeError: 'pos.config' object has no attribute
+        '_get_non_touch_opening_action').
+        """
+        return False
+
     def open_ui(self):
         """
         Override del método open_ui para interceptar la apertura
