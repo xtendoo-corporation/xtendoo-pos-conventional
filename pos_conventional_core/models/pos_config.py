@@ -24,6 +24,20 @@ class PosConfig(models.Model):
         help="Si está marcado, se permite salir de un pedido en borrador sin finalizar el pago.",
     )
 
+    pos_force_employee_login_after_order = fields.Boolean(
+        string="Pedir PIN del usuario",
+        default=False,
+        help=(
+            "Si está activo, pedirá el PIN del usuario después de cada venta y "
+            "cambiará el usuario de la sesión. Definido aquí como base (False) "
+            "porque pos_order_list_controller.js lee este campo siempre, "
+            "instale o no pos_conventional_users_pin -- sin este stub, la "
+            "lectura lanza KeyError en el servidor (RPC_ERROR visible en "
+            "consola) cuando ese módulo no está instalado. "
+            "pos_conventional_users_pin sigue siendo quien le da uso real."
+        ),
+    )
+
     pos_print_receipt_without_preview = fields.Boolean(
         string="Imprimir tickets sin previsualización",
         help=(
