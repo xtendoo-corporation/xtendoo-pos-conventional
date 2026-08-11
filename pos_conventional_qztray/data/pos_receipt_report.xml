@@ -150,7 +150,6 @@
                                     <th class="text-left" style="width: 35%;">Base</th>
                                     <th class="text-center" style="width: 35%;">Impuesto</th>
                                     <th class="text-right" style="width: 30%;">Cuota</th>
-                                    <th class="text-right" style="width: 30%;">Cuota</th>
                                 </tr>
                             </thead>
                             <tbody>
