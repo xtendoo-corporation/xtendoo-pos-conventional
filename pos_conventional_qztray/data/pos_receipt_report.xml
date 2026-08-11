@@ -27,7 +27,7 @@
                             box-sizing: border-box;
                             padding: 2mm;
                             font-size: 13px;
-                            line-height: 1.2;
+                            line-height: 1.4;
                             color: #000;
                         }
                         .center { text-align: center; }
@@ -57,12 +57,12 @@
                             font-size: 13px;
                             vertical-align: top;
                         }
-                        .col-name { width: 60%; }
-                        .col-qty { width: 15%; text-align: center; }
-                        .col-total { width: 25%; text-align: right; }
+                        .col-name { width: 67%; }
+                        .col-qty { width: 15%; text-align: right; }
+                        .col-total { width: 18%; text-align: right; }
 
                         .total-row {
-                            font-size: 19px;
+                            font-size: 25px;
                             margin: 8px 0;
                             font-weight: bold;
                         }
@@ -72,7 +72,7 @@
                         <div class="center" style="margin-bottom: 8px;">
                             <img t-if="company.logo"
                                 t-att-src="image_data_uri(company.logo)"
-                                style="max-height: 60px; max-width: 80%; filter: grayscale(100%) contrast(150%);"/>
+                                style="max-height: 120px; max-width: 80%; filter: grayscale(100%) contrast(150%);"/>
                         </div>
 
                         <t t-if="o.config_id and o.config_id.receipt_header">
@@ -147,8 +147,8 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th class="text-left" style="width: 35%;">Base</th>
-                                    <th class="text-center" style="width: 35%;">Impuesto</th>
+                                    <th class="text-right" style="width: 35%;">Base</th>
+                                    <th class="text-right" style="width: 35%;">Impuesto</th>
                                     <th class="text-right" style="width: 30%;">Cuota</th>
                                 </tr>
                             </thead>
@@ -157,11 +157,11 @@
                                     <t t-foreach="move.tax_totals['subtotals']" t-as="subtotal">
                                         <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
                                             <tr>
-                                                <td class="text-left">
+                                                <td class="text-right">
                                                     <span t-out="tax_group['base_amount_currency']"
                                                         t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                                 </td>
-                                                <td class="text-center"><span t-out="tax_group['group_name']"/></td>
+                                                <td class="text-right"><span t-out="tax_group['group_name']"/></td>
                                                 <td class="text-right">
                                                     <span t-out="tax_group['tax_amount_currency']"
                                                         t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
@@ -172,11 +172,11 @@
                                 </t>
                                 <t t-else="">
                                     <tr>
-                                        <td class="text-left">
+                                        <td class="text-right">
                                             <span t-out="o.amount_total - o.amount_tax"
                                                 t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                         </td>
-                                        <td class="text-center">IVA</td>
+                                        <td class="text-right">IVA</td>
                                         <td class="text-right">
                                             <span t-out="o.amount_tax"
                                                 t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
