@@ -40,7 +40,7 @@
                 .pos-qz-standard-ticket .text-left { text-align: left; }
 
                 .pos-qz-standard-ticket .receipt-logo {
-                    max-height: 75px;
+                    max-height: 100px;
                     max-width: 90%;
                     margin: 0 auto;
                     display: block;

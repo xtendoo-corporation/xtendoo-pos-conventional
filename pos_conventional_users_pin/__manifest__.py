@@ -19,6 +19,7 @@
     ],
     "assets": {
         "web.assets_backend": [
+            "pos_conventional_users_pin/static/src/js/pos_order_list_pin_patch.js",
             "pos_conventional_users_pin/static/src/js/pos_pin_masked_field.js",
             "pos_conventional_users_pin/static/src/xml/pos_pin_masked_field.xml",
             "pos_conventional_users_pin/static/src/scss/pos_pin_masked_field.scss",

@@ -68,34 +68,15 @@ export class PosOrderListController extends ListController {
             const sessionData = await this.model.orm.read("pos.session", [sessionId], ["state", "config_id"]);
             if (sessionData?.length > 0 && ['opened', 'opening_control'].includes(sessionData[0].state)) {
                 const configId = Array.isArray(sessionData[0].config_id) ? sessionData[0].config_id[0] : sessionData[0].config_id;
-                const configData = await this.model.orm.read("pos.config", [configId], ["pos_non_touch", "pos_force_employee_login_after_order"]);
+                const configData = await this.model.orm.read("pos.config", [configId], ["pos_non_touch"]);
                 if (configData?.length > 0) {
                     this.state.showCloseButton = !!configData[0].pos_non_touch;
-                    this.forceLogin = configData[0].pos_force_employee_login_after_order;
                     this.currentSessionId = sessionId;
                 }
             }
         } catch (error) {
             console.error("Error verifying sesión:", error);
         }
-    }
-
-    async createRecord() {
-        if (this.forceLogin && this.currentSessionId) {
-            return this.actionService.doAction({
-                type: 'ir.actions.act_window',
-                res_model: 'pos.session.pin.wizard',
-                view_mode: 'form',
-                views: [[false, 'form']],
-                target: 'new',
-                context: {
-                    default_session_id: this.currentSessionId,
-                    force_new_order_flow: true,
-                    no_cancel: true,
-                }
-            });
-        }
-        super.createRecord();
     }
 
     async onCloseCashRegister() {
