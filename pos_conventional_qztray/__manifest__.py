@@ -18,7 +18,7 @@
         "views/res_config_settings_views.xml",
     ],
     "assets": {
-        "web.assets_backend": [
+        "point_of_sale.assets": [
             "pos_conventional_qztray/static/src/js/pos_receipt_qztray_patch.js",
         ],
     },
