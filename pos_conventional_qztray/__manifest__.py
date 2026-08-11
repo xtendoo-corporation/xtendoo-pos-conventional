@@ -14,7 +14,7 @@
     ],
     "data": [
         "data/pos_receipt_report.xml",
-        #"report/pos_original_receipt_report.xml",
+        "report/pos_original_receipt_report.xml",
         "views/res_config_settings_views.xml",
     ],
     "assets": {
