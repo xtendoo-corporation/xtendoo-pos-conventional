@@ -423,8 +423,11 @@ async function printReceiptWindowQzTrayAction(env, action) {
             );
         }
     } else {
-        if (params.url) {
-            const absoluteUrl = new URL(params.url, window.location.origin).toString();
+        const resId = params.report_res_id || params.order_id || params.move_id;
+        const url = params.url
+            || (resId && `/report/html/${params.report_name || DEFAULT_REPORT_NAME}/${resId}`);
+        if (url) {
+            const absoluteUrl = new URL(url, window.location.origin).toString();
             await printUrlInBackground(absoluteUrl, env, {
                 reportAutoprints: !!params.report_autoprints,
             });
