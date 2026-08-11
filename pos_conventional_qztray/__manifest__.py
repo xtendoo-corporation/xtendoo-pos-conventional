@@ -21,6 +21,17 @@
         "point_of_sale.assets": [
             "pos_conventional_qztray/static/src/js/pos_receipt_qztray_patch.js",
         ],
+        "web.assets_backend": [
+            # Registra los mismos tags de ir.actions.client
+            # (pos_conventional_print_receipt_window y
+            # _qztray_window) que action_print_factura_simplificada puede
+            # devolver desde el botón del formulario de pedido TPV. El
+            # backend tiene disponibles qz (base_report_to_printer_qztray,
+            # inyectado en web.layout) y PosReceiptClientAction
+            # (pos_conventional_core), así que este fichero funciona igual
+            # aquí que en la UI del TPV.
+            "pos_conventional_qztray/static/src/js/pos_receipt_qztray_patch.js",
+        ],
     },
     "installable": True,
     "application": False,
