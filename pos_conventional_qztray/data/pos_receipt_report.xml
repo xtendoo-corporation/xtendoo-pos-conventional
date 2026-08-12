@@ -62,7 +62,7 @@
                         .col-total { width: 18%; text-align: right; }
 
                         .total-row {
-                            font-size: 25px;
+                            font-size: 32px;
                             margin: 8px 0;
                             font-weight: bold;
                         }
@@ -120,8 +120,8 @@
                             <thead>
                                 <tr>
                                     <th class="text-left col-name">Nombre</th>
-                                    <th class="text-center col-qty">UD</th>
-                                    <th class="text-right col-total">TOTAL</th>
+                                    <th class="text-center col-qty">Und</th>
+                                    <th class="text-right col-total">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -190,7 +190,7 @@
 
                         <table class="total-row">
                             <tr>
-                                <td class="text-left bold">TOTAL</td>
+                                <td class="text-right bold">TOTAL</td>
                                 <td class="text-right bold">
                                     <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                 </td>
