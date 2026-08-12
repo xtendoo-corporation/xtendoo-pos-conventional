@@ -28,7 +28,7 @@
             <div class="page pos-qz-standard-ticket">
             <style>
                 .pos-qz-standard-ticket {
-                    font-size: 14px;
+                    font-size: 16px;
                     letter-spacing: -0.2px;
                     line-height: 1.9;
                     color: #000;
@@ -171,21 +171,21 @@
 
             <table class="table-borderless" border="0" cellspacing="0" cellpadding="0" rules="none" frame="void">
                 <thead>
-                    <tr>
-                        <th class="text-left col-name" style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px;">Nombre</th>
-                        <th class="text-center col-ud" style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px;">UD</th>
-                        <th class="text-right col-total" style="font-weight: 600; font-size: 15px; letter-spacing: -0.5px;">TOTAL</th>
+                     <tr>
+                        <th class="text-left col-name" style="font-weight: 600; font-size: 17px; letter-spacing: -0.5px;">Nombre</th>
+                        <th class="text-center col-ud" style="font-weight: 600; font-size: 17px; letter-spacing: -0.5px;">UD</th>
+                        <th class="text-right col-total" style="font-weight: 600; font-size: 17px; letter-spacing: -0.5px;">TOTAL</th>
                     </tr>
                 </thead>
                 <tbody>
                     <t t-foreach="o.invoice_line_ids" t-as="line">
                         <tr t-if="line.display_type == 'product'">
-                            <td class="text-left col-name" style="padding-right: 2px; font-weight: normal; font-size: 13px;">
+                            <td class="text-left col-name" style="padding-right: 2px; font-weight: normal; font-size: 15px;">
                                 <t t-set="line_name" t-value="(line.name or '').split('] ', 1)[-1] if '] ' in (line.name or '') else (line.name or '')"/>
                                 <span t-out="line_name"/>
                             </td>
-                            <td class="text-center col-ud" style="font-weight: normal; font-size: 14.5px;"><span t-esc="'%.0f' % line.quantity"/></td>
-                            <td class="text-right col-total" style="font-weight: normal; font-size: 14.5px;">
+                            <td class="text-center col-ud" style="font-weight: normal; font-size: 16px;"><span t-esc="'%.0f' % line.quantity"/></td>
+                            <td class="text-right col-total" style="font-weight: normal; font-size: 16px;">
                                 <span t-field="line.price_total"/>
                             </td>
                         </tr>
@@ -195,12 +195,12 @@
 
             <div class="dashed-line"/>
 
-            <table class="table-borderless" border="0" cellspacing="0" cellpadding="0" rules="none" frame="void" style="width: 100%; font-size: 0.9em; margin-top: 5px; margin-bottom: 5px;">
+            <table class="table-borderless" border="0" cellspacing="0" cellpadding="0" rules="none" frame="void" style="width: 100%; font-size: 1em; margin-top: 5px; margin-bottom: 5px;">
                 <thead>
                     <tr>
-                        <th class="col-tax-base" style="font-weight: 600; font-size: 14px; letter-spacing: -0.5px; text-align: right;">Base</th>
-                        <th class="col-tax-name" style="font-weight: 600; font-size: 14px; letter-spacing: -0.5px; text-align: right;">Impuesto</th>
-                        <th class="col-tax-amount" style="font-weight: 600; font-size: 14px; letter-spacing: -0.5px; text-align: right;">Cuota</th>
+                        <th class="col-tax-base" style="font-weight: 600; font-size: 16px; letter-spacing: -0.5px; text-align: right;">Base</th>
+                        <th class="col-tax-name" style="font-weight: 600; font-size: 16px; letter-spacing: -0.5px; text-align: right;">Impuesto</th>
+                        <th class="col-tax-amount" style="font-weight: 600; font-size: 16px; letter-spacing: -0.5px; text-align: right;">Cuota</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -208,13 +208,13 @@
                         <t t-foreach="o.tax_totals['subtotals']" t-as="subtotal">
                             <t t-foreach="subtotal['tax_groups']" t-as="tax_group">
                                 <tr>
-                                    <td class="col-tax-base" style="font-weight: normal; font-size: 13.5px; text-align: right;">
+                                    <td class="col-tax-base" style="font-weight: normal; font-size: 15px; text-align: right;">
                                         <span t-out="tax_group['base_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                     </td>
-                                    <td class="col-tax-name" style="font-weight: normal; font-size: 12px; text-align: right;">
+                                    <td class="col-tax-name" style="font-weight: normal; font-size: 14px; text-align: right;">
                                         <span t-out="tax_group['group_name']"/>
                                     </td>
-                                    <td class="col-tax-amount" style="font-weight: normal; font-size: 13.5px; text-align: right;">
+                                    <td class="col-tax-amount" style="font-weight: normal; font-size: 15px; text-align: right;">
                                         <span t-out="tax_group['tax_amount_currency']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                     </td>
                                 </tr>
