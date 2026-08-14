@@ -26,11 +26,12 @@
         <field name="perm_unlink" eval="0"/>
     </record>
 
-    <!-- Los administradores globales (ajustes) ven todas sin restricción para poder editarlas -->
+    <!-- Los administradores globales (ajustes) ven todas SI NO tienen restricción explícita.
+         Si tienen cajas asignadas en "Cajas permitidas", solo ven esas (igual que los managers). -->
     <record id="pos_config_rule_system_all" model="ir.rule">
-        <field name="name">POS: Admin Global ve todos los POS</field>
+        <field name="name">POS: Admin Global ve todos los POS (o restringidos)</field>
         <field name="model_id" ref="point_of_sale.model_pos_config"/>
-        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="domain_force">[(1, '=', 1)] if not user.allowed_pos_config_ids else [('id', 'in', user.allowed_pos_config_ids.ids)]</field>
         <field name="groups" eval="[(4, ref('base.group_system'))]"/>
         <field name="perm_read" eval="1"/>
         <field name="perm_write" eval="1"/>
