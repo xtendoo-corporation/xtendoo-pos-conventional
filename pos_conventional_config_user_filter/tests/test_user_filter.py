@@ -21,7 +21,7 @@ class TestResUsersFilter(PosConventionalTestCommon):
                 "login": login,
                 "company_id": self.env.company.id,
                 "company_ids": [(6, 0, self.env.company.ids)],
-                "groups_id": [(6, 0, group_ids)],
+                "group_ids": [(6, 0, group_ids)],
             }
         )
 
@@ -199,4 +199,246 @@ class TestResUsersFilter(PosConventionalTestCommon):
 
         self.assertTrue(user._can_access_pos_config(self.pos_config))
         self.assertFalse(user._can_access_pos_config(config2))
+
+    # ── pos.session / pos.order: aislamiento entre cajas ───────────────────
+
+    def _create_second_config(self, name="Config Secundaria Sesion"):
+        pm = self._make_fresh_cash_pm(name=f"Efectivo {name}")
+        return self.env["pos.config"].create(
+            {
+                "name": name,
+                "payment_method_ids": [(6, 0, [pm.id])],
+            }
+        )
+
+    def test_13_pos_user_only_sees_sessions_of_allowed_configs(self):
+        """Un usuario POS limitado no ve sesiones de cajas no permitidas."""
+        config2 = self._create_second_config("Config Sesion No Permitida")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+
+        user = self._create_pos_user(
+            "POS Session Limited User",
+            "pos_session_limited_user@example.com",
+        )
+        user.allowed_pos_config_ids = [(6, 0, [self.pos_config.id])]
+
+        visible_sessions = self.env["pos.session"].with_user(user).search(
+            [("id", "in", [session1.id, session2.id])]
+        )
+
+        self.assertEqual(visible_sessions.ids, session1.ids)
+
+    def test_14_pos_user_with_no_allowed_configs_sees_no_sessions(self):
+        """Sin cajas permitidas, un usuario POS normal no ve ninguna sesión."""
+        session1 = self._open_session(self.pos_config)
+
+        user = self._create_pos_user(
+            "POS Session Without Configs",
+            "pos_session_without_configs@example.com",
+        )
+
+        visible_sessions = self.env["pos.session"].with_user(user).search(
+            [("id", "=", session1.id)]
+        )
+
+        self.assertFalse(visible_sessions)
+
+    def test_15_pos_manager_sees_all_sessions(self):
+        """Un manager sin restricción explícita ve las sesiones de todas las cajas."""
+        config2 = self._create_second_config("Config Sesion Manager Visible")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+
+        manager = self._create_pos_user(
+            "POS Session Manager User",
+            "pos_session_manager_user@example.com",
+            extra_group_xmlids=["point_of_sale.group_pos_manager"],
+        )
+
+        visible_sessions = self.env["pos.session"].with_user(manager).search(
+            [("id", "in", [session1.id, session2.id])]
+        )
+
+        self.assertEqual(
+            set(visible_sessions.ids), {session1.id, session2.id}
+        )
+
+    def test_16_pos_manager_restricted_only_sees_allowed_sessions(self):
+        """Un manager con cajas asignadas queda restringido a esas sesiones."""
+        config2 = self._create_second_config("Config Sesion Manager Restringido")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+
+        manager = self._create_pos_user(
+            "POS Session Manager Restricted",
+            "pos_session_manager_restricted@example.com",
+            extra_group_xmlids=["point_of_sale.group_pos_manager"],
+        )
+        manager.allowed_pos_config_ids = [(6, 0, [self.pos_config.id])]
+
+        visible_sessions = self.env["pos.session"].with_user(manager).search(
+            [("id", "in", [session1.id, session2.id])]
+        )
+
+        self.assertEqual(visible_sessions.ids, session1.ids)
+
+    def test_17_pos_user_only_sees_orders_of_allowed_configs(self):
+        """Un usuario POS limitado no ve pedidos de cajas no permitidas."""
+        config2 = self._create_second_config("Config Pedido No Permitida")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        order1 = self._make_draft_order(session1)
+        order2 = self._make_draft_order(session2)
+
+        user = self._create_pos_user(
+            "POS Order Limited User",
+            "pos_order_limited_user@example.com",
+        )
+        user.allowed_pos_config_ids = [(6, 0, [self.pos_config.id])]
+
+        visible_orders = self.env["pos.order"].with_user(user).search(
+            [("id", "in", [order1.id, order2.id])]
+        )
+
+        self.assertEqual(visible_orders.ids, order1.ids)
+
+    def test_18_pos_user_with_no_allowed_configs_sees_no_orders(self):
+        """Sin cajas permitidas, un usuario POS normal no ve ningún pedido."""
+        session1 = self._open_session(self.pos_config)
+        order1 = self._make_draft_order(session1)
+
+        user = self._create_pos_user(
+            "POS Order Without Configs",
+            "pos_order_without_configs@example.com",
+        )
+
+        visible_orders = self.env["pos.order"].with_user(user).search(
+            [("id", "=", order1.id)]
+        )
+
+        self.assertFalse(visible_orders)
+
+    def test_19_pos_manager_sees_all_orders(self):
+        """Un manager sin restricción explícita ve los pedidos de todas las cajas."""
+        config2 = self._create_second_config("Config Pedido Manager Visible")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        order1 = self._make_draft_order(session1)
+        order2 = self._make_draft_order(session2)
+
+        manager = self._create_pos_user(
+            "POS Order Manager User",
+            "pos_order_manager_user@example.com",
+            extra_group_xmlids=["point_of_sale.group_pos_manager"],
+        )
+
+        visible_orders = self.env["pos.order"].with_user(manager).search(
+            [("id", "in", [order1.id, order2.id])]
+        )
+
+        self.assertEqual(set(visible_orders.ids), {order1.id, order2.id})
+
+    # ── account.move: facturas (incluidas simplificadas) generadas por POS ──
+
+    def _make_pos_invoice(self, order):
+        """Crea una factura mínima y la vincula al pedido POS como su account_move."""
+        move = self.env["account.move"].create(
+            {
+                "move_type": "out_invoice",
+                "journal_id": self.invoice_journal.id,
+                "partner_id": self.partner.id,
+            }
+        )
+        order.account_move = move.id
+        return move
+
+    def test_20_pos_user_only_sees_invoices_of_allowed_configs(self):
+        """Un usuario POS limitado no ve facturas generadas desde cajas no permitidas."""
+        config2 = self._create_second_config("Config Factura No Permitida")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        order1 = self._make_draft_order(session1)
+        order2 = self._make_draft_order(session2)
+        move1 = self._make_pos_invoice(order1)
+        move2 = self._make_pos_invoice(order2)
+
+        user = self._create_pos_user(
+            "POS Invoice Limited User",
+            "pos_invoice_limited_user@example.com",
+        )
+        user.allowed_pos_config_ids = [(6, 0, [self.pos_config.id])]
+
+        visible_moves = self.env["account.move"].with_user(user).search(
+            [("id", "in", [move1.id, move2.id])]
+        )
+
+        self.assertEqual(visible_moves.ids, move1.ids)
+
+    def test_21_pos_user_with_no_allowed_configs_sees_no_pos_invoices(self):
+        """Sin cajas permitidas, un usuario POS normal no ve facturas de POS."""
+        session1 = self._open_session(self.pos_config)
+        order1 = self._make_draft_order(session1)
+        move1 = self._make_pos_invoice(order1)
+
+        user = self._create_pos_user(
+            "POS Invoice Without Configs",
+            "pos_invoice_without_configs@example.com",
+        )
+
+        visible_moves = self.env["account.move"].with_user(user).search(
+            [("id", "=", move1.id)]
+        )
+
+        self.assertFalse(visible_moves)
+
+    def test_22_pos_user_does_not_see_non_pos_invoices(self):
+        """Una factura sin origen POS sigue sin ser visible para un cajero.
+
+        La regla del core point_of_sale.rule_invoice_pos_user ya restringía
+        a los usuarios POS a solo ver facturas generadas por un pedido POS
+        (nunca facturas contables ajenas al POS). Nuestro hook solo añade la
+        condición de caja permitida a esa misma restricción; este test
+        confirma que ese comportamiento previo no cambia.
+        """
+        non_pos_move = self.env["account.move"].create(
+            {
+                "move_type": "out_invoice",
+                "journal_id": self.invoice_journal.id,
+                "partner_id": self.partner.id,
+            }
+        )
+
+        user = self._create_pos_user(
+            "POS Invoice Non POS Visible",
+            "pos_invoice_non_pos_visible@example.com",
+        )
+
+        visible_moves = self.env["account.move"].with_user(user).search(
+            [("id", "=", non_pos_move.id)]
+        )
+
+        self.assertFalse(visible_moves)
+
+    def test_23_pos_manager_sees_all_pos_invoices(self):
+        """Un manager sin restricción explícita ve las facturas de todas las cajas."""
+        config2 = self._create_second_config("Config Factura Manager Visible")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        order1 = self._make_draft_order(session1)
+        order2 = self._make_draft_order(session2)
+        move1 = self._make_pos_invoice(order1)
+        move2 = self._make_pos_invoice(order2)
+
+        manager = self._create_pos_user(
+            "POS Invoice Manager User",
+            "pos_invoice_manager_user@example.com",
+            extra_group_xmlids=["point_of_sale.group_pos_manager"],
+        )
+
+        visible_moves = self.env["account.move"].with_user(manager).search(
+            [("id", "in", [move1.id, move2.id])]
+        )
+
+        self.assertEqual(set(visible_moves.ids), {move1.id, move2.id})
 

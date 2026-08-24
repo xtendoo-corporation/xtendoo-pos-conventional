@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- El core de point_of_sale define la regla "point_of_sale.rule_invoice_pos_user"
+         para el grupo POS User, con dominio [('pos_order_ids', '!=', False)]: permite ver
+         CUALQUIER factura generada por CUALQUIER caja. Como las reglas de un mismo grupo
+         se combinan con OR (nunca con AND), una regla nueva en ese mismo grupo no puede
+         restringir nada: la regla del core, más permisiva, seguiría ganando. Además ese
+         registro está marcado noupdate=True, así que tampoco puede sobrescribirse vía XML
+         reutilizando su external id. Por eso el domain_force de esa regla se acota
+         directamente por ORM en el hook post_init_hook (ver hooks.py), y se revierte en
+         uninstall_hook. -->
+
+    <!-- Los managers de POS ven todas las facturas de POS SI NO tienen
+         restricción explícita. Si tienen cajas asignadas, solo ven las
+         facturas generadas desde esas cajas. -->
+    <record id="account_move_rule_pos_manager_all" model="ir.rule">
+        <field name="name">POS: Managers ven todas las facturas POS (o restringidas)</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="domain_force">[(1, '=', 1)] if not user.allowed_pos_config_ids else ['|', ('pos_order_ids', '=', False), ('pos_order_ids.config_id', 'in', user.allowed_pos_config_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_manager'))]"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+
+    <!-- Los administradores globales ven todas las facturas POS SI NO tienen
+         restricción explícita. Si tienen cajas asignadas en "Cajas
+         permitidas", solo ven las de esas cajas (igual que los managers). -->
+    <record id="account_move_rule_pos_system_all" model="ir.rule">
+        <field name="name">POS: Admin Global ve todas las facturas POS (o restringidas)</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="domain_force">[(1, '=', 1)] if not user.allowed_pos_config_ids else ['|', ('pos_order_ids', '=', False), ('pos_order_ids.config_id', 'in', user.allowed_pos_config_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="0"/>
+        <field name="perm_create" eval="0"/>
+        <field name="perm_unlink" eval="0"/>
+    </record>
+</odoo>

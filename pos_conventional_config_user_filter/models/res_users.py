@@ -1,5 +1,7 @@
 from odoo import fields, models
 
+from ..hooks import RESTRICTED_INVOICE_POS_USER_DOMAIN
+
 
 class ResUsers(models.Model):
     _inherit = "res.users"
@@ -12,6 +14,22 @@ class ResUsers(models.Model):
         string='Cajas permitidas (POS)',
         help='Cajas (puntos de venta) a las que el usuario puede acceder. Filtrado por las compañías asignadas al usuario.',
     )
+
+    def _register_hook(self):
+        super()._register_hook()
+        # La regla del core point_of_sale.rule_invoice_pos_user (grupo POS
+        # User) permite ver cualquier factura generada por cualquier caja.
+        # Al compartir grupo con nuestras propias reglas, ir.rule las
+        # combina con OR, así que no puede acotarse añadiendo una regla
+        # nueva: hay que sobrescribir su domain_force directamente. El
+        # registro es noupdate=True (no se puede vía XML), y por eso se
+        # aplica aquí, en cada carga del registro (arranque o -u), en vez
+        # de solo en la instalación inicial (ver también uninstall_hook).
+        rule = self.env.ref(
+            "point_of_sale.rule_invoice_pos_user", raise_if_not_found=False
+        )
+        if rule and rule.domain_force != RESTRICTED_INVOICE_POS_USER_DOMAIN:
+            rule.sudo().write({"domain_force": RESTRICTED_INVOICE_POS_USER_DOMAIN})
 
     def _has_limited_pos_config_access(self):
         self.ensure_one()
