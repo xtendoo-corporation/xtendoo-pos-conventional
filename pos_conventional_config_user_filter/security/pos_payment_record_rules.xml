@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Regla: los usuarios POS solo ven los pagos de los pedidos de las
+         cajas permitidas para su usuario. Si no tiene asignadas, no ven
+         ninguno. -->
+    <record id="pos_payment_rule_allowed" model="ir.rule">
+        <field name="name">POS: Ver los pagos de los POS permitidos por usuario</field>
+        <field name="model_id" ref="point_of_sale.model_pos_payment"/>
+        <field name="domain_force">[('pos_order_id.config_id', 'in', user.allowed_pos_config_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_user'))]"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <!-- Los managers de POS pueden ver todos los pagos SI NO tienen
+         restricción explícita. Si tienen cajas asignadas, solo ven los
+         pagos de esas cajas. -->
+    <record id="pos_payment_rule_manager_all" model="ir.rule">
+        <field name="name">POS: Managers ven todos los pagos (o restringidos)</field>
+        <field name="model_id" ref="point_of_sale.model_pos_payment"/>
+        <field name="domain_force">[(1, '=', 1)] if not user.allowed_pos_config_ids else [('pos_order_id.config_id', 'in', user.allowed_pos_config_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('point_of_sale.group_pos_manager'))]"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+
+    <!-- Los administradores globales ven todos los pagos SI NO tienen
+         restricción explícita. Si tienen cajas asignadas en "Cajas
+         permitidas", solo ven los de esas cajas (igual que los managers). -->
+    <record id="pos_payment_rule_system_all" model="ir.rule">
+        <field name="name">POS: Admin Global ve todos los pagos (o restringidos)</field>
+        <field name="model_id" ref="point_of_sale.model_pos_payment"/>
+        <field name="domain_force">[(1, '=', 1)] if not user.allowed_pos_config_ids else [('pos_order_id.config_id', 'in', user.allowed_pos_config_ids.ids)]</field>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        <field name="perm_read" eval="1"/>
+        <field name="perm_write" eval="1"/>
+        <field name="perm_create" eval="1"/>
+        <field name="perm_unlink" eval="1"/>
+    </record>
+</odoo>

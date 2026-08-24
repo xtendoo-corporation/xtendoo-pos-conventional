@@ -1,5 +1,6 @@
 # Copyright 2024 Xtendoo
 # License OPL-1
+from odoo import fields
 from odoo.tests.common import tagged
 from odoo.addons.pos_conventional_core.tests.common import PosConventionalTestCommon
 
@@ -441,4 +442,201 @@ class TestResUsersFilter(PosConventionalTestCommon):
         )
 
         self.assertEqual(set(visible_moves.ids), {move1.id, move2.id})
+
+    # ── pos.payment: aislamiento entre cajas ────────────────────────────────
+
+    def test_24_pos_user_only_sees_payments_of_allowed_configs(self):
+        """Un usuario POS limitado no ve pagos de pedidos de cajas no permitidas."""
+        config2 = self._create_second_config("Config Pago No Permitida")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        order1 = self._make_draft_order(session1)
+        order2 = self._make_draft_order(session2)
+        self._add_payment(order1, amount=1.0)
+        self._add_payment(
+            order2, payment_method=config2.payment_method_ids[:1], amount=1.0
+        )
+        payment1 = order1.payment_ids
+        payment2 = order2.payment_ids
+
+        user = self._create_pos_user(
+            "POS Payment Limited User",
+            "pos_payment_limited_user@example.com",
+        )
+        user.allowed_pos_config_ids = [(6, 0, [self.pos_config.id])]
+
+        visible_payments = self.env["pos.payment"].with_user(user).search(
+            [("id", "in", [payment1.id, payment2.id])]
+        )
+
+        self.assertEqual(visible_payments.ids, payment1.ids)
+
+    def test_25_pos_user_with_no_allowed_configs_sees_no_payments(self):
+        """Sin cajas permitidas, un usuario POS normal no ve ningún pago."""
+        session1 = self._open_session(self.pos_config)
+        order1 = self._make_draft_order(session1)
+        self._add_payment(order1, amount=1.0)
+        payment1 = order1.payment_ids
+
+        user = self._create_pos_user(
+            "POS Payment Without Configs",
+            "pos_payment_without_configs@example.com",
+        )
+
+        visible_payments = self.env["pos.payment"].with_user(user).search(
+            [("id", "=", payment1.id)]
+        )
+
+        self.assertFalse(visible_payments)
+
+    def test_26_pos_manager_sees_all_payments(self):
+        """Un manager sin restricción explícita ve los pagos de todas las cajas."""
+        config2 = self._create_second_config("Config Pago Manager Visible")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        order1 = self._make_draft_order(session1)
+        order2 = self._make_draft_order(session2)
+        self._add_payment(order1, amount=1.0)
+        self._add_payment(
+            order2, payment_method=config2.payment_method_ids[:1], amount=1.0
+        )
+        payment1 = order1.payment_ids
+        payment2 = order2.payment_ids
+
+        manager = self._create_pos_user(
+            "POS Payment Manager User",
+            "pos_payment_manager_user@example.com",
+            extra_group_xmlids=["point_of_sale.group_pos_manager"],
+        )
+
+        visible_payments = self.env["pos.payment"].with_user(manager).search(
+            [("id", "in", [payment1.id, payment2.id])]
+        )
+
+        self.assertEqual(set(visible_payments.ids), {payment1.id, payment2.id})
+
+    # ── account.move.line: aislamiento entre cajas (facturas POS) ──────────
+
+    def _make_pos_invoice_line(self, move):
+        return self.env["account.move.line"].create(
+            {
+                "move_id": move.id,
+                "account_id": self.income_account.id,
+                "name": "Línea factura POS test",
+                "quantity": 1,
+                "price_unit": 10.0,
+            }
+        )
+
+    def test_27_pos_user_only_sees_invoice_lines_of_allowed_configs(self):
+        """Un usuario POS limitado no ve líneas de factura de cajas no permitidas."""
+        config2 = self._create_second_config("Config Línea Factura No Permitida")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        order1 = self._make_draft_order(session1)
+        order2 = self._make_draft_order(session2)
+        move1 = self._make_pos_invoice(order1)
+        move2 = self._make_pos_invoice(order2)
+        line1 = self._make_pos_invoice_line(move1)
+        line2 = self._make_pos_invoice_line(move2)
+
+        user = self._create_pos_user(
+            "POS Invoice Line Limited User",
+            "pos_invoice_line_limited_user@example.com",
+        )
+        user.allowed_pos_config_ids = [(6, 0, [self.pos_config.id])]
+
+        visible_lines = self.env["account.move.line"].with_user(user).search(
+            [("id", "in", [line1.id, line2.id])]
+        )
+
+        self.assertEqual(visible_lines.ids, line1.ids)
+
+    def test_28_pos_manager_sees_all_invoice_lines(self):
+        """Un manager sin restricción explícita ve las líneas de factura de todas las cajas."""
+        config2 = self._create_second_config("Config Línea Factura Manager Visible")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        order1 = self._make_draft_order(session1)
+        order2 = self._make_draft_order(session2)
+        move1 = self._make_pos_invoice(order1)
+        move2 = self._make_pos_invoice(order2)
+        line1 = self._make_pos_invoice_line(move1)
+        line2 = self._make_pos_invoice_line(move2)
+
+        manager = self._create_pos_user(
+            "POS Invoice Line Manager User",
+            "pos_invoice_line_manager_user@example.com",
+            extra_group_xmlids=["point_of_sale.group_pos_manager"],
+        )
+
+        visible_lines = self.env["account.move.line"].with_user(manager).search(
+            [("id", "in", [line1.id, line2.id])]
+        )
+
+        self.assertEqual(set(visible_lines.ids), {line1.id, line2.id})
+
+    # ── account.bank.statement.line: aislamiento entre cajas ───────────────
+
+    def _make_pos_statement_line(self, session, amount=5.0):
+        return self.env["account.bank.statement.line"].create(
+            {
+                "journal_id": self.cash_journal_test.id,
+                "amount": amount,
+                "date": fields.Date.context_today(self.env.user),
+                "pos_session_id": session.id,
+            }
+        )
+
+    def test_29_pos_user_never_sees_statement_lines_even_of_allowed_config(self):
+        """Un cajero raso no ve NINGÚN apunte bancario, ni siquiera de su caja.
+
+        account.bank.statement.line delega en account.move (_inherits), así
+        que además de la regla propia del modelo, Odoo aplica también las
+        reglas de account.move sobre su move_id delegado. La regla del core
+        para group_pos_user en account.move (rule_invoice_pos_user, acotada
+        por caja en el hook) exige pos_order_ids != False — condición que un
+        apunte bancario nunca cumple, al no ser una factura. El resultado
+        (ya en el Odoo estándar, sin este módulo) es que un cajero raso
+        jamás ve apuntes bancarios por esta vía; el manager sí, porque su
+        propia regla de account.move añade el escape "ve todo si no está
+        restringido" que neutraliza esa exigencia (ver test_30).
+        """
+        config2 = self._create_second_config("Config Apunte No Permitida")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        line1 = self._make_pos_statement_line(session1)
+        line2 = self._make_pos_statement_line(session2)
+
+        user = self._create_pos_user(
+            "POS Statement Line Limited User",
+            "pos_statement_line_limited_user@example.com",
+        )
+        user.allowed_pos_config_ids = [(6, 0, [self.pos_config.id])]
+
+        visible_lines = self.env["account.bank.statement.line"].with_user(user).search(
+            [("id", "in", [line1.id, line2.id])]
+        )
+
+        self.assertFalse(visible_lines)
+
+    def test_30_pos_manager_sees_all_statement_lines(self):
+        """Un manager sin restricción explícita ve los apuntes bancarios de todas las cajas."""
+        config2 = self._create_second_config("Config Apunte Manager Visible")
+        session1 = self._open_session(self.pos_config)
+        session2 = self._open_session(config2)
+        line1 = self._make_pos_statement_line(session1)
+        line2 = self._make_pos_statement_line(session2)
+
+        manager = self._create_pos_user(
+            "POS Statement Line Manager User",
+            "pos_statement_line_manager_user@example.com",
+            extra_group_xmlids=["point_of_sale.group_pos_manager"],
+        )
+
+        visible_lines = self.env["account.bank.statement.line"].with_user(manager).search(
+            [("id", "in", [line1.id, line2.id])]
+        )
+
+        self.assertEqual(set(visible_lines.ids), {line1.id, line2.id})
 
