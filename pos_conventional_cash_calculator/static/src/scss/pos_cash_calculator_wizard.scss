@@ -3,6 +3,14 @@
 // d-flex con botones Bootstrap e input estirado a la misma altura.
 
 .o_cash_calculator_wizard {
+    // Evita que un mousedown accidental sobre etiquetas/botones deje el
+    // navegador "atascado" en modo selección de texto al pulsar rápido
+    // y repetidamente los botones +/- (los inputs conservan su propia
+    // selección de texto, ya que los elementos de formulario no heredan
+    // este comportamiento).
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
 
     // ── Tarjeta de denominación ──────────────────────────────────────────────
     .o_cash_calc_card {
