@@ -355,20 +355,31 @@ class PosOrder(models.Model):
         modificado ya pricelist_id antes de que este método se ejecute, lo que
         hacía que la comparación `new_pricelist == order.pricelist_id` saltara el
         recálculo aunque los precios no se hubieran actualizado.
+
+        La tarifa del cliente solo se aplica si está entre las tarifas
+        disponibles de la caja (pos.config.available_pricelist_ids), igual que
+        hace el POS táctil estándar (updatePricelistAndFiscalPosition en
+        pos_order.js). Si no lo está -por ejemplo un cliente "Contado"
+        compartido entre varias cajas cuya tarifa por defecto de compañía no
+        está habilitada en esta caja concreta- se usa la tarifa por defecto de
+        la caja en lugar de la del cliente.
         """
         for order in self:
             if order.state != "draft":
                 continue
 
-            # Tarifa de respaldo: la que está configurada en la sesión/config
-            config_pricelist = (
-                order.config_id.pricelist_id
-                or order.session_id.config_id.pricelist_id
-            )
+            config = order.config_id or order.session_id.config_id
 
-            if order.partner_id:
+            # Tarifa de respaldo: la que está configurada en la sesión/config
+            config_pricelist = config.pricelist_id
+
+            if order.partner_id and config:
                 partner_pricelist = order.partner_id.property_product_pricelist
-                new_pricelist = partner_pricelist or config_pricelist
+                available_pricelists = config._get_available_pricelists()
+                if partner_pricelist and partner_pricelist in available_pricelists:
+                    new_pricelist = partner_pricelist
+                else:
+                    new_pricelist = config_pricelist
             else:
                 # Sin cliente → tarifa por defecto de la sesión
                 new_pricelist = config_pricelist

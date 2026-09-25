@@ -64,6 +64,32 @@ class TestPosOrderPricelist(PosConventionalTestCommon):
             })],
         })
 
+        # ── Tarifa NO habilitada en la caja de test ──────────────────────────
+        # Simula el caso real detectado en producción (caja "Butihondo"): un
+        # cliente cuya tarifa (propia o heredada por defecto de la compañía)
+        # no está entre las tarifas disponibles de esa caja concreta.
+        cls.pricelist_not_available = cls.env["product.pricelist"].create({
+            "name": "Tarifa Test No Disponible En Caja",
+            "currency_id": company.currency_id.id,
+            "item_ids": [(0, 0, {
+                "compute_price": "percentage",
+                "percent_price": 90.0,
+                "applied_on": "3_global",
+            })],
+        })
+
+        # Habilitamos el uso de varias tarifas en la caja de test y declaramos
+        # cuáles son las disponibles, igual que se configura en producción
+        # (pricelist_not_available queda deliberadamente fuera de la lista).
+        cls.pos_config.write({
+            "use_pricelist": True,
+            "available_pricelist_ids": [(6, 0, [
+                cls.pricelist_base.id,
+                cls.pricelist_20pct.id,
+                cls.pricelist_fixed_50.id,
+            ])],
+        })
+
         # ── Partners de test ─────────────────────────────────────────────────
         # Cliente VIP: tiene tarifa -20% (diferente a la de la sesión)
         cls.partner_vip = cls.env["res.partner"].create({
@@ -80,6 +106,13 @@ class TestPosOrderPricelist(PosConventionalTestCommon):
             "name": "Cliente Sin Tarifa Especial",
             "customer_rank": 1,
             "property_product_pricelist": cls.pricelist_base.id,
+        })
+        # Cliente cuya tarifa asignada NO está disponible en la caja de test:
+        # reproduce el bug real (cliente "Contado" en la caja Butihondo).
+        cls.partner_pricelist_not_available = cls.env["res.partner"].create({
+            "name": "Cliente Con Tarifa No Disponible En Caja",
+            "customer_rank": 1,
+            "property_product_pricelist": cls.pricelist_not_available.id,
         })
 
     # ── Helpers internos ──────────────────────────────────────────────────────
@@ -222,6 +255,49 @@ class TestPosOrderPricelist(PosConventionalTestCommon):
             order.pricelist_id,
             original_pricelist,
             "Con la misma tarifa, el pedido no debe cambiar",
+        )
+
+    def test_08b_partner_pricelist_not_available_falls_back_to_config_pricelist(self):
+        """Si la tarifa del cliente no está disponible en la caja, se usa la de la caja.
+
+        Reproduce el bug detectado en producción (caja "Butihondo" de
+        parafarmacia_del_sur_19): el cliente por defecto de esa caja no tiene
+        tarifa propia, por lo que Odoo le resuelve la tarifa por defecto de la
+        compañía -que no está entre las tarifas disponibles de esa caja
+        concreta (pos.config.available_pricelist_ids)-. Antes de la corrección,
+        el pedido se quedaba con esa tarifa no disponible en lugar de con la
+        tarifa por defecto configurada en la caja.
+        """
+        session, order = self._order_with_session_pricelist()
+        session_pricelist = order.pricelist_id
+
+        order.partner_id = self.partner_pricelist_not_available
+        order._onchange_partner_id_update_pricelist()
+
+        self.assertEqual(
+            order.pricelist_id,
+            session_pricelist,
+            "Con una tarifa de cliente no disponible en la caja, debe prevalecer "
+            "la tarifa por defecto de la caja, no la del cliente.",
+        )
+        self.assertNotEqual(
+            order.pricelist_id,
+            self.pricelist_not_available,
+            "La tarifa no disponible en la caja nunca debe asignarse al pedido.",
+        )
+
+    def test_08c_partner_pricelist_not_available_recomputes_lines_with_config_pricelist(self):
+        """Con tarifa de cliente no disponible, las líneas se recalculan con la tarifa de la caja."""
+        session, order = self._order_with_session_pricelist()
+        self._add_line(order, self.product, 1.0)
+
+        order.partner_id = self.partner_pricelist_not_available
+        order._onchange_partner_id_update_pricelist()
+
+        line = order.lines[0]
+        self.assertAlmostEqual(
+            line.discount, 0.0, places=2,
+            msg="pricelist_base no aplica descuento; la tarifa -90%% no disponible no debe usarse",
         )
 
     def test_21_native_onchange_presets_pricelist_lines_still_recalculated(self):
