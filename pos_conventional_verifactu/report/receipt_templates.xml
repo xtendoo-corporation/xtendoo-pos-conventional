@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Bloque Veri*Factu equivalente al de l10n_es_edi_verifactu_pos (OrderReceipt).
+         Espera la variable "verifactu" con los valores de
+         _get_pos_conventional_verifactu_receipt_values(). -->
+    <template id="receipt_verifactu_block">
+        <div t-if="verifactu" class="pos-conventional-verifactu"
+            style="text-align: center; margin: 6px 0;">
+            <div>
+                <t t-if="verifactu['is_simplified']">Factura simplificada: </t>
+                <t t-else="">Factura: </t>
+                <span t-out="verifactu['invoice_name']"/>
+            </div>
+            <div style="margin-top: 6px;"><strong>QR tributario:</strong></div>
+            <img t-att-src="verifactu['qr_code']" alt="QR Veri*Factu"
+                style="display: block; width: 180px; height: 180px; margin: 4px auto;"/>
+            <div><strong>VERI*FACTU</strong></div>
+            <div class="dashed-line"/>
+        </div>
+    </template>
+
+    <template id="report_factura_simplificada_80mm"
+        inherit_id="pos_conventional_receipt_custom.report_factura_simplificada_80mm">
+        <xpath expr="//div[hasclass('page')]/div[hasclass('dashed-line')][last()]" position="after">
+            <t t-call="pos_conventional_verifactu.receipt_verifactu_block">
+                <t t-set="verifactu" t-value="o._get_pos_conventional_verifactu_receipt_values()"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="report_pos_order_80mm"
+        inherit_id="pos_conventional_receipt_custom.report_pos_order_80mm">
+        <xpath expr="//div[hasclass('page')]/div[hasclass('dashed-line')][last()]" position="after">
+            <t t-call="pos_conventional_verifactu.receipt_verifactu_block">
+                <t t-set="verifactu" t-value="o._get_pos_conventional_verifactu_receipt_values()"/>
+            </t>
+        </xpath>
+    </template>
+</odoo>

@@ -268,6 +268,9 @@ patch(ReceiptHeader.prototype, {
             }
         }
 
+        // Keep the first render safe while the asynchronous fallback resolves.
+        this._resolvedCompany = resolveCompany(this) || {};
+
         console.log('[POS DEBUG] patched setup invoked - this:', this);
         onMounted(async () => {
             console.log('[POS DEBUG] onMounted - this.env (raw):', this.env);

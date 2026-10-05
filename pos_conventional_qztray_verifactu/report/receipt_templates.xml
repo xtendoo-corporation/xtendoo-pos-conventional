@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="report_factura_simplificada_80mm_standard_qztray_document"
+        inherit_id="pos_conventional_qztray.report_factura_simplificada_80mm_standard_qztray_document">
+        <xpath expr="//div[hasclass('pos-qz-standard-ticket')]/div[hasclass('dashed-line')][last()]" position="after">
+            <t t-call="pos_conventional_verifactu.receipt_verifactu_block">
+                <t t-set="verifactu" t-value="o._get_pos_conventional_verifactu_receipt_values()"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="report_pos_order_80mm_qztray"
+        inherit_id="pos_conventional_qztray.report_pos_order_80mm_qztray">
+        <xpath expr="//div[hasclass('ticket')]/div[hasclass('dashed-line')][last()]" position="after">
+            <t t-call="pos_conventional_verifactu.receipt_verifactu_block">
+                <t t-set="verifactu" t-value="o._get_pos_conventional_verifactu_receipt_values()"/>
+            </t>
+        </xpath>
+    </template>
+</odoo>

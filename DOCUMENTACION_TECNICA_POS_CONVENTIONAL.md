@@ -56,12 +56,14 @@
 | `pos_conventional_order_barcode` | Alta de líneas por escáner/código | `point_of_sale`, `sale`, `mail` | Modelo + JS formulario |
 | `pos_conventional_payment_wizard` | Cobro guiado y popup de pagos | `point_of_sale`, `sale`, `mail` | Wizards + JS |
 | `pos_conventional_picking_integration` | Conversión a venta/albarán | `point_of_sale`, `stock`, `sale` | Backend + report |
+| `pos_conventional_qztray_verifactu` | Puente (auto_install): QR Veri*Factu en tickets QZ Tray HTML y RAW ESC/POS | `pos_conventional_qztray`, `pos_conventional_verifactu` | Backend + report |
 | `pos_conventional_receipt` | Personalización de ticket POS | `point_of_sale`, `l10n_es_pos` | POS frontend assets |
 | `pos_conventional_receipt_custom` | Factura simplificada, email y datos extra de ticket | `point_of_sale`, `sale`, `mail` | Backend + report |
 | `pos_conventional_returns` | Flujo de devoluciones convencional | `pos_conventional_core` | Backend + JS |
 | `pos_conventional_sale_integration` | Integración analítica con ventas | `point_of_sale`, `pos_conventional_picking_integration`, `sale` | Backend + reporting |
 | `pos_conventional_session_management` | Apertura/cierre y control de caja | `point_of_sale`, `sale`, `mail`, `pos_conventional_cash_calculator` | Backend + OWL popups |
 | `pos_conventional_users_pin` | PIN de usuario POS | `point_of_sale`, `pos_conventional_session_management` | Backend + wizard |
+| `pos_conventional_verifactu` | Puente (auto_install): QR Veri*Factu en los tickets 80mm | `pos_conventional_receipt_custom`, `l10n_es_edi_verifactu_pos` | Backend + report |
 
 ### Relación de dependencia global
 
@@ -1043,6 +1045,38 @@ Amplía botones de pago con botón de apertura de cajón.
 ### Conclusión del módulo
 
 Pequeño, pero importante para la operación física de caja.
+
+---
+
+## 5.14 `pos_conventional_verifactu` y `pos_conventional_qztray_verifactu`
+
+### Objetivo
+
+Imprimir en los tickets de POS Conventional el mismo bloque Veri*Factu que
+`l10n_es_edi_verifactu_pos` añade al `OrderReceipt` nativo: número de factura
+(simplificada o no), «QR tributario:», imagen QR y «VERI*FACTU».
+
+### Diseño
+
+- Son módulos puente `auto_install`: solo se instalan cuando
+  `l10n_es_edi_verifactu_pos` está instalado.
+- `_get_pos_conventional_verifactu_receipt_values()` (en `pos.order` y
+  `account.move`) reutiliza los campos nativos `l10n_es_edi_verifactu_qr_code`
+  y `l10n_es_edi_verifactu_get_invoice_name()`. Los pedidos facturados usan los
+  datos de la factura, igual que el módulo nativo. Si no hay QR, se devuelve `{}`
+  y no se imprime nada.
+- `pos_conventional_verifactu` hereda `report_factura_simplificada_80mm` y
+  `report_pos_order_80mm`.
+- `pos_conventional_qztray_verifactu` hereda los dos informes HTML de QZ Tray y
+  añade el QR al ticket RAW mediante el hook
+  `_get_pos_conventional_qztray_raw_receipt_before_footer()`. El QR se imprime
+  con el comando ESC/POS nativo `GS ( k` (modelo 2, corrección M). Los bytes
+  se expresan en CP858 porque es la codificación del trabajo RAW de QZ Tray.
+
+### Cobertura de tests
+
+- `pos_conventional_verifactu/tests/test_verifactu_receipt.py`
+- `pos_conventional_qztray_verifactu/tests/test_qztray_verifactu_receipt.py`
 
 ---
 

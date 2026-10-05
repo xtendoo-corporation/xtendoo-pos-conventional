@@ -158,23 +158,40 @@ class PosOrder(models.Model):
             lines.append(self._qztray_receipt_pair("Cambio", self._qztray_receipt_money(cash_change), width))
         lines.append(separator)
 
+        footer_lines = []
         if self.config_id.receipt_footer:
             for footer_line in self.config_id.receipt_footer.splitlines():
-                lines.extend(self._qztray_receipt_wrap(footer_line, width))
-                lines.append("")
+                footer_lines.extend(self._qztray_receipt_wrap(footer_line, width))
+                footer_lines.append("")
 
-        lines.append(self._qztray_receipt_center("Gracias por su visita", width))
-        lines.append(self._qztray_receipt_center("MODO RAW QZ TRAY", width))
+        footer_lines.append(self._qztray_receipt_center("Gracias por su visita", width))
+        footer_lines.append(self._qztray_receipt_center("MODO RAW QZ TRAY", width))
         if self.user_id:
-            lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name} {date_order.strftime('%H:%M')}", width))
-        lines.extend(["", "", "", "\x1bd\x08", "\x1dV\x00"])
-        centered_lines = []
+            footer_lines.append(self._qztray_receipt_center(f"Atendido por: {self.user_id.name} {date_order.strftime('%H:%M')}", width))
+        footer_lines.extend(["", "", "", "\x1bd\x08", "\x1dV\x00"])
+        return "\n".join(
+            self._qztray_receipt_indent(lines)
+            + self._get_pos_conventional_qztray_raw_receipt_before_footer(width)
+            + self._qztray_receipt_indent(footer_lines)
+        )
+
+    def _qztray_receipt_indent(self, lines):
+        indented_lines = []
         for line in lines:
             if not line or not any(char.isprintable() and char not in "\x1b\x1d" for char in line):
-                centered_lines.append(line)
+                indented_lines.append(line)
             else:
-                centered_lines.append(f"   {line}")
-        return "\n".join(centered_lines)
+                indented_lines.append(f"   {line}")
+        return indented_lines
+
+    def _get_pos_conventional_qztray_raw_receipt_before_footer(self, width):
+        """Hook for extra raw lines printed between payments and footer.
+
+        Lines are sent as-is (no indentation), so they may embed ESC/POS
+        commands such as alignment or 2D symbols.
+        """
+        self.ensure_one()
+        return []
 
     def get_pos_conventional_qztray_raw_receipt(self):
         self.ensure_one()
