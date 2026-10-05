@@ -449,6 +449,39 @@ class TestSessionManagement(PosConventionalTestCommon):
         self.assertIn("input.select()", content)
         self.assertIn('this.formatAmount(0)', content)
 
+    def test_22f_closing_popup_js_handles_session_without_cash_payment_method(self):
+        """Regresión: sin método de efectivo Odoo devuelve default_cash_details = {}.
+
+        El popup debe tratarlo como "sin efectivo" (cashDetails null) y no llamar a
+        post_closing_cash_details, que lanza "There is no cash register in this session".
+        """
+        import os
+
+        js_path = os.path.normpath(os.path.join(
+            os.path.dirname(__file__),
+            "..", "static", "src", "js", "closing_popup.js",
+        ))
+        with open(js_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        self.assertIn("cashDetails && cashDetails.id ? cashDetails : null", content)
+        self.assertIn("if (this.state.cashDetails) {\n                await this.orm.call(\"pos.session\", \"post_closing_cash_details\"", content)
+
+    def test_22g_session_without_cash_method_has_no_cash_details(self):
+        """Sin método de pago en efectivo no hay diario de caja ni default_cash_details."""
+        config = self.env["pos.config"].create({
+            "name": "Test POS Sin Efectivo",
+            "pos_non_touch": True,
+            "payment_method_ids": [(6, 0, [self.card_pm.id])],
+        })
+        session = self._open_session(config)
+
+        self.assertFalse(session.cash_journal_id)
+        data = session.get_closing_control_data_non_touch()
+        self.assertFalse(data["default_cash_details"])
+        with self.assertRaises(UserError):
+            session.post_closing_cash_details(0.0)
+
     # ── PosSessionOpeningWizard — acción de apertura ──────────────────────
 
     def test_23_opening_wizard_action_validate_and_open_returns_action(self):

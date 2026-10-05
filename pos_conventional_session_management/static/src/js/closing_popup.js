@@ -95,9 +95,11 @@ export class ClosingPopup extends Component {
             this.state.sessionData = data;
             this.state.sessionName = sessionInfo?.[0]?.name || "";
             this.state.ordersDetails = data.orders_details || { quantity: 0, amount: 0 };
-            this.state.cashDetails = data.default_cash_details || null;
+            // Sin método de pago en efectivo Odoo devuelve {} (truthy en JS): normalizar a null.
+            const cashDetails = data.default_cash_details;
+            this.state.cashDetails = cashDetails && cashDetails.id ? cashDetails : null;
             this.state.paymentMethods = data.non_cash_payment_methods || [];
-            this.state.cashMoves = data.default_cash_details?.moves || [];
+            this.state.cashMoves = this.state.cashDetails?.moves || [];
             this.state.currencyId = data.currency_id;
             this.state.currencyName = data.currency_name || "EUR";
             this.state.currencySymbol = currencySymbol;
@@ -202,7 +204,10 @@ export class ClosingPopup extends Component {
                 countedCash = this.parseFloat(this.state.payments[this.state.cashDetails.id]?.counted || "0");
             }
 
-            await this.orm.call("pos.session", "post_closing_cash_details", [sessionId], { counted_cash: countedCash });
+            // Solo hay caja registradora (diario de efectivo) si existe método de pago en efectivo.
+            if (this.state.cashDetails) {
+                await this.orm.call("pos.session", "post_closing_cash_details", [sessionId], { counted_cash: countedCash });
+            }
             await this.orm.call("pos.session", "update_closing_control_state_session", [sessionId, this.state.notes]);
 
             const bankPaymentMethodDiffPairs = this.state.paymentMethods
