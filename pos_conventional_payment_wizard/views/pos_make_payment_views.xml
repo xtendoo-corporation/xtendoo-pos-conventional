@@ -12,77 +12,80 @@
                 <field name="available_payment_method_ids" invisible="1" />
 
                 <div class="p-3 pb-0">
-                    <!-- Cabecera de importes estilo Dashboard -->
-                    <div class="row g-0 mb-4 border bg-100 rounded shadow-sm">
-                        <div class="col-4 p-3 border-end text-center">
-                            <div class="text-muted x-small fw-bold text-uppercase mb-1">Total a Pagar</div>
-                            <field name="amount_total" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                readonly="1" nolabel="1"
-                                class="fs-2 fw-bolder d-block"/>
+                    <!-- Bloque de importes: etiqueta a la izquierda, cantidad a la derecha -->
+                    <div class="border bg-100 rounded shadow-sm mb-4">
+                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                            <span class="text-muted fw-bold text-uppercase small">Total a pagar</span>
+                            <div class="text-end">
+                                <field name="amount_total" widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    readonly="1" nolabel="1"
+                                    class="fs-3 fw-bolder "/>
+                            </div>
                         </div>
-                        <div class="col-4 p-3 border-end text-center">
-                            <div class="text-muted x-small fw-bold text-uppercase mb-1">Pagado</div>
-                            <field name="amount_paid" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                readonly="1" nolabel="1"
-                                class="fs-2 fw-bolder d-block text-success"
-                                invisible="amount_total &gt; 0 and amount_paid &lt; amount_total or amount_total &lt; 0 and amount_paid &gt; amount_total"/>
-                            <field name="amount_paid" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                readonly="1" nolabel="1"
-                                class="fs-2 fw-bolder d-block text-danger"
-                                invisible="not (amount_total &gt; 0 and amount_paid &lt; amount_total or amount_total &lt; 0 and amount_paid &gt; amount_total)"/>
+                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                            <span class="text-muted fw-bold text-uppercase small">Pagado</span>
+                            <div class="text-end">
+                                <field name="amount_paid" widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    readonly="1" nolabel="1"
+                                    class="fs-3 fw-bolder text-success"
+                                    invisible="amount_total &gt; 0 and amount_paid &lt; amount_total or amount_total &lt; 0 and amount_paid &gt; amount_total"/>
+                                <field name="amount_paid" widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    readonly="1" nolabel="1"
+                                    class="fs-3 fw-bolder text-danger"
+                                    invisible="not (amount_total &gt; 0 and amount_paid &lt; amount_total or amount_total &lt; 0 and amount_paid &gt; amount_total)"/>
+                            </div>
                         </div>
-                        <div class="col-4 p-3 text-center">
-                            <div class="text-muted x-small fw-bold text-uppercase mb-1">Cambio / Restante</div>
-                            <field name="amount_change" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                readonly="1" nolabel="1"
-                                class="fs-2 fw-bolder d-block text-success"
-                                invisible="(amount_total &gt;= 0 and amount_change &gt; 0) or (amount_total &lt; 0 and amount_change &lt; 0)"/>
-                            <field name="amount_change" widget="monetary"
-                                options="{'currency_field': 'currency_id'}"
-                                readonly="1" nolabel="1"
-                                class="fs-2 fw-bolder d-block text-danger"
-                                invisible="(amount_total &gt;= 0 and amount_change &lt;= 0) or (amount_total &lt; 0 and amount_change &gt;= 0)"/>
+                        <div class="d-flex justify-content-between align-items-center px-3 py-2">
+                            <span class="text-muted fw-bold text-uppercase small">Cambio / Restante</span>
+                            <div class="text-end">
+                                <field name="amount_change" widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    readonly="1" nolabel="1"
+                                    class="fs-3 fw-bolder text-success"
+                                    invisible="(amount_total &gt;= 0 and amount_change &gt; 0) or (amount_total &lt; 0 and amount_change &lt; 0)"/>
+                                <field name="amount_change" widget="monetary"
+                                    options="{'currency_field': 'currency_id'}"
+                                    readonly="1" nolabel="1"
+                                    class="fs-3 fw-bolder text-danger"
+                                    invisible="(amount_total &gt;= 0 and amount_change &lt;= 0) or (amount_total &lt; 0 and amount_change &gt;= 0)"/>
+                            </div>
                         </div>
                     </div>
 
                     <field name="is_cash_payment" invisible="1" />
 
-                    <!-- Sección de Entrada de Pago: Destacada con un fondo suave -->
+                    <!-- Entrada de pago -->
                     <div class="bg-light p-3 rounded border mb-4 shadow-sm">
-                        <div class="d-flex align-items-start gap-3">
-                            <div class="flex-grow-1">
-                                <label for="amount_tendered" class="fw-bold mb-1 d-block text-primary" style="line-height: 20px;">Importe Entregado</label>
-                                <div class="input-group o_pos_amount_group">
-                                    <span class="input-group-text">
-                                        <field name="currency_symbol" nolabel="1"/>
-                                    </span>
-                                    <field name="amount_tendered"
-                                        widget="monetary"
-                                        options="{'currency_field': 'currency_id', 'no_symbol': True}"
-                                        nolabel="1"
-                                        class="o_pos_amount_tendered fw-bold"/>
-                                </div>
+                        <div class="mb-3">
+                            <label for="amount_tendered" class="fw-bold mb-1 d-block">Importe Entregado</label>
+                            <div class="input-group o_pos_amount_group">
+                                <span class="input-group-text">
+                                    <field name="currency_symbol" nolabel="1"/>
+                                </span>
+                                <field name="amount_tendered"
+                                    widget="monetary"
+                                    options="{'currency_field': 'currency_id', 'no_symbol': True}"
+                                    nolabel="1"
+                                    class="o_pos_amount_tendered fw-bold"/>
                             </div>
-                            <div class="flex-grow-1">
-                                <label for="payment_method_id" class="fw-bold mb-1 d-block" style="line-height: 20px;">Diario</label>
-                                <div class="d-flex align-items-center" style="height: 34px;">
+                        </div>
+                        <div>
+                            <label for="payment_method_id" string="Método de pago" class="fw-bold mb-1 d-block"/>
+                            <div class="d-flex align-items-stretch gap-2">
+                                <div class="input-group o_pos_amount_group flex-grow-1">
                                     <field name="payment_method_id"
                                         options="{'no_create': True, 'no_open': True}"
                                         required="1"
                                         nolabel="1"
-                                        class="w-100 mb-0"/>
+                                        class="o_pos_amount_tendered o_pos_payment_method_input w-100"/>
                                 </div>
-                            </div>
-                            <div style="flex: 0 0 200px;">
-                                <div style="height: 21px;"></div> <!-- Compensación de altura de label -->
                                 <button name="action_add_payment" type="object"
-                                        class="btn btn-primary w-100 fw-bold d-flex align-items-center justify-content-center"
-                                        style="height: 34px;">
-                                    <i class="fa fa-plus-circle me-2"/> Añadir Pago
+                                        class="btn btn-primary px-3"
+                                        title="Añadir pago">
+                                    <i class="fa fa-plus"/>
                                 </button>
                             </div>
                         </div>

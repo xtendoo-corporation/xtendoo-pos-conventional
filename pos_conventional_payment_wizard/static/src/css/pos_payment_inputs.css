@@ -1,0 +1,54 @@
+/* Inputs del wizard Pago combinado: caja completa estilo input-group de Bootstrap */
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: nowrap;
+}
+
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .input-group-text .o_field_widget {
+    display: inline !important;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-size: inherit;
+}
+
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered {
+    display: flex !important;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-bottom: 0 !important;
+}
+
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered > div {
+    width: 100%;
+    align-items: stretch !important;
+}
+
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered input.o_input {
+    flex: 1 1 auto;
+    text-align: right;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    padding: 0.375rem 0.75rem;
+    background-color: var(--bs-body-bg, #fff);
+}
+
+/* Con símbolo a la izquierda: sin borde ni radio en el lado izquierdo */
+.o_pos_conventional_payment_wizard_form .input-group-text + .o_pos_amount_tendered input.o_input {
+    border-left-width: 0;
+    border-radius: 0 0.375rem 0.375rem 0;
+}
+
+/* Campo Método de pago: caja completa, texto a la izquierda */
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_payment_method_input input.o_input {
+    text-align: left;
+    border-radius: 0.375rem;
+}
+
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered input.o_input:focus,
+.o_pos_conventional_payment_wizard_form .o_pos_amount_group .o_pos_amount_tendered input.o_input:focus-visible {
+    border-color: #86b7fe;
+    box-shadow: none;
+    outline: none;
+}

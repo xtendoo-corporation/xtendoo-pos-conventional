@@ -289,6 +289,7 @@ class PosMakePaymentWizard(models.TransientModel):
 
         return {
             "type": "ir.actions.act_window",
+            "name": _("Pago combinado"),
             "res_model": "pos.make.payment.wizard",
             "res_id": self.id,
             "view_mode": "form",
@@ -325,6 +326,7 @@ class PosMakePaymentWizard(models.TransientModel):
             order.payment_ids.unlink()
         return {
             "type": "ir.actions.act_window",
+            "name": _("Pago combinado"),
             "res_model": "pos.make.payment.wizard",
             "res_id": self.id,
             "view_mode": "form",
