@@ -46,16 +46,47 @@ class PosOrder(models.Model):
             order.amount_untaxed = refund_factor * sum(line.price_subtotal for line in order.lines)
 
     def _get_amounts_from_lines(self):
-        """Devuelve impuestos y total calculados a partir de las líneas actuales."""
+        """Devuelve impuestos y total calculados a partir de las líneas actuales.
+
+        Usa el mismo cálculo global que la factura y el TPV estándar
+        (``_get_tax_totals_summary``) para que el total del pedido coincida con
+        el de la factura. Si alguna línea lleva un descuento fijo adicional
+        (``discount_line``), que el cálculo estándar no contempla, se mantiene
+        la suma de los importes de línea.
+        """
         self.ensure_one()
         refund_factor = -1 if self.is_refund else 1
-        tax_total = refund_factor * sum(
-            line.price_subtotal_incl - line.price_subtotal for line in self.lines
-        )
-        amount_total = refund_factor * sum(
-            line.price_subtotal_incl for line in self.lines
-        )
         currency = self.currency_id or self.env.company.currency_id
+        lines = self.lines
+        has_extra_discount = "discount_line" in lines._fields and any(
+            lines.mapped("discount_line")
+        )
+        if lines and currency and not has_extra_discount:
+            try:
+                account_tax = self.env["account.tax"]
+                base_lines = lines._prepare_tax_base_line_values()
+                account_tax._add_tax_details_in_base_lines(base_lines, self.company_id)
+                account_tax._round_base_lines_tax_details(base_lines, self.company_id)
+                tax_totals = account_tax._get_tax_totals_summary(
+                    base_lines=base_lines,
+                    currency=currency,
+                    company=self.company_id,
+                    cash_rounding=None,
+                )
+                return (
+                    currency.round(refund_factor * tax_totals["tax_amount_currency"]),
+                    currency.round(refund_factor * tax_totals["total_amount_currency"]),
+                )
+            except UserError:
+                _logger.warning(
+                    "No se pudo calcular el total global del pedido %s; "
+                    "se usa la suma de las líneas.",
+                    self.id,
+                )
+        tax_total = refund_factor * sum(
+            line.price_subtotal_incl - line.price_subtotal for line in lines
+        )
+        amount_total = refund_factor * sum(line.price_subtotal_incl for line in lines)
         if currency:
             tax_total = currency.round(tax_total)
             amount_total = currency.round(amount_total)

@@ -1205,3 +1205,44 @@ class TestPosOrder(PosConventionalTestCommon):
             "El selector sólo debe sugerir productos marcados como disponibles en POS.",
         )
 
+
+    # ── totales: redondeo global igual que la factura ─────────────────────
+
+    def test_90_amounts_from_lines_use_global_rounding(self):
+        """El total del pedido se calcula sobre todas las líneas, como la factura.
+
+        Dos líneas con impuesto incluido (3 %) y 15 % de descuento: sumando los
+        importes de línea redondeados saldría 23,68, pero el cálculo global
+        (el de la factura) da 23,67.
+        """
+        company = self.env.company
+        tax = self.env["account.tax"].create({
+            "name": "IGIC 3% incluido test",
+            "amount": 3.0,
+            "amount_type": "percent",
+            "type_tax_use": "sale",
+            "price_include_override": "tax_included",
+            "company_id": company.id,
+        })
+        products = self.env["product.product"].create([
+            {
+                "name": "Producto redondeo %s" % price,
+                "type": "consu",
+                "list_price": price,
+                "taxes_id": [(6, 0, tax.ids)],
+                "available_in_pos": True,
+                "property_account_income_id": self.income_account.id,
+            }
+            for price in (13.95, 13.90)
+        ])
+        order = self._make_draft_order(self._open_session())
+        for product in products:
+            line = self._add_line(order, product)
+            line.write({"discount": 15.0})
+            line.write(line._compute_amount_line_all())
+        self.assertEqual(
+            round(sum(order.lines.mapped("price_subtotal_incl")), 2), 23.68
+        )
+        amount_tax, amount_total = order._get_amounts_from_lines()
+        self.assertEqual(amount_total, 23.67)
+        self.assertEqual(amount_tax, 0.69)
