@@ -1,6 +1,6 @@
 {
     "name": "POS Conventional Core",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.0.1",
     "category": "Point of Sale",
     "summary": "Core functionality for non-touch POS",
     "description": "Base module for the POS Conventional modular system. Handles non-touch mode toggle and base order logic.",

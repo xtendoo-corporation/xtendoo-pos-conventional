@@ -425,21 +425,65 @@ class PosOrder(models.Model):
             # Recalcular siempre las líneas: el handler nativo puede haber ya
             # actualizado pricelist_id, por lo que comparar con order.pricelist_id
             # no es fiable para detectar si el recálculo es necesario.
-            if order.lines:
+            if order.lines and order._is_pricelist_recompute_allowed():
                 order._recompute_lines_with_pricelist()
 
+    @api.onchange("pricelist_id")
+    def _onchange_pricelist_id_recompute_lines(self):
+        """Recalcula las líneas en el formulario en cuanto cambia la tarifa."""
+        for order in self:
+            if order.lines and order._is_pricelist_recompute_allowed():
+                order._recompute_lines_with_pricelist()
+
+    def write(self, vals):
+        """
+        Recalcula las líneas cuando la tarifa cambia por código.
+
+        Si la escritura incluye ``lines`` no se recalcula: el llamante ya envía
+        las líneas que quiere guardar (por ejemplo, el formulario, que las ha
+        recalculado en el onchange y puede llevar precios editados después).
+        """
+        if "pricelist_id" not in vals or "lines" in vals:
+            return super().write(vals)
+        previous_pricelists = {order.id: order.pricelist_id for order in self}
+        result = super().write(vals)
+        for order in self:
+            if (
+                order.pricelist_id != previous_pricelists[order.id]
+                and order.lines
+                and order._is_pricelist_recompute_allowed()
+            ):
+                order._recompute_lines_with_pricelist()
+        return result
+
+    def _is_pricelist_recompute_allowed(self):
+        """
+        Indica si un cambio de tarifa debe recalcular las líneas del pedido.
+
+        Solo se recalculan pedidos en borrador del TPV convencional. Las
+        devoluciones conservan el precio del pedido original.
+        """
+        self.ensure_one()
+        config = self.config_id or self.session_id.config_id
+        return (
+            self.state == "draft"
+            and not self.is_refund
+            and bool(getattr(config, "pos_non_touch", False))
+        )
 
     def _recompute_lines_with_pricelist(self):
         """
-        Recalcula price_unit, discount y subtotales de todas las líneas del pedido
+        Recalcula price_unit, discount y subtotales de las líneas del pedido
         aplicando la tarifa activa (self.pricelist_id).
 
         Este método puede llamarse tanto desde un @api.onchange (registros virtuales)
-        como sobre registros guardados. En ambos casos, asigna directamente los
-        campos de la línea con los nuevos valores calculados por _prepare_order_line_vals.
+        como sobre registros guardados. Precio y descuento salen de
+        _prepare_order_line_vals; los subtotales, del cálculo estándar de la
+        línea (_compute_amount_line_all), que respeta sus impuestos, la posición
+        fiscal y las extensiones de otros módulos.
 
-        Los impuestos de la línea no se modifican: sólo dependen del producto
-        y de la posición fiscal, no de la tarifa.
+        Las líneas que no dependen de la tarifa (ver
+        pos.order.line._is_pricelist_recomputable) no se modifican.
         """
         self.ensure_one()
         if not self.pricelist_id or not self.lines:
@@ -448,15 +492,21 @@ class PosOrder(models.Model):
             skip_parent_order_totals_recompute=True
         )
         for line in order_for_batch_update.lines:
-            product = line.product_id
-            if not product:
+            if not line._is_pricelist_recomputable():
                 continue
-            qty = line.qty or 1.0
-            new_vals = order_for_batch_update._prepare_order_line_vals(product, qty)
-            line.price_unit = new_vals["price_unit"]
-            line.discount = new_vals["discount"]
-            line.price_subtotal = new_vals["price_subtotal"]
-            line.price_subtotal_incl = new_vals["price_subtotal_incl"]
+            new_vals = order_for_batch_update._prepare_order_line_vals(
+                line.product_id, line.qty or 1.0
+            )
+            price_vals = {
+                "price_unit": new_vals["price_unit"],
+                "discount": new_vals["discount"],
+            }
+            if isinstance(line.id, int):
+                line.write(price_vals)
+                line.write(line._compute_amount_line_all())
+            else:
+                line.update(price_vals)
+                line.update(line._compute_amount_line_all())
         # Recalcular totales del pedido tras actualizar todas las líneas
         self._onchange_lines_recompute_totals()
 

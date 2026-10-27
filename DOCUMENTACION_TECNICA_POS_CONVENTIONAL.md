@@ -209,7 +209,7 @@ Responsabilidades más importantes:
 - `default_get()` con sesión activa, tarifa y cliente por defecto
 - `create()` con asignación automática de sesión abierta convencional
 - cálculo de líneas con pricelist y descuento real
-- recálculo de líneas al cambiar cliente/tarifa
+- recálculo de líneas ante cualquier cambio de tarifa (cambio de cliente, onchange de `pricelist_id` o `write()` por código) en pedidos borrador de cajas convencionales; se excluyen devoluciones y líneas de devolución, combo, recompensa o producto de descuento (`pos.order.line._is_pricelist_recomputable`)
 - validación + facturación + navegación postventa
 - composición de datos de recibo para frontend/printing
 

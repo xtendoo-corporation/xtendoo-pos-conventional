@@ -67,6 +67,30 @@ class PosOrderLine(models.Model):
                     super(PosOrderLine, line).write({"tax_ids": [(6, 0, product_taxes.ids)]})
         return result
 
+    def _is_pricelist_recomputable(self):
+        """
+        Indica si el precio de la línea debe recalcularse al cambiar la tarifa.
+
+        Se excluyen las líneas cuyo precio no sale de la tarifa: devoluciones,
+        componentes de combo, recompensas de fidelización (pos_loyalty) y el
+        producto de descuento global (pos_discount). Otros módulos pueden
+        ampliar esta lista sobrescribiendo el método.
+        """
+        self.ensure_one()
+        if not self.product_id:
+            return False
+        if self.refunded_orderline_id or self.combo_parent_id or self.combo_line_ids:
+            return False
+        if "is_reward_line" in self._fields and self.is_reward_line:
+            return False
+        config = self.order_id.config_id
+        discount_product = (
+            config.discount_product_id
+            if "discount_product_id" in config._fields
+            else self.env["product.product"]
+        )
+        return self.product_id != discount_product
+
     def _get_total_cost_for_line(self):
         """Calcula total_cost para una línea usando el coste estándar del producto."""
         self.ensure_one()

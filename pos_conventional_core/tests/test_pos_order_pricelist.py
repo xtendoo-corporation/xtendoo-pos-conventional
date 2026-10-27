@@ -10,6 +10,9 @@ Comportamiento validado:
     recalculan (igual que en un pedido de ventas convencional).
   - El usuario no puede cambiar la tarifa manualmente; solo cambia al
     cambiar el cliente (o al borrar el cliente, vuelve a la de la sesión).
+  - Cualquier cambio de tarifa (onchange o escritura por código) recalcula
+    las líneas de pedidos en borrador del TPV convencional, salvo
+    devoluciones y líneas cuyo precio no sale de la tarifa.
   - Si el cliente no tiene tarifa asignada, se mantiene la tarifa de la sesión.
   - Al borrar el cliente, se restaura la tarifa de la sesión.
   - Los subtotales se calculan sobre el precio efectivo (precio de lista menos
@@ -31,6 +34,13 @@ class TestPosOrderPricelist(PosConventionalTestCommon):
         super().setUpClass()
 
         company = cls.env.company
+
+        # Sin la característica de tarifas activa, res.partner devuelve una
+        # tarifa vacía (product.pricelist._get_partner_pricelist_multi). Se
+        # activa como haría Ajustes para no depender del estado de la BD.
+        cls.env.ref("base.group_user").write({
+            "implied_ids": [(4, cls.env.ref("product.group_product_pricelist").id)],
+        })
 
         # ── Tarifa base para la sesión (precio de lista, sin descuento) ──────
         # Asignamos una tarifa explícita al config de test para que la sesión
@@ -584,5 +594,195 @@ class TestPosOrderPricelist(PosConventionalTestCommon):
             places=2,
         )
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # BLOQUE 6 — Recálculo directo ante cualquier cambio de tarifa
+    # ══════════════════════════════════════════════════════════════════════════
 
+    def _order_with_manual_line(self):
+        """Pedido con una línea a precio manual (100 € sin descuento → 70 €)."""
+        _session, order = self._order_with_session_pricelist()
+        line = self._add_line(order, self.product, 2.0)
+        line.write({"price_unit": 70.0, "discount": 0.0})
+        line.write(line._compute_amount_line_all())
+        return order, line
 
+    def test_25_write_pricelist_recomputes_lines_and_totals(self):
+        """Escribir pricelist_id por código recalcula precio, descuento y totales."""
+        order, line = self._order_with_manual_line()
+
+        order.write({"pricelist_id": self.pricelist_20pct.id})
+
+        self.assertAlmostEqual(line.price_unit, 100.0, places=2)
+        self.assertAlmostEqual(line.discount, 20.0, places=2)
+        self.assertAlmostEqual(
+            line.price_subtotal_incl,
+            line._compute_amount_line_all()["price_subtotal_incl"],
+            places=2,
+        )
+        self.assertAlmostEqual(line.price_subtotal, 160.0, places=2)
+        self.assertAlmostEqual(
+            order.amount_total, sum(order.lines.mapped("price_subtotal_incl")), places=2
+        )
+
+    def test_26_write_same_pricelist_keeps_lines(self):
+        """Reescribir la misma tarifa no es un cambio: se respeta el precio manual."""
+        order, line = self._order_with_manual_line()
+
+        order.write({"pricelist_id": order.pricelist_id.id})
+
+        self.assertAlmostEqual(line.price_unit, 70.0, places=2)
+        self.assertAlmostEqual(line.discount, 0.0, places=2)
+
+    def test_27_write_pricelist_with_lines_respects_given_lines(self):
+        """Si la escritura trae las líneas (guardado del formulario) no se recalcula."""
+        order, line = self._order_with_manual_line()
+
+        order.write({
+            "pricelist_id": self.pricelist_20pct.id,
+            "lines": [(1, line.id, {"price_unit": 65.0})],
+        })
+
+        self.assertAlmostEqual(line.price_unit, 65.0, places=2)
+        self.assertAlmostEqual(line.discount, 0.0, places=2)
+
+    def test_28_write_pricelist_on_paid_order_keeps_lines(self):
+        """Un pedido que no está en borrador no se recalcula."""
+        order, line = self._order_with_manual_line()
+        order.write({"state": "paid"})
+
+        order.write({"pricelist_id": self.pricelist_20pct.id})
+
+        self.assertAlmostEqual(line.price_unit, 70.0, places=2)
+
+    def test_29_write_pricelist_on_refund_keeps_lines(self):
+        """Las devoluciones conservan el precio del pedido original."""
+        order, line = self._order_with_manual_line()
+        order.write({"is_refund": True})
+
+        order.write({"pricelist_id": self.pricelist_20pct.id})
+
+        self.assertAlmostEqual(line.price_unit, 70.0, places=2)
+
+    def test_30_partner_change_on_refund_keeps_lines(self):
+        """El cambio de cliente tampoco recalcula una devolución."""
+        order, line = self._order_with_manual_line()
+        order.write({"is_refund": True})
+
+        order.partner_id = self.partner_vip
+        order._onchange_partner_id_update_pricelist()
+
+        self.assertEqual(order.pricelist_id, self.pricelist_20pct)
+        self.assertAlmostEqual(line.price_unit, 70.0, places=2)
+
+    def test_31_recompute_not_allowed_on_touch_config(self):
+        """Los pedidos de cajas táctiles no se recalculan desde backend."""
+        _session, order = self._order_with_session_pricelist()
+        self.assertTrue(order._is_pricelist_recompute_allowed())
+
+        order.config_id.pos_non_touch = False
+
+        self.assertFalse(order._is_pricelist_recompute_allowed())
+
+    def test_32_onchange_pricelist_recomputes_virtual_lines(self):
+        """En el formulario, cambiar la tarifa recalcula las líneas sin guardar."""
+        order, line = self._order_with_manual_line()
+        virtual_order = order.new(origin=order)
+
+        virtual_order.pricelist_id = self.pricelist_fixed_50
+        virtual_order._onchange_pricelist_id_recompute_lines()
+
+        virtual_line = virtual_order.lines[0]
+        self.assertAlmostEqual(virtual_line.price_unit, 100.0, places=2)
+        self.assertAlmostEqual(virtual_line.discount, 50.0, places=2)
+        self.assertAlmostEqual(virtual_line.price_subtotal, 100.0, places=2)
+        self.assertAlmostEqual(
+            virtual_order.amount_total,
+            sum(virtual_order.lines.mapped("price_subtotal_incl")),
+            places=2,
+        )
+        self.assertAlmostEqual(line.price_unit, 70.0, places=2, msg="No se guarda nada")
+
+    def test_33_refund_and_combo_lines_are_not_recomputed(self):
+        """Líneas de devolución y de combo conservan su precio."""
+        order, line = self._order_with_manual_line()
+        refund_line = self._add_line(order, self.product, 1.0)
+        refund_line.write({"price_unit": 70.0, "refunded_orderline_id": line.id})
+        combo_child = self._add_line(order, self.product_barcode, 1.0)
+        combo_parent = self._add_line(order, self.product, 1.0)
+        combo_child.combo_parent_id = combo_parent
+        combo_parent.price_unit = 70.0
+        combo_prices = (combo_child.price_unit, combo_parent.price_unit)
+
+        order.write({"pricelist_id": self.pricelist_20pct.id})
+
+        self.assertAlmostEqual(line.discount, 20.0, places=2)
+        self.assertAlmostEqual(refund_line.price_unit, 70.0, places=2)
+        self.assertAlmostEqual(refund_line.discount, 0.0, places=2)
+        self.assertEqual(
+            (combo_child.price_unit, combo_parent.price_unit), combo_prices
+        )
+        self.assertFalse(refund_line._is_pricelist_recomputable())
+        self.assertFalse(combo_child._is_pricelist_recomputable())
+        self.assertFalse(combo_parent._is_pricelist_recomputable())
+        self.assertTrue(line._is_pricelist_recomputable())
+
+    def test_34_recompute_twice_is_idempotent(self):
+        """Cambio de cliente (que también cambia la tarifa) no duplica el descuento."""
+        order, line = self._order_with_manual_line()
+
+        order.partner_id = self.partner_vip
+        order._onchange_partner_id()
+        order._onchange_partner_id_update_pricelist()
+        order._onchange_pricelist_id_recompute_lines()
+
+        self.assertAlmostEqual(line.price_unit, 100.0, places=2)
+        self.assertAlmostEqual(line.discount, 20.0, places=2)
+        self.assertAlmostEqual(line.price_subtotal, 160.0, places=2)
+
+    def _form_onchange(self, order, values, field_name):
+        """Ejecuta el onchange igual que el formulario web y devuelve las líneas."""
+        line_spec = {
+            name: {}
+            for name in ("product_id", "qty", "price_unit", "discount",
+                         "price_subtotal", "price_subtotal_incl")
+        }
+        spec = {
+            "partner_id": {},
+            "pricelist_id": {},
+            "amount_total": {},
+            "lines": {"fields": line_spec},
+        }
+        result = order.onchange(values, [field_name], spec)
+        line_values = [
+            command[2] for command in result["value"].get("lines", [])
+            if command[0] == 1
+        ]
+        return result["value"], line_values
+
+    def test_35_form_onchange_pricelist_recomputes_lines(self):
+        """Cambiar la tarifa en el formulario devuelve las líneas recalculadas."""
+        order, _line = self._order_with_manual_line()
+
+        value, line_values = self._form_onchange(
+            order, {"pricelist_id": self.pricelist_20pct.id}, "pricelist_id"
+        )
+
+        self.assertEqual(len(line_values), 1)
+        self.assertAlmostEqual(line_values[0]["price_unit"], 100.0, places=2)
+        self.assertAlmostEqual(line_values[0]["discount"], 20.0, places=2)
+        self.assertAlmostEqual(line_values[0]["price_subtotal"], 160.0, places=2)
+        self.assertAlmostEqual(
+            value["amount_total"], line_values[0]["price_subtotal_incl"], places=2
+        )
+
+    def test_36_form_onchange_partner_recomputes_lines_once(self):
+        """Cambiar el cliente en el formulario aplica su tarifa sin doble descuento."""
+        order, _line = self._order_with_manual_line()
+
+        value, line_values = self._form_onchange(
+            order, {"partner_id": self.partner_vip.id}, "partner_id"
+        )
+
+        self.assertEqual(value["pricelist_id"], self.pricelist_20pct.id)
+        self.assertAlmostEqual(line_values[0]["discount"], 20.0, places=2)
+        self.assertAlmostEqual(line_values[0]["price_subtotal"], 160.0, places=2)
