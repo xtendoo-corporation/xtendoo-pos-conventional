@@ -73,9 +73,14 @@ class PosOrder(models.Model):
                     company=self.company_id,
                     cash_rounding=None,
                 )
+                # _prepare_tax_base_line_values invierte las cantidades cuando el
+                # pedido es devolución o su total almacenado ya es negativo; el
+                # factor debe seguir el mismo criterio (como en el estándar) para
+                # que una cantidad negativa no cambie de signo en cada recálculo.
+                global_factor = -1 if (self.is_refund or self.amount_total < 0.0) else 1
                 return (
-                    currency.round(refund_factor * tax_totals["tax_amount_currency"]),
-                    currency.round(refund_factor * tax_totals["total_amount_currency"]),
+                    currency.round(global_factor * tax_totals["tax_amount_currency"]),
+                    currency.round(global_factor * tax_totals["total_amount_currency"]),
                 )
             except UserError:
                 _logger.warning(
