@@ -7,10 +7,10 @@
             <form string="Recuento de efectivo" class="o_cash_calculator_wizard">
                 <div class="row m-0 p-0">
                     <!-- Money Grid (Left Side) -->
-                    <div class="col-12 col-md-8 p-4">
+                    <div class="col-12 col-md-8 px-4 py-3">
                         <h6 class="o_cash_section_title">Billetes</h6>
-                        <div class="row g-2 mb-4">
-                            <div class="col-12 col-sm-6">
+                        <div class="row g-0 mb-3">
+                            <div class="col-6">
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
@@ -21,20 +21,6 @@
                                         <span class="o_cash_label">200 €</span>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
-                                <div class="o_cash_calc_card">
-                                    <div class="o_cash_qty_group">
-                                        <div class="d-flex">
-                                            <button name="decrement_20" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
-                                            <field name="qty_20" nolabel="1"/>
-                                            <button name="increment_20" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
-                                        </div>
-                                        <span class="o_cash_label">20 €</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
@@ -45,20 +31,6 @@
                                         <span class="o_cash_label">100 €</span>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
-                                <div class="o_cash_calc_card">
-                                    <div class="o_cash_qty_group">
-                                        <div class="d-flex">
-                                            <button name="decrement_10" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
-                                            <field name="qty_10" nolabel="1"/>
-                                            <button name="increment_10" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
-                                        </div>
-                                        <span class="o_cash_label">10 €</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
@@ -70,7 +42,27 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-sm-6">
+                            <div class="col-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_20" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_20" nolabel="1"/>
+                                            <button name="increment_20" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">20 €</span>
+                                    </div>
+                                </div>
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_10" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_10" nolabel="1"/>
+                                            <button name="increment_10" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">10 €</span>
+                                    </div>
+                                </div>
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
@@ -85,8 +77,8 @@
                         </div>
 
                         <h6 class="o_cash_section_title">Monedas</h6>
-                        <div class="row g-2">
-                            <div class="col-12 col-sm-6">
+                        <div class="row g-0">
+                            <div class="col-6">
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
@@ -97,8 +89,26 @@
                                         <span class="o_cash_label">2 €</span>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_1" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_1" nolabel="1"/>
+                                            <button name="increment_1" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">1 €</span>
+                                    </div>
+                                </div>
+                                <div class="o_cash_calc_card">
+                                    <div class="o_cash_qty_group">
+                                        <div class="d-flex">
+                                            <button name="decrement_050" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
+                                            <field name="qty_050" nolabel="1"/>
+                                            <button name="increment_050" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
+                                        </div>
+                                        <span class="o_cash_label">0,50 €</span>
+                                    </div>
+                                </div>
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
@@ -110,19 +120,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-sm-6">
-                                <div class="o_cash_calc_card">
-                                    <div class="o_cash_qty_group">
-                                        <div class="d-flex">
-                                            <button name="decrement_1" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
-                                            <field name="qty_1" nolabel="1"/>
-                                            <button name="increment_1" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
-                                        </div>
-                                        <span class="o_cash_label">1 €</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
+                            <div class="col-6">
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
@@ -133,20 +131,6 @@
                                         <span class="o_cash_label">0,10 €</span>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
-                                <div class="o_cash_calc_card">
-                                    <div class="o_cash_qty_group">
-                                        <div class="d-flex">
-                                            <button name="decrement_050" type="object" class="btn btn-primary border" title="Restar"><i class="fa fa-minus"/></button>
-                                            <field name="qty_050" nolabel="1"/>
-                                            <button name="increment_050" type="object" class="btn btn-primary border" title="Sumar"><i class="fa fa-plus"/></button>
-                                        </div>
-                                        <span class="o_cash_label">0,50 €</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
@@ -157,8 +141,6 @@
                                         <span class="o_cash_label">0,05 €</span>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
@@ -169,8 +151,6 @@
                                         <span class="o_cash_label">0,02 €</span>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-12 col-sm-6">
                                 <div class="o_cash_calc_card">
                                     <div class="o_cash_qty_group">
                                         <div class="d-flex">
