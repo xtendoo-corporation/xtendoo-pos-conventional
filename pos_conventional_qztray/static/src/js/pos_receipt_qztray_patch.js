@@ -376,10 +376,6 @@ patch(PosReceiptClientAction.prototype, {
                     "[PosReceiptQzTray] No se pudo imprimir el ticket original con QZ Tray.",
                     error
                 );
-                this.notification.add(
-                    _t("No se pudo imprimir el ticket original con QZ Tray: %s", error?.message || error),
-                    { type: "danger", sticky: true }
-                );
             });
         }
 
@@ -387,10 +383,6 @@ patch(PosReceiptClientAction.prototype, {
             console.warn(
                 "[PosReceiptQzTray] No se pudo imprimir con QZ Tray.",
                 error
-            );
-            this.notification.add(
-                _t("No se pudo imprimir el ticket QZ Tray: %s", error?.message || error),
-                { type: "danger", sticky: true }
             );
         });
     },
@@ -416,10 +408,6 @@ async function printReceiptWindowQzTrayAction(env, action) {
             console.warn(
                 "[PosReceiptQzTray] No se pudo imprimir con QZ Tray desde window action.",
                 error
-            );
-            env.services.notification.add(
-                _t("No se pudo imprimir el ticket QZ Tray: %s", error?.message || error),
-                { type: "danger", sticky: true }
             );
         }
     } else {
