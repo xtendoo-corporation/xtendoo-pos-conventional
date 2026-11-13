@@ -59,6 +59,16 @@
             # Actual receipt client action (must go after POS components are registered)
             "pos_conventional_core/static/src/js/pos_receipt_client_action.js",
         ],
+        "point_of_sale._assets_pos": [
+            # La UI real del TPV (/pos/ui) carga este bundle, no web.assets_backend.
+            # pos_conventional_qztray registra aquí su parche, que importa
+            # @pos_conventional_core/js/pos_receipt_client_action: sin esta
+            # entrada el cargador de módulos fallaba en cada arranque del TPV
+            # ("modules needed by other modules but have not been defined") y
+            # el parche de QZ Tray nunca llegaba a aplicarse. El fichero solo
+            # usa registry/owl/hooks, que existen en el bundle del TPV.
+            "pos_conventional_core/static/src/js/pos_receipt_client_action.js",
+        ],
         "web.assets_unit_tests": [
             "pos_conventional_core/static/tests/pos_order_workflow_utils.test.js",
             "pos_conventional_core/static/tests/pos_order_form_core_controller.test.js",
