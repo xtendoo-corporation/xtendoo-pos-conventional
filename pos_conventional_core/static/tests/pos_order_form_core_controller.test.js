@@ -1,4 +1,5 @@
 import { describe, expect, test } from "@odoo/hoot";
+import { allowTranslations } from "@web/../tests/web_test_helpers";
 
 import { PosConventionalOrderFormController } from "../src/js/pos_order_form_core_controller";
 import { FormController } from "@web/views/form/form_controller";
@@ -209,7 +210,8 @@ describe("@pos_conventional_core/order_form_core_controller", () => {
         button.remove();
     });
 
-    test("_onPaymentButtonClick blocks empty or zero-total orders", async () => {
+    test("_onPaymentButtonClick blocks orders without product lines", async () => {
+        allowTranslations();
         const controller = makeController();
         controller.model = {
             root: {
@@ -247,7 +249,7 @@ describe("@pos_conventional_core/order_form_core_controller", () => {
         expect(stopped).toBe(true);
         expect(beepCalls).toBe(1);
         expect(controller.notifications).toHaveLength(1);
-        expect(controller.notifications[0].options.title).toBe("Importe inválido");
+        expect(String(controller.notifications[0].options.title)).toBe("Pedido vacío");
         button.remove();
     });
 

@@ -19,7 +19,7 @@ class TestPosOrderFormCoreControllerFrontend(HOOTCommon):
         "@pos_conventional_core/order_workflow_utils/loadPaymentMethods returns empty array when field has no ids,"
         "@pos_conventional_core/order_workflow_utils/loadPaymentMethods reads server names and keeps ids,"
         "@pos_conventional_core/order_workflow_utils/notifyInvalidOrderForPayment warns when order has no real lines,"
-        "@pos_conventional_core/order_workflow_utils/notifyInvalidOrderForPayment warns when total is zero,"
+        "@pos_conventional_core/order_workflow_utils/notifyInvalidOrderForPayment accepts zero totals with product lines,"
         "@pos_conventional_core/order_workflow_utils/notifyInvalidOrderForPayment accepts negative totals with product lines,"
         "@pos_conventional_core/order_workflow_utils/activateNavigationBypass and clearNavigationBypass toggle the global flag,"
         "@pos_conventional_core/order_workflow_utils/rememberActiveSession stores the order session so the list keeps working after F5,"
@@ -31,7 +31,7 @@ class TestPosOrderFormCoreControllerFrontend(HOOTCommon):
         "@pos_conventional_core/order_form_core_controller/beforeLeave blocks leaving draft orders with product lines and no payment,"
         "@pos_conventional_core/order_form_core_controller/beforeLeave allows leaving draft orders with product lines when a payment is already registered,"
         "@pos_conventional_core/order_form_core_controller/_onPaymentButtonClick allows cancel to activate the navigation bypass,"
-        "@pos_conventional_core/order_form_core_controller/_onPaymentButtonClick blocks empty or zero-total orders,"
+        "@pos_conventional_core/order_form_core_controller/_onPaymentButtonClick blocks orders without product lines,"
         "@pos_conventional_core/order_form_core_controller/_onPaymentButtonClick activates bypass for valid orders,"
         "@pos_conventional_core/order_form_core_controller/_onDocClick activates bypass for stock forecast navigation",
     )]

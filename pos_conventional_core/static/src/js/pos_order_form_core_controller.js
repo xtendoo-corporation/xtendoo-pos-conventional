@@ -54,7 +54,7 @@ export class PosConventionalOrderFormController extends FormController {
 
     _onDocClick(ev) {
         if (ev.target.closest('button[name="action_open_stock_forecast"]')) {
-            activateNavigationBypass(this.model.root, 2000);
+            this._activateNavigationBypass(this.model.root, 2000);
         }
     }
 
@@ -72,13 +72,13 @@ export class PosConventionalOrderFormController extends FormController {
 
         const record = this.model.root;
         if (wizardValidateBtn) {
-            activateNavigationBypass(record);
+            this._activateNavigationBypass(record);
             return;
         }
 
         const isCancelButton = targetButton.name === "action_cancel_and_delete_order";
         if (isCancelButton) {
-            activateNavigationBypass(record);
+            this._activateNavigationBypass(record);
             return;
         }
 
@@ -87,7 +87,7 @@ export class PosConventionalOrderFormController extends FormController {
         if (!hasProductLines) {
             ev.preventDefault();
             ev.stopImmediatePropagation();
-            playErrorBeep();
+            this._playErrorBeep();
             this.notification.add(
                 _t("No se puede cobrar un pedido sin líneas. Añada productos al pedido."),
                 { type: "warning", title: _t("Pedido vacío"), sticky: false }
@@ -95,7 +95,7 @@ export class PosConventionalOrderFormController extends FormController {
             return;
         }
 
-        activateNavigationBypass(record);
+        this._activateNavigationBypass(record);
     }
 
     _getOrderLinesList(record) {

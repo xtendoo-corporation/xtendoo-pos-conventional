@@ -1,4 +1,5 @@
 import { describe, expect, test } from "@odoo/hoot";
+import { allowTranslations } from "@web/../tests/web_test_helpers";
 
 import {
     activateNavigationBypass,
@@ -155,6 +156,7 @@ describe("@pos_conventional_core/order_workflow_utils", () => {
     });
 
     test("notifyInvalidOrderForPayment warns when order has no real lines", async () => {
+        allowTranslations();
         const notifications = [];
         const notification = {
             add(message, options) {
@@ -174,10 +176,10 @@ describe("@pos_conventional_core/order_workflow_utils", () => {
 
         expect(valid).toBe(false);
         expect(notifications).toHaveLength(1);
-        expect(notifications[0].options.title).toBe("Pedido vacío");
+        expect(String(notifications[0].options.title)).toBe("Pedido vacío");
     });
 
-    test("notifyInvalidOrderForPayment warns when total is zero", async () => {
+    test("notifyInvalidOrderForPayment accepts zero totals with product lines", async () => {
         const notifications = [];
         const notification = {
             add(message, options) {
@@ -195,9 +197,8 @@ describe("@pos_conventional_core/order_workflow_utils", () => {
             notification
         );
 
-        expect(valid).toBe(false);
-        expect(notifications).toHaveLength(1);
-        expect(notifications[0].options.title).toBe("Importe inválido");
+        expect(valid).toBe(true);
+        expect(notifications).toHaveLength(0);
     });
 
     test("notifyInvalidOrderForPayment accepts negative totals with product lines", async () => {

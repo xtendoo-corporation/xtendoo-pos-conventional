@@ -3,7 +3,11 @@ import "@pos_conventional_barcode_scanner/js/pos_conventional_barcode_scanner_fi
 import { beforeEach, destroy, expect, test } from "@odoo/hoot";
 import { animationFrame } from "@odoo/hoot-mock";
 import { contains, defineModels, fields, models, mountView, patchWithCleanup } from "@web/../tests/web_test_helpers";
+import { PosDataService } from "@point_of_sale/app/services/data_service";
+import { posService } from "@point_of_sale/app/services/pos_store";
+import { contextualUtilsService } from "@point_of_sale/app/services/contextual_utils_service";
 import { barcodeService } from "@barcodes/barcode_service";
+import { defineMailModels } from "@mail/../tests/mail_test_helpers";
 
 class SaleOrder extends models.Model {
     name = fields.Char({ string: "Reference" });
@@ -13,9 +17,29 @@ class SaleOrder extends models.Model {
     _records = [{ id: 1, name: "POS/0001", partner_name: "Cliente Barcode", _barcode_scanned: "" }];
 }
 
+// mail está instalado (point_of_sale depende de él) y su servicio consulta discuss.channel.
+defineMailModels();
 defineModels([SaleOrder]);
 
 beforeEach(() => {
+    // El bundle del backend incluye el servicio «pos_data» de point_of_sale y los que
+    // dependen de él («pos», utilidades contextuales): al arrancar consultan pos.config y
+    // el almacenamiento del TPV, y eso no es lo que se prueba aquí.
+    patchWithCleanup(PosDataService, {
+        async start() {
+            return {};
+        },
+    });
+    patchWithCleanup(posService, {
+        async start() {
+            return {};
+        },
+    });
+    patchWithCleanup(contextualUtilsService, {
+        start() {
+            return {};
+        },
+    });
     patchWithCleanup(barcodeService, {
         maxTimeBetweenKeysInMs: 0,
     });
