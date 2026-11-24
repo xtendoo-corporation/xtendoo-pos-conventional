@@ -13,6 +13,7 @@ import {
     getRelationalValueId,
     hasRealProductLines,
     playErrorBeep,
+    rememberActiveSession,
     shouldBlockDraftOrderLeave,
 } from "@pos_conventional_core/js/pos_order_workflow_utils";
 
@@ -40,6 +41,7 @@ export class PosConventionalOrderFormController extends FormController {
         this.boundCoreDocClickHandler = this._onDocClick.bind(this);
 
         onMounted(() => {
+            rememberActiveSession(this.model.root);
             document.addEventListener("click", this.boundCorePaymentButtonClickHandler, true);
             document.addEventListener("click", this.boundCoreDocClickHandler, true);
         });

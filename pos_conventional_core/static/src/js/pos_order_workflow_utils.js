@@ -135,6 +135,26 @@ export function activateNavigationBypass(record = null, timeout = 10000) {
     }, timeout);
 }
 
+export const ACTIVE_SESSION_STORAGE_KEY = "pos_conventional_active_session_id";
+
+/**
+ * Recuerda la sesión del pedido abierto. Con F5 en un pedido se pierde el contexto
+ * de la acción; al volver a la lista, esta lee la sesión de aquí y mantiene el
+ * botón «Nuevo» y las acciones de caja.
+ */
+export function rememberActiveSession(record) {
+    const sessionId = getRelationalValueId(record?.data?.session_id);
+    if (!sessionId) {
+        return false;
+    }
+    try {
+        sessionStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, String(sessionId));
+    } catch {
+        return false;
+    }
+    return sessionId;
+}
+
 export function clearNavigationBypass() {
     window.bypassPosLeave = false;
 }

@@ -9,6 +9,8 @@ import {
     isZeroAmount,
     loadPaymentMethods,
     notifyInvalidOrderForPayment,
+    rememberActiveSession,
+    ACTIVE_SESSION_STORAGE_KEY,
     payOrderWithMethod,
     shouldBlockDraftOrderLeave,
 } from "../src/js/pos_order_workflow_utils";
@@ -226,6 +228,15 @@ describe("@pos_conventional_core/order_workflow_utils", () => {
         expect(window.bypassPosLeave).toBe(true);
         clearNavigationBypass();
         expect(window.bypassPosLeave).toBe(false);
+    });
+
+    test("rememberActiveSession stores the order session so the list keeps working after F5", async () => {
+        sessionStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+        expect(rememberActiveSession({ data: { session_id: false } })).toBe(false);
+        expect(sessionStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)).toBe(null);
+        expect(rememberActiveSession({ data: { session_id: [15, "Caja 1/00015"] } })).toBe(15);
+        expect(sessionStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)).toBe("15");
+        sessionStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
     });
 
     test("payOrderWithMethod stops before RPC when order is invalid", async () => {

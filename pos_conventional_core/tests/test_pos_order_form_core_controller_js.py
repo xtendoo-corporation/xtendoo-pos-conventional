@@ -22,6 +22,7 @@ class TestPosOrderFormCoreControllerFrontend(HOOTCommon):
         "@pos_conventional_core/order_workflow_utils/notifyInvalidOrderForPayment warns when total is zero,"
         "@pos_conventional_core/order_workflow_utils/notifyInvalidOrderForPayment accepts negative totals with product lines,"
         "@pos_conventional_core/order_workflow_utils/activateNavigationBypass and clearNavigationBypass toggle the global flag,"
+        "@pos_conventional_core/order_workflow_utils/rememberActiveSession stores the order session so the list keeps working after F5,"
         "@pos_conventional_core/order_workflow_utils/payOrderWithMethod stops before RPC when order is invalid,"
         "@pos_conventional_core/order_workflow_utils/payOrderWithMethod saves, triggers RPC and executes the returned action,"
         "@pos_conventional_core/order_workflow_utils/payOrderWithMethod reloads the order and clears bypass when server returns no action,"
